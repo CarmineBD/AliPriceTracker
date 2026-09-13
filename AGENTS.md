@@ -47,6 +47,13 @@ central error middleware.
 PostgreSQL is accessed through Drizzle ORM. Structural schema changes require a matching Drizzle
 migration. Never silently change a SQL schema without creating and reviewing its migration.
 
+For every requested change that affects the database, also create a tracking script under
+`apps/api/drizzle/scripts/`. Name each script using the creation date and a descriptive purpose:
+`YYYY-MM-DD_<indicative-name>.sql` (use a numeric suffix if more than one script has the same name
+and date). The script must document the SQL changes implemented, be kept alongside the matching
+Drizzle migration when one is required, and be included in the change summary so database
+implementations can be tracked historically.
+
 ## Testing
 
 Add tests for meaningful logic and behavior. Do not add trivial tests solely to increase coverage.
@@ -56,4 +63,3 @@ Add tests for meaningful logic and behavior. Do not add trivial tests solely to 
 - `pnpm dev`: start web and API together.
 - `pnpm build`, `pnpm lint`, `pnpm typecheck`, `pnpm test`: validate all applicable workspaces.
 - `pnpm db:generate`, `pnpm db:migrate`: manage database migrations.
-
