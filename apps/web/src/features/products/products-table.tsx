@@ -1,5 +1,5 @@
 import type { Product } from '@alitracker/shared';
-import { Pencil, Trash2 } from 'lucide-react';
+import { ImageOff, Pencil, Trash2 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -28,10 +28,10 @@ export function ProductsTable({ products, onEdit, onDelete }: ProductsTableProps
     <Table>
       <TableHeader>
         <TableRow>
+          <TableHead>Imagen</TableHead>
           <TableHead>ID</TableHead>
           <TableHead>Nombre</TableHead>
           <TableHead>Nombre corto</TableHead>
-          <TableHead>URL del icono</TableHead>
           <TableHead>Descripción</TableHead>
           <TableHead>Creado</TableHead>
           <TableHead>Actualizado</TableHead>
@@ -41,28 +41,28 @@ export function ProductsTable({ products, onEdit, onDelete }: ProductsTableProps
       <TableBody>
         {products.map((product) => (
           <TableRow key={product.id}>
+            <TableCell>
+              {product.imageUrl ? (
+                <img
+                  src={product.imageUrl}
+                  alt={`Imagen de ${product.name}`}
+                  className="size-12 rounded-md border object-cover"
+                />
+              ) : (
+                <div
+                  className="flex size-12 items-center justify-center rounded-md border bg-muted text-muted-foreground"
+                  aria-label={`Sin imagen para ${product.name}`}
+                >
+                  <ImageOff />
+                </div>
+              )}
+            </TableCell>
             <TableCell className="max-w-48 truncate font-mono text-xs" title={product.id}>
               {product.id}
             </TableCell>
             <TableCell className="font-medium">{product.name}</TableCell>
             <TableCell>{product.shortName ?? '—'}</TableCell>
-            <TableCell className="max-w-52 truncate" title={product.iconUrl ?? undefined}>
-              {product.iconUrl ? (
-                <a
-                  className="text-primary underline"
-                  href={product.iconUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  {product.iconUrl}
-                </a>
-              ) : (
-                '—'
-              )}
-            </TableCell>
-            <TableCell className="max-w-64 whitespace-normal">
-              {product.description ?? '—'}
-            </TableCell>
+            <TableCell className="max-w-64 whitespace-normal">{product.description ?? '—'}</TableCell>
             <TableCell>{formatDate(product.createdAt)}</TableCell>
             <TableCell>{formatDate(product.updatedAt)}</TableCell>
             <TableCell>

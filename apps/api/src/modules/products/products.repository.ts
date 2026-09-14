@@ -32,6 +32,15 @@ export class ProductsRepository {
     return product;
   }
 
+  async updateImageKey(id: string, imageKey: string) {
+    const [product] = await getDatabase()
+      .update(products)
+      .set({ imageKey, updatedAt: new Date() })
+      .where(eq(products.id, id))
+      .returning();
+    return product;
+  }
+
   async delete(id: string) {
     const [product] = await getDatabase().delete(products).where(eq(products.id, id)).returning();
     return product;

@@ -1,5 +1,6 @@
 import {
   productCreateSchema,
+  productImageContentTypeSchema,
   productResponseSchema,
   productUpdateSchema,
   type Product,
@@ -33,6 +34,18 @@ export async function updateProduct(id: string, input: ProductUpdateInput): Prom
   const body = productUpdateSchema.parse(input);
   return productResponseSchema.parse(
     await request<unknown>(`/api/products/${id}`, jsonRequest('PATCH', body)),
+  );
+}
+
+export async function uploadProductImage(id: string, image: File): Promise<Product> {
+  const contentType = productImageContentTypeSchema.parse(image.type);
+
+  return productResponseSchema.parse(
+    await request<unknown>(`/api/products/${id}/image`, {
+      method: 'PUT',
+      headers: { 'Content-Type': contentType },
+      body: image,
+    }),
   );
 }
 

@@ -11,6 +11,16 @@ export const notFoundHandler: RequestHandler = (request, response) => {
 };
 
 export const errorHandler: ErrorRequestHandler = (error, _request, response, _next) => {
+  if (
+    typeof error === 'object' &&
+    error !== null &&
+    'type' in error &&
+    error.type === 'entity.too.large'
+  ) {
+    response.status(413).json({ error: 'Image file exceeds the 5 MB limit.' });
+    return;
+  }
+
   if (error instanceof ZodError) {
     response.status(400).json({
       error: 'Validation Error',

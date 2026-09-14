@@ -8,6 +8,7 @@ vi.mock('@/api/products.api', () => ({
   getProducts: vi.fn().mockResolvedValue([]),
   createProduct: vi.fn(),
   updateProduct: vi.fn(),
+  uploadProductImage: vi.fn(),
   deleteProduct: vi.fn(),
 }));
 

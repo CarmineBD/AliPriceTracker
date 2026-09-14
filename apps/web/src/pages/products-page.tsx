@@ -1,14 +1,23 @@
 import { useState } from 'react';
 
-import type { Product, ProductCreateInput } from '@alitracker/shared';
+import type { Product } from '@alitracker/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Plus } from 'lucide-react';
 
-import { createProduct, deleteProduct, getProducts, updateProduct } from '@/api/products.api';
+import {
+  createProduct,
+  deleteProduct,
+  getProducts,
+  updateProduct,
+  uploadProductImage,
+} from '@/api/products.api';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { DeleteProductDialog } from '@/features/products/delete-product-dialog';
-import { ProductFormDialog } from '@/features/products/product-form-dialog';
+import {
+  ProductFormDialog,
+  type ProductFormSubmission,
+} from '@/features/products/product-form-dialog';
 import { ProductsTable } from '@/features/products/products-table';
 import { AppLayout } from '@/layouts/app-layout';
 
@@ -25,12 +34,16 @@ export function ProductsPage() {
   };
 
   const saveMutation = useMutation({
-    mutationFn: async (input: ProductCreateInput) => {
-      if (formProduct) {
-        return updateProduct(formProduct.id, input);
+    mutationFn: async ({ input, imageFile }: ProductFormSubmission) => {
+      const product = formProduct
+        ? await updateProduct(formProduct.id, input)
+        : await createProduct(input);
+
+      if (imageFile) {
+        return uploadProductImage(product.id, imageFile);
       }
 
-      return createProduct(input);
+      return product;
     },
     onSuccess: async () => {
       setFormProduct(undefined);

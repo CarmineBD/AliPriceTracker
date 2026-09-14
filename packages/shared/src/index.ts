@@ -14,7 +14,6 @@ const optionalDescription = z.preprocess(
 export const productCreateSchema = z.object({
   name: z.string().trim().min(1, 'El nombre es obligatorio.').max(160),
   shortName: optionalText(80),
-  iconUrl: optionalText(2_048),
   description: optionalDescription,
 });
 
@@ -24,11 +23,24 @@ export const productUpdateSchema = productCreateSchema
 
 export const productIdSchema = z.string().uuid();
 
+export const productImageContentTypes = [
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+  'image/gif',
+] as const;
+
+export const productImageContentTypeSchema = z.enum(productImageContentTypes);
+export const productImageMaxBytes = 5 * 1024 * 1024;
+
+export type ProductImageContentType = z.infer<typeof productImageContentTypeSchema>;
+
 export const productResponseSchema = z.object({
   id: productIdSchema,
   name: z.string(),
   shortName: z.string().nullable(),
-  iconUrl: z.string().nullable(),
+  imageKey: z.string().nullable(),
+  imageUrl: z.string().url().nullable(),
   description: z.string().nullable(),
   createdAt: z.string().datetime({ offset: true }),
   updatedAt: z.string().datetime({ offset: true }),
