@@ -1,7 +1,8 @@
 import type { Product } from '@alitracker/shared';
-import { ImageOff, Pencil, Trash2 } from 'lucide-react';
+import { Copy, ImageOff, Pencil, Trash2 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
+import { toast } from '@/components/ui/toast';
 import {
   Table,
   TableBody,
@@ -17,7 +18,14 @@ type ProductsTableProps = {
   onDelete: (product: Product) => void;
 };
 
-const formatDate = (value: string) => new Date(value).toLocaleString();
+async function copyProductId(id: string) {
+  try {
+    await navigator.clipboard.writeText(id);
+    toast({ title: 'ID copiado correctamente.' });
+  } catch {
+    toast({ title: 'No se pudo copiar el ID.', type: 'error' });
+  }
+}
 
 export function ProductsTable({ products, onEdit, onDelete }: ProductsTableProps) {
   if (products.length === 0) {
@@ -30,63 +38,72 @@ export function ProductsTable({ products, onEdit, onDelete }: ProductsTableProps
         <TableRow>
           <TableHead>Imagen</TableHead>
           <TableHead>ID</TableHead>
-          <TableHead>Nombre</TableHead>
           <TableHead>Nombre corto</TableHead>
-          <TableHead>Descripción</TableHead>
-          <TableHead>Creado</TableHead>
-          <TableHead>Actualizado</TableHead>
           <TableHead className="text-right">Acciones</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
-        {products.map((product) => (
-          <TableRow key={product.id}>
-            <TableCell>
-              {product.imageUrl ? (
-                <img
-                  src={product.imageUrl}
-                  alt={`Imagen de ${product.name}`}
-                  className="size-12 rounded-md border object-cover"
-                />
-              ) : (
-                <div
-                  className="flex size-12 items-center justify-center rounded-md border bg-muted text-muted-foreground"
-                  aria-label={`Sin imagen para ${product.name}`}
-                >
-                  <ImageOff />
+        {products.map((product) => {
+          const productLabel = product.shortName ?? product.name;
+
+          return (
+            <TableRow key={product.id}>
+              <TableCell>
+                {product.imageUrl ? (
+                  <img
+                    src={product.imageUrl}
+                    alt={`Imagen de ${productLabel}`}
+                    className="size-16 shrink-0 rounded-md border object-cover"
+                  />
+                ) : (
+                  <div
+                    className="flex size-16 shrink-0 items-center justify-center rounded-md border bg-muted text-muted-foreground"
+                    aria-label={`Sin imagen para ${productLabel}`}
+                  >
+                    <ImageOff />
+                  </div>
+                )}
+              </TableCell>
+              <TableCell className="max-w-56">
+                <div className="flex items-center gap-1">
+                  <span className="truncate font-mono text-xs" title={product.id}>
+                    {product.id}
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="icon-xs"
+                    className="shrink-0"
+                    onClick={() => void copyProductId(product.id)}
+                    aria-label={`Copiar ID de ${productLabel}`}
+                  >
+                    <Copy />
+                  </Button>
                 </div>
-              )}
-            </TableCell>
-            <TableCell className="max-w-48 truncate font-mono text-xs" title={product.id}>
-              {product.id}
-            </TableCell>
-            <TableCell className="font-medium">{product.name}</TableCell>
-            <TableCell>{product.shortName ?? '—'}</TableCell>
-            <TableCell className="max-w-64 whitespace-normal">{product.description ?? '—'}</TableCell>
-            <TableCell>{formatDate(product.createdAt)}</TableCell>
-            <TableCell>{formatDate(product.updatedAt)}</TableCell>
-            <TableCell>
-              <div className="flex justify-end gap-1">
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  onClick={() => onEdit(product)}
-                  aria-label={`Editar ${product.name}`}
-                >
-                  <Pencil />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  onClick={() => onDelete(product)}
-                  aria-label={`Eliminar ${product.name}`}
-                >
-                  <Trash2 className="text-destructive" />
-                </Button>
-              </div>
-            </TableCell>
-          </TableRow>
-        ))}
+              </TableCell>
+              <TableCell>{product.shortName ?? '—'}</TableCell>
+              <TableCell>
+                <div className="flex justify-end gap-1">
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    onClick={() => onEdit(product)}
+                    aria-label={`Editar ${productLabel}`}
+                  >
+                    <Pencil />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    onClick={() => onDelete(product)}
+                    aria-label={`Eliminar ${productLabel}`}
+                  >
+                    <Trash2 className="text-destructive" />
+                  </Button>
+                </div>
+              </TableCell>
+            </TableRow>
+          );
+        })}
       </TableBody>
     </Table>
   );

@@ -5,7 +5,10 @@ import { describe, expect, it, vi } from 'vitest';
 import { ProductsPage } from '@/pages/products-page';
 
 vi.mock('@/api/products.api', () => ({
-  getProducts: vi.fn().mockResolvedValue([]),
+  getProducts: vi.fn().mockResolvedValue({
+    products: [],
+    pagination: { page: 1, pageSize: 20, total: 0, totalPages: 0 },
+  }),
   createProduct: vi.fn(),
   updateProduct: vi.fn(),
   uploadProductImage: vi.fn(),

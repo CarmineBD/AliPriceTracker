@@ -5,13 +5,13 @@ import {
   productUpdateSchema,
   type Product,
   type ProductCreateInput,
+  type ProductsList,
+  type ProductsListQuery,
   type ProductUpdateInput,
+  productsListResponseSchema,
 } from '@alitracker/shared';
-import { z } from 'zod';
 
 import { request } from './client';
-
-const productsResponseSchema = z.array(productResponseSchema);
 
 const jsonRequest = (method: 'POST' | 'PATCH', body: ProductCreateInput | ProductUpdateInput) => ({
   method,
@@ -19,8 +19,11 @@ const jsonRequest = (method: 'POST' | 'PATCH', body: ProductCreateInput | Produc
   body: JSON.stringify(body),
 });
 
-export async function getProducts(): Promise<Product[]> {
-  return productsResponseSchema.parse(await request<unknown>('/api/products'));
+export async function getProducts({ page, pageSize }: ProductsListQuery): Promise<ProductsList> {
+  const search = new URLSearchParams({ page: String(page), pageSize: String(pageSize) });
+  return productsListResponseSchema.parse(
+    await request<unknown>(`/api/products?${search.toString()}`),
+  );
 }
 
 export async function createProduct(input: ProductCreateInput): Promise<Product> {

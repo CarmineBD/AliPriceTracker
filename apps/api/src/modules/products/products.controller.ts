@@ -5,6 +5,7 @@ import {
   productIdSchema,
   productImageContentTypeSchema,
   productUpdateSchema,
+  productsListQuerySchema,
 } from '@alitracker/shared';
 
 import { HttpError } from '../../utils/http-error';
@@ -19,8 +20,8 @@ import {
 
 const parseId = (value: unknown) => productIdSchema.parse(value);
 
-export const list: RequestHandler = async (_request, response) => {
-  response.status(200).json(await listProducts());
+export const list: RequestHandler = async (request, response) => {
+  response.status(200).json(await listProducts(productsListQuerySchema.parse(request.query)));
 };
 
 export const getById: RequestHandler = async (request, response) => {

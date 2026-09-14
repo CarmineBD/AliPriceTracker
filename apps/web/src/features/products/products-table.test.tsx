@@ -1,8 +1,17 @@
 import type { Product } from '@alitracker/shared';
-import { render, screen } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { ProductsTable } from './products-table';
+
+const { toastMock } = vi.hoisted(() => ({ toastMock: vi.fn() }));
+
+vi.mock('@/components/ui/toast', () => ({ toast: toastMock }));
+
+afterEach(() => {
+  cleanup();
+  vi.clearAllMocks();
+});
 
 const product: Product = {
   id: '8d8c883c-7e36-4af0-a8b3-152b20c41f3c',
@@ -16,12 +25,35 @@ const product: Product = {
 };
 
 describe('ProductsTable', () => {
-  it('shows a product image from the public URL returned by the API', () => {
+  it('shows a square 64 px product image from the public URL returned by the API', () => {
     render(<ProductsTable products={[product]} onEdit={vi.fn()} onDelete={vi.fn()} />);
 
-    expect(screen.getByRole('img', { name: 'Imagen de Producto de prueba' })).toHaveAttribute(
-      'src',
-      product.imageUrl,
-    );
+    const image = screen.getByRole('img', { name: 'Imagen de Producto de prueba' });
+
+    expect(image).toHaveAttribute('src', product.imageUrl);
+    expect(image).toHaveClass('size-16', 'object-cover');
+    expect(screen.getAllByRole('columnheader').map((header) => header.textContent)).toEqual([
+      'Imagen',
+      'ID',
+      'Nombre corto',
+      'Acciones',
+    ]);
+  });
+
+  it('copies the product ID and confirms it with a toast', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText },
+    });
+
+    render(<ProductsTable products={[product]} onEdit={vi.fn()} onDelete={vi.fn()} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Copiar ID de Producto de prueba' }));
+
+    await waitFor(() => {
+      expect(writeText).toHaveBeenCalledWith(product.id);
+      expect(toastMock).toHaveBeenCalledWith({ title: 'ID copiado correctamente.' });
+    });
   });
 });

@@ -23,6 +23,13 @@ export const productUpdateSchema = productCreateSchema
 
 export const productIdSchema = z.string().uuid();
 
+export const productsListQuerySchema = z
+  .object({
+    page: z.coerce.number().int().positive().default(1),
+    pageSize: z.coerce.number().int().positive().max(100).default(20),
+  })
+  .strict();
+
 export const productImageContentTypes = [
   'image/jpeg',
   'image/png',
@@ -46,6 +53,18 @@ export const productResponseSchema = z.object({
   updatedAt: z.string().datetime({ offset: true }),
 });
 
+export const productsListResponseSchema = z.object({
+  products: z.array(productResponseSchema),
+  pagination: z.object({
+    page: z.number().int().positive(),
+    pageSize: z.number().int().positive(),
+    total: z.number().int().nonnegative(),
+    totalPages: z.number().int().nonnegative(),
+  }),
+});
+
 export type ProductCreateInput = z.infer<typeof productCreateSchema>;
 export type ProductUpdateInput = z.infer<typeof productUpdateSchema>;
 export type Product = z.infer<typeof productResponseSchema>;
+export type ProductsListQuery = z.infer<typeof productsListQuerySchema>;
+export type ProductsList = z.infer<typeof productsListResponseSchema>;

@@ -1,6 +1,7 @@
 import type {
   ProductCreateInput,
   ProductImageContentType,
+  ProductsListQuery,
   ProductUpdateInput,
 } from '@alitracker/shared';
 
@@ -32,9 +33,18 @@ function toProductResponse(product: StoredProduct) {
   };
 }
 
-export async function listProducts() {
-  const products = await productsRepository.findAll();
-  return products.map(toProductResponse);
+export async function listProducts(query: ProductsListQuery) {
+  const { items, total } = await productsRepository.findPage(query);
+
+  return {
+    products: items.map(toProductResponse),
+    pagination: {
+      page: query.page,
+      pageSize: query.pageSize,
+      total,
+      totalPages: Math.ceil(total / query.pageSize),
+    },
+  };
 }
 
 export async function getProduct(id: string) {
