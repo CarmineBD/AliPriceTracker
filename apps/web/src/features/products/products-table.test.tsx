@@ -1,5 +1,6 @@
 import type { Product } from '@alitracker/shared';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { ProductsTable } from './products-table';
@@ -26,12 +27,20 @@ const product: Product = {
 
 describe('ProductsTable', () => {
   it('shows a square 64 px product image from the public URL returned by the API', () => {
-    render(<ProductsTable products={[product]} onEdit={vi.fn()} onDelete={vi.fn()} />);
+    render(
+      <MemoryRouter>
+        <ProductsTable products={[product]} onEdit={vi.fn()} onDelete={vi.fn()} />
+      </MemoryRouter>,
+    );
 
     const image = screen.getByRole('img', { name: 'Imagen de Producto de prueba' });
 
     expect(image).toHaveAttribute('src', product.imageUrl);
     expect(image).toHaveClass('size-16', 'object-cover');
+    expect(screen.getByRole('button', { name: 'Ver detalle de Producto de prueba' })).toHaveAttribute(
+      'href',
+      `/products/${product.id}`,
+    );
     expect(screen.getAllByRole('columnheader').map((header) => header.textContent)).toEqual([
       'Imagen',
       'ID',
@@ -47,7 +56,11 @@ describe('ProductsTable', () => {
       value: { writeText },
     });
 
-    render(<ProductsTable products={[product]} onEdit={vi.fn()} onDelete={vi.fn()} />);
+    render(
+      <MemoryRouter>
+        <ProductsTable products={[product]} onEdit={vi.fn()} onDelete={vi.fn()} />
+      </MemoryRouter>,
+    );
 
     fireEvent.click(screen.getByRole('button', { name: 'Copiar ID de Producto de prueba' }));
 

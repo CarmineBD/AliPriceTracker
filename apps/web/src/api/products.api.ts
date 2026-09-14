@@ -26,6 +26,10 @@ export async function getProducts({ page, pageSize }: ProductsListQuery): Promis
   );
 }
 
+export async function getProduct(id: string): Promise<Product> {
+  return productResponseSchema.parse(await request<unknown>(`/api/products/${id}`));
+}
+
 export async function createProduct(input: ProductCreateInput): Promise<Product> {
   const body = productCreateSchema.parse(input);
   return productResponseSchema.parse(

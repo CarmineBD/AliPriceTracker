@@ -1,5 +1,6 @@
 import type { Product } from '@alitracker/shared';
-import { Copy, ImageOff, Pencil, Trash2 } from 'lucide-react';
+import { Copy, Eye, ImageOff, Pencil, Trash2 } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 import { Button } from '@/components/ui/button';
 import { toast } from '@/components/ui/toast';
@@ -83,6 +84,15 @@ export function ProductsTable({ products, onEdit, onDelete }: ProductsTableProps
               <TableCell>{product.shortName ?? '—'}</TableCell>
               <TableCell>
                 <div className="flex justify-end gap-1">
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    render={<Link to={`/products/${product.id}`} />}
+                    nativeButton={false}
+                    aria-label={`Ver detalle de ${productLabel}`}
+                  >
+                    <Eye />
+                  </Button>
                   <Button
                     variant="ghost"
                     size="icon-sm"
