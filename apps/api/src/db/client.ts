@@ -11,3 +11,11 @@ const queryClient = env.DATABASE_URL
   : undefined;
 
 export const db = queryClient ? drizzle({ client: queryClient }) : undefined;
+
+export function getDatabase() {
+  if (!db) {
+    throw new Error('Database is not configured. Set DATABASE_URL to use product endpoints.');
+  }
+
+  return db;
+}

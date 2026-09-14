@@ -1,4 +1,5 @@
 import type { ErrorRequestHandler, RequestHandler } from 'express';
+import { ZodError } from 'zod';
 
 import { HttpError } from '../utils/http-error';
 
@@ -10,6 +11,14 @@ export const notFoundHandler: RequestHandler = (request, response) => {
 };
 
 export const errorHandler: ErrorRequestHandler = (error, _request, response, _next) => {
+  if (error instanceof ZodError) {
+    response.status(400).json({
+      error: 'Validation Error',
+      details: error.flatten(),
+    });
+    return;
+  }
+
   if (error instanceof HttpError) {
     response.status(error.statusCode).json({ error: error.message });
     return;

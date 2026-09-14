@@ -2,15 +2,12 @@ import 'dotenv/config';
 
 import { defineConfig } from 'drizzle-kit';
 
-if (!process.env.DATABASE_URL) {
-  throw new Error('DATABASE_URL must be set to run Drizzle commands.');
-}
-
 export default defineConfig({
   out: './drizzle',
   schema: './src/db/schema/*.ts',
   dialect: 'postgresql',
   dbCredentials: {
-    url: process.env.DATABASE_URL,
+    // Generating a migration only needs the schema. Applying it still requires a real DATABASE_URL.
+    url: process.env.DATABASE_URL ?? 'postgresql://user:password@localhost:5432/alitracker',
   },
 });
