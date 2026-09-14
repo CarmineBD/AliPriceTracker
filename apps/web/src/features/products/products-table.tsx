@@ -40,6 +40,7 @@ export function ProductsTable({ products, onEdit, onDelete }: ProductsTableProps
           <TableHead>Imagen</TableHead>
           <TableHead>ID</TableHead>
           <TableHead>Nombre corto</TableHead>
+          <TableHead className="text-right">Ofertas</TableHead>
           <TableHead className="text-right">Acciones</TableHead>
         </TableRow>
       </TableHeader>
@@ -82,6 +83,7 @@ export function ProductsTable({ products, onEdit, onDelete }: ProductsTableProps
                 </div>
               </TableCell>
               <TableCell>{product.shortName ?? '—'}</TableCell>
+              <TableCell className="text-right">{product.offersCount}</TableCell>
               <TableCell>
                 <div className="flex justify-end gap-1">
                   <Button

@@ -15,6 +15,13 @@
       "when": 1789376647902,
       "tag": "0001_add_product_image_key",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1789381653809,
+      "tag": "0002_bitter_morg",
+      "breakpoints": true
     }
   ]
 }

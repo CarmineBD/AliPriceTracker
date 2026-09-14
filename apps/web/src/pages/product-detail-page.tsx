@@ -3,6 +3,14 @@ import { ArrowLeft, ImageOff } from 'lucide-react';
 import { Link, useParams } from 'react-router-dom';
 
 import { getProduct } from '@/api/products.api';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 import { AppLayout } from '@/layouts/app-layout';
 
 const dateFormatter = new Intl.DateTimeFormat('es-ES', {
@@ -29,7 +37,11 @@ export function ProductDetailPage() {
         Volver a productos
       </Link>
 
-      {productQuery.isPending && <p className="mt-8" role="status">Cargando producto…</p>}
+      {productQuery.isPending && (
+        <p className="mt-8" role="status">
+          Cargando producto…
+        </p>
+      )}
 
       {productQuery.isError && (
         <div className="mt-8" role="alert">
@@ -66,10 +78,59 @@ export function ProductDetailPage() {
           </header>
 
           <section className="mt-10 border-t pt-6" aria-labelledby="product-description-title">
-            <h2 id="product-description-title" className="text-lg font-medium">Descripción</h2>
+            <h2 id="product-description-title" className="text-lg font-medium">
+              Descripción
+            </h2>
             <p className="mt-2 whitespace-pre-wrap text-slate-700">
               {productQuery.data.description ?? 'Sin descripción.'}
             </p>
+          </section>
+
+          <section className="mt-10 border-t pt-6" aria-labelledby="product-offers-title">
+            <h2 id="product-offers-title" className="text-lg font-medium">
+              Ofertas disponibles ({productQuery.data.offersCount})
+            </h2>
+            {productQuery.data.offers.length === 0 ? (
+              <p className="mt-2 text-slate-700">No hay ofertas disponibles para este producto.</p>
+            ) : (
+              <div className="mt-4">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Tienda</TableHead>
+                      <TableHead>Ubicación</TableHead>
+                      <TableHead>Puntuación</TableHead>
+                      <TableHead>Ventas</TableHead>
+                      <TableHead>Cantidad disponible</TableHead>
+                      <TableHead>Máximo por compra</TableHead>
+                      <TableHead>URL</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {productQuery.data.offers.map((offer) => (
+                      <TableRow key={offer.id}>
+                        <TableCell>{offer.sellerName ?? '—'}</TableCell>
+                        <TableCell>{offer.sellerLocation ?? '—'}</TableCell>
+                        <TableCell>{offer.sellerReviewScore ?? '—'}</TableCell>
+                        <TableCell>{offer.sellerSalesCount ?? '—'}</TableCell>
+                        <TableCell>{offer.quantityAvailable}</TableCell>
+                        <TableCell>{offer.maxPurchase}</TableCell>
+                        <TableCell>
+                          <a
+                            href={offer.url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-primary underline-offset-4 hover:underline"
+                          >
+                            Ver oferta
+                          </a>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
           </section>
 
           <dl className="mt-8 grid gap-6 border-t pt-6 text-sm sm:grid-cols-2">

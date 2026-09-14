@@ -7,9 +7,11 @@ import type {
 
 import { deleteFile, getPublicUrl, uploadFile } from '../../services/storage.service';
 import { HttpError } from '../../utils/http-error';
+import { SellerProductsRepository } from '../sellers/sellers.repository';
 import { ProductsRepository } from './products.repository';
 
 const productsRepository = new ProductsRepository();
+const sellerProductsRepository = new SellerProductsRepository();
 
 const imageExtensions: Record<ProductImageContentType, string> = {
   'image/jpeg': 'jpg',
@@ -19,8 +21,20 @@ const imageExtensions: Record<ProductImageContentType, string> = {
 };
 
 type StoredProduct = NonNullable<Awaited<ReturnType<ProductsRepository['findById']>>>;
+type StoredProductWithOffers = NonNullable<
+  Awaited<ReturnType<ProductsRepository['findByIdWithOffers']>>
+>;
 
-function toProductResponse(product: StoredProduct) {
+function toProductResponse(
+  product: StoredProduct,
+  {
+    offersCount = 0,
+    offers = [],
+  }: {
+    offersCount?: number;
+    offers?: StoredProductWithOffers['offers'];
+  } = {},
+) {
   return {
     id: product.id,
     name: product.name,
@@ -28,6 +42,8 @@ function toProductResponse(product: StoredProduct) {
     imageKey: product.imageKey,
     imageUrl: product.imageKey ? getPublicUrl(product.imageKey) : null,
     description: product.description,
+    offersCount,
+    offers,
     createdAt: product.createdAt,
     updatedAt: product.updatedAt,
   };
@@ -37,7 +53,9 @@ export async function listProducts(query: ProductsListQuery) {
   const { items, total } = await productsRepository.findPage(query);
 
   return {
-    products: items.map(toProductResponse),
+    products: items.map((product) =>
+      toProductResponse(product, { offersCount: product.offersCount }),
+    ),
     pagination: {
       page: query.page,
       pageSize: query.pageSize,
@@ -48,13 +66,16 @@ export async function listProducts(query: ProductsListQuery) {
 }
 
 export async function getProduct(id: string) {
-  const product = await productsRepository.findById(id);
+  const productWithOffers = await productsRepository.findByIdWithOffers(id);
 
-  if (!product) {
+  if (!productWithOffers) {
     throw new HttpError('Product not found.', 404);
   }
 
-  return toProductResponse(product);
+  return toProductResponse(productWithOffers.product, {
+    offersCount: productWithOffers.offers.length,
+    offers: productWithOffers.offers,
+  });
 }
 
 export async function createProduct(input: ProductCreateInput) {
@@ -120,6 +141,10 @@ export async function uploadProductImage(
 }
 
 export async function deleteProduct(id: string) {
+  if ((await sellerProductsRepository.countByProductId(id)) > 0) {
+    throw new HttpError('Cannot delete a product with existing seller offers.', 409);
+  }
+
   const product = await productsRepository.delete(id);
 
   if (!product) {

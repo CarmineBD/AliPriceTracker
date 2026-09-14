@@ -21,6 +21,8 @@ const product: Product = {
   imageKey: 'products/8d8c883c-7e36-4af0-a8b3-152b20c41f3c/example.png',
   imageUrl: 'https://media.example.test/products/8d8c883c-7e36-4af0-a8b3-152b20c41f3c/example.png',
   description: null,
+  offersCount: 3,
+  offers: [],
   createdAt: '2026-09-14T10:00:00.000Z',
   updatedAt: '2026-09-14T10:00:00.000Z',
 };
@@ -37,16 +39,17 @@ describe('ProductsTable', () => {
 
     expect(image).toHaveAttribute('src', product.imageUrl);
     expect(image).toHaveClass('size-16', 'object-cover');
-    expect(screen.getByRole('button', { name: 'Ver detalle de Producto de prueba' })).toHaveAttribute(
-      'href',
-      `/products/${product.id}`,
-    );
+    expect(
+      screen.getByRole('button', { name: 'Ver detalle de Producto de prueba' }),
+    ).toHaveAttribute('href', `/products/${product.id}`);
     expect(screen.getAllByRole('columnheader').map((header) => header.textContent)).toEqual([
       'Imagen',
       'ID',
       'Nombre corto',
+      'Ofertas',
       'Acciones',
     ]);
+    expect(screen.getByText('3')).toBeInTheDocument();
   });
 
   it('copies the product ID and confirms it with a toast', async () => {

@@ -11,6 +11,19 @@ const product = {
   shortName: 'Prueba',
   imageKey: 'products/8d8c883c-7e36-4af0-a8b3-152b20c41f3c/example.png',
   imageUrl: 'https://media.example.test/products/8d8c883c-7e36-4af0-a8b3-152b20c41f3c/example.png',
+  offersCount: 1,
+  offers: [
+    {
+      id: '8d8c883c-7e36-4af0-a8b3-152b20c41f3d',
+      sellerName: 'Tienda de prueba',
+      sellerLocation: 'Madrid',
+      sellerReviewScore: '4.8',
+      sellerSalesCount: 125,
+      quantityAvailable: 10,
+      maxPurchase: 2,
+      url: 'https://www.aliexpress.com/item/123.html',
+    },
+  ],
   description: 'Descripción de prueba.',
   createdAt: '2026-09-14T10:00:00.000Z',
   updatedAt: '2026-09-14T11:00:00.000Z',
@@ -41,6 +54,12 @@ describe('ProductDetailPage', () => {
     expect(image).toHaveAttribute('src', product.imageUrl);
     expect(image).toHaveClass('size-32', 'object-cover');
     expect(screen.getByRole('heading', { name: product.name })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Ofertas disponibles (1)' })).toBeInTheDocument();
+    expect(screen.getByText('Tienda de prueba')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Ver oferta' })).toHaveAttribute(
+      'href',
+      'https://www.aliexpress.com/item/123.html',
+    );
     expect(screen.getByText(product.shortName)).toBeInTheDocument();
     expect(screen.getByText(product.description)).toBeInTheDocument();
     expect(screen.getByText('Fecha de actualización')).toBeInTheDocument();
