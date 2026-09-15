@@ -83,6 +83,30 @@ export type ProductOffer = z.infer<typeof productOfferSchema>;
 export type ProductsListQuery = z.infer<typeof productsListQuerySchema>;
 export type ProductsList = z.infer<typeof productsListResponseSchema>;
 
+export const aliExpressProductIdSchema = z
+  .string()
+  .trim()
+  .regex(/^\d+$/, 'El ID de la publicación debe contener solo números.')
+  .max(100);
+
+export const aliExpressProductVariantSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  price: z.string().nullable(),
+  quantityAvailable: z.number().int().nonnegative(),
+  imageUrl: z.string().url().nullable(),
+  salable: z.boolean(),
+});
+
+export const aliExpressProductLookupResponseSchema = z.object({
+  productId: aliExpressProductIdSchema,
+  productName: z.string().nullable(),
+  products: z.array(aliExpressProductVariantSchema),
+});
+
+export type AliExpressProductLookup = z.infer<typeof aliExpressProductLookupResponseSchema>;
+export type AliExpressProductVariant = z.infer<typeof aliExpressProductVariantSchema>;
+
 const optionalNonNegativeNumber = z.preprocess(
   (value) => (value === '' ? null : value),
   z.coerce.number().finite().nonnegative().nullable().optional(),

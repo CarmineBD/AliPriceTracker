@@ -99,6 +99,24 @@ describe('GET /api/debug/aliexpress/product/:productId', () => {
     ).toBe('07121cd3155217564b301f83c992dc26');
   });
 
+  it('returns the original parsed MTop response when requested', async () => {
+    const { sessionRunner } = createSessionRunner({
+      _m_h5_tk: 'token_1893456000000',
+    });
+    const client = vi.fn().mockResolvedValue(response(200, validMtopBody));
+
+    const result = await debugAliExpressProduct(
+      { productId, debugApiKey: 'test-debug-api-key', includeRaw: true },
+      { sessionRunner, client },
+    );
+
+    expect(result.status).toBe(200);
+    expect(result.body.rawResponse).toMatchObject({
+      ret: ['SUCCESS::ok'],
+      data: { result: { PRODUCT_TITLE: { text: 'Producto de prueba' } } },
+    });
+  });
+
   it('retries once using the token received in Set-Cookie', async () => {
     const { context, sessionRunner } = createSessionRunner({
       _m_h5_tk: 'old-token_1893456000000',
@@ -116,7 +134,7 @@ describe('GET /api/debug/aliexpress/product/:productId', () => {
       .mockResolvedValueOnce(response(200, validMtopBody));
 
     const result = await debugAliExpressProduct(
-      { productId, debugApiKey: 'test-debug-api-key' },
+      { productId, debugApiKey: 'test-debug-api-key', includeRaw: true },
       { sessionRunner, client },
     );
 
@@ -138,17 +156,22 @@ describe('GET /api/debug/aliexpress/product/:productId', () => {
     const { sessionRunner } = createSessionRunner({
       _m_h5_tk: 'token_1893456000000',
     });
-    const client = vi.fn().mockResolvedValue(
-      response(200, 'mtopjsonp1({"ret":["FAIL_SYS_ILLEGAL_ACCESS::invalid session"]});'),
-    );
+    const client = vi
+      .fn()
+      .mockResolvedValue(
+        response(200, 'mtopjsonp1({"ret":["FAIL_SYS_ILLEGAL_ACCESS::invalid session"]});'),
+      );
 
     const result = await debugAliExpressProduct(
-      { productId, debugApiKey: 'test-debug-api-key' },
+      { productId, debugApiKey: 'test-debug-api-key', includeRaw: true },
       { sessionRunner, client },
     );
 
     expect(client).toHaveBeenCalledTimes(1);
     expect(result.status).toBe(502);
     expect(result.body.errorCode).toBe('ALIEXPRESS_SESSION_REAUTH_REQUIRED');
+    expect(result.body.rawResponse).toEqual({
+      ret: ['FAIL_SYS_ILLEGAL_ACCESS::invalid session'],
+    });
   });
 });

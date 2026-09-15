@@ -42,6 +42,7 @@ type DebugResponse = {
   errorCode: 'ALIEXPRESS_SESSION_REAUTH_REQUIRED' | null;
   upstreamStatus: number | null;
   session: SessionDiagnostic | null;
+  rawResponse?: JsonRecord | null;
 };
 
 type DebugResult = {
@@ -84,7 +85,8 @@ const getFirstImage = (value: unknown): string | null => {
   }
 
   return Array.isArray(value)
-    ? (value.find((image): image is string => typeof image === 'string' && image.trim() !== '') ?? null)
+    ? (value.find((image): image is string => typeof image === 'string' && image.trim() !== '') ??
+        null)
     : null;
 };
 
@@ -196,7 +198,8 @@ function resolveSkuVariantName(skuAttr: string, skuProperties: JsonRecord[]): st
         property.skuPropertyValues ?? property.propertyValues ?? property.values,
       );
       const matchedValue = values.find(
-        (candidate) => String(candidate.propertyValueIdLong ?? candidate.propertyValueId) === valueId,
+        (candidate) =>
+          String(candidate.propertyValueIdLong ?? candidate.propertyValueId) === valueId,
       );
 
       return matchedValue
@@ -236,7 +239,8 @@ function getProductDetails(body: JsonRecord) {
 
       return {
         skuId,
-        name: resolveSkuVariantName(getString(skuPath.skuAttr) ?? '', skuProperties) || `SKU ${skuId}`,
+        name:
+          resolveSkuVariantName(getString(skuPath.skuAttr) ?? '', skuProperties) || `SKU ${skuId}`,
         price: getString(priceInfo.salePriceString),
         stock: asInteger(skuPath.skuStock) ?? 0,
         maxBuyCount: asInteger(quantityInfo.maxBuyCount),
@@ -258,7 +262,11 @@ export function isMtopTokenError(ret: string[] | null): boolean {
   return (
     ret?.some((entry) => {
       const code = entry.toUpperCase();
-      return code.includes('FAIL_SYS_TOKEN') || code.includes('TOKEN_EXPIRED') || code.includes('TOKEN_EXOIRED');
+      return (
+        code.includes('FAIL_SYS_TOKEN') ||
+        code.includes('TOKEN_EXPIRED') ||
+        code.includes('TOKEN_EXOIRED')
+      );
     }) ?? false
   );
 }
@@ -277,7 +285,11 @@ function isMtopSessionInvalidationError(ret: string[] | null): boolean {
 }
 
 function isSuccessfulMtopResponse(ret: string[] | null, upstreamStatus: number): boolean {
-  return upstreamStatus >= 200 && upstreamStatus < 300 && (ret?.some((entry) => entry.startsWith('SUCCESS')) ?? false);
+  return (
+    upstreamStatus >= 200 &&
+    upstreamStatus < 300 &&
+    (ret?.some((entry) => entry.startsWith('SUCCESS')) ?? false)
+  );
 }
 
 async function getSessionDiagnostic(
@@ -360,7 +372,11 @@ async function requestMtopProduct({
     });
   }
 
-  return { upstreamStatus: response.status, body: parseJsonp(await response.text()), missingToken: false };
+  return {
+    upstreamStatus: response.status,
+    body: parseJsonp(await response.text()),
+    missingToken: false,
+  };
 }
 
 function createReauthResponse({
@@ -368,11 +384,13 @@ function createReauthResponse({
   upstreamStatus,
   mtopRet,
   session,
+  rawResponse,
 }: {
   productId: string;
   upstreamStatus: number | null;
   mtopRet: string[] | null;
   session: SessionDiagnostic;
+  rawResponse?: JsonRecord | null;
 }): DebugResult {
   logAliExpressDebug('aliexpress_debug_error', {
     mtopCode: getMtopCode(mtopRet) ?? 'ALIEXPRESS_SESSION_REAUTH_REQUIRED',
@@ -387,6 +405,7 @@ function createReauthResponse({
       errorCode: 'ALIEXPRESS_SESSION_REAUTH_REQUIRED',
       upstreamStatus,
       session,
+      rawResponse,
     }),
   };
 }
@@ -395,9 +414,11 @@ export async function debugAliExpressProduct(
   {
     productId,
     debugApiKey,
+    includeRaw = false,
   }: {
     productId: string;
     debugApiKey: string | undefined;
+    includeRaw?: boolean;
   },
   {
     sessionRunner = sessionService,
@@ -433,6 +454,7 @@ export async function debugAliExpressProduct(
             upstreamStatus: firstAttempt.upstreamStatus,
             mtopRet: firstRet,
             session: firstSessionDiagnostic,
+            rawResponse: includeRaw ? firstAttempt.body : undefined,
           });
         }
 
@@ -443,6 +465,7 @@ export async function debugAliExpressProduct(
               upstreamStatus: firstAttempt.upstreamStatus,
               mtopRet: firstRet,
               session: firstSessionDiagnostic,
+              rawResponse: includeRaw ? firstAttempt.body : undefined,
             });
           }
 
@@ -465,6 +488,7 @@ export async function debugAliExpressProduct(
               upstreamStatus: secondAttempt.upstreamStatus,
               mtopRet: secondRet,
               session: secondSessionDiagnostic,
+              rawResponse: includeRaw ? secondAttempt.body : undefined,
             });
           }
 
@@ -477,11 +501,15 @@ export async function debugAliExpressProduct(
               errorType: null,
               upstreamStatus: secondAttempt.upstreamStatus,
               session: secondSessionDiagnostic,
+              rawResponse: includeRaw ? secondAttempt.body : undefined,
             }),
           };
         }
 
-        if (!firstAttempt.body || !isSuccessfulMtopResponse(firstRet, firstAttempt.upstreamStatus ?? 0)) {
+        if (
+          !firstAttempt.body ||
+          !isSuccessfulMtopResponse(firstRet, firstAttempt.upstreamStatus ?? 0)
+        ) {
           logAliExpressDebug('aliexpress_debug_error', {
             mtopCode: getMtopCode(firstRet) ?? 'UPSTREAM_ERROR',
             retriedAfterTokenRefresh: false,
@@ -493,6 +521,7 @@ export async function debugAliExpressProduct(
               errorType: 'upstream',
               upstreamStatus: firstAttempt.upstreamStatus,
               session: firstSessionDiagnostic,
+              rawResponse: includeRaw ? firstAttempt.body : undefined,
             }),
           };
         }
@@ -506,6 +535,7 @@ export async function debugAliExpressProduct(
             errorType: null,
             upstreamStatus: firstAttempt.upstreamStatus,
             session: firstSessionDiagnostic,
+            rawResponse: includeRaw ? firstAttempt.body : undefined,
           }),
         };
       } catch {

@@ -9,6 +9,9 @@ import {
 import { aliexpressSessionService } from './aliexpress-session.service';
 
 const productIdSchema = z.string().regex(/^\d+$/, 'productId must contain only digits.');
+const productQuerySchema = z.object({
+  includeRaw: z.enum(['true']).optional(),
+});
 
 export const getProduct: RequestHandler = async (request, response) => {
   const requestProductId = request.params.productId ?? null;
@@ -37,6 +40,7 @@ export const getProduct: RequestHandler = async (request, response) => {
   const result = await debugAliExpressProduct({
     productId: productId.data,
     debugApiKey: request.header('x-debug-api-key'),
+    includeRaw: productQuerySchema.parse(request.query).includeRaw === 'true',
   });
 
   response.status(result.status).json(result.body);
