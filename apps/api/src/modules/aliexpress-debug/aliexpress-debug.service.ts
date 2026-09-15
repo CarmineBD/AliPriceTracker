@@ -1,14 +1,12 @@
 import { createHash, timingSafeEqual } from 'node:crypto';
 
-import axios from 'axios';
-import { wrapper } from 'axios-cookiejar-support';
-import type { CookieJar } from 'tough-cookie';
-
 import { env } from '../../config/env';
 import {
   AliExpressSessionService,
+  aliexpressSessionService,
   type AliExpressSessionContext,
   type AliExpressSessionSource,
+  buildCookieHeader,
 } from './aliexpress-session.service';
 
 const appKey = '12574478';
@@ -20,6 +18,7 @@ type SessionDiagnostic = {
   source: AliExpressSessionSource;
   tokenExpiresAt: string | null;
   retriedAfterTokenRefresh: boolean;
+  cookieCount: number;
 };
 
 type SkuPrice = {
@@ -50,27 +49,13 @@ type DebugResult = {
   body: DebugResponse;
 };
 
-type MtopHttpClient = {
-  get: (
-    url: string,
-    config: {
-      headers: Record<string, string>;
-      jar: CookieJar;
-      params: Record<string, string>;
-      responseType: 'text';
-    },
-  ) => Promise<{ status: number; data: unknown }>;
-};
+type MtopHttpResponse = Pick<Response, 'status' | 'headers' | 'text'>;
+type MtopHttpClient = (url: URL, init: RequestInit) => Promise<MtopHttpResponse>;
 
 type SessionRunner = Pick<AliExpressSessionService, 'withSession'>;
 
-const mtopHttpClient: MtopHttpClient = wrapper(
-  axios.create({
-    timeout: 15_000,
-    validateStatus: () => true,
-  }),
-);
-const sessionService = new AliExpressSessionService();
+const mtopHttpClient: MtopHttpClient = fetch;
+const sessionService = aliexpressSessionService;
 
 const isRecord = (value: unknown): value is JsonRecord =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -108,6 +93,8 @@ const getRet = (body: JsonRecord | null): string[] | null =>
     ? body.ret
     : null;
 
+const getMtopCode = (ret: string[] | null): string | null => ret?.[0]?.split('::', 1)[0] ?? null;
+
 const createResponse = (
   productId: string,
   overrides: Partial<DebugResponse> = {},
@@ -129,7 +116,7 @@ export function logAliExpressDebug(event: string, fields: Record<string, unknown
   console.info(JSON.stringify({ event, ...fields }));
 }
 
-function hasMatchingApiKey(providedKey: string | undefined): boolean {
+export function hasMatchingDebugApiKey(providedKey: string | undefined): boolean {
   if (!providedKey || !env.DEBUG_API_KEY) {
     return false;
   }
@@ -299,9 +286,20 @@ async function getSessionDiagnostic(
 ): Promise<SessionDiagnostic> {
   return {
     source: session.source,
-    tokenExpiresAt: (await session.getToken())?.expiresAt ?? null,
+    tokenExpiresAt: session.getToken()?.expiresAt ?? null,
     retriedAfterTokenRefresh,
+    cookieCount: Object.keys(session.cookies).length,
   };
+}
+
+function getSetCookieHeaders(headers: Headers): string[] {
+  const headersWithGetSetCookie = headers as Headers & { getSetCookie?: () => string[] };
+  if (typeof headersWithGetSetCookie.getSetCookie === 'function') {
+    return headersWithGetSetCookie.getSetCookie();
+  }
+
+  const setCookie = headers.get('set-cookie');
+  return setCookie ? [setCookie] : [];
 }
 
 async function requestMtopProduct({
@@ -313,7 +311,7 @@ async function requestMtopProduct({
   session: AliExpressSessionContext;
   client: MtopHttpClient;
 }): Promise<{ upstreamStatus: number | null; body: JsonRecord | null; missingToken: boolean }> {
-  const mtopToken = await session.getToken();
+  const mtopToken = session.getToken();
   if (!mtopToken) {
     return { upstreamStatus: null, body: null, missingToken: true };
   }
@@ -321,36 +319,48 @@ async function requestMtopProduct({
   const t = Date.now().toString();
   const dataString = JSON.stringify(createMtopData(productId));
   const sign = createMtopSignature({ token: mtopToken.token, t, dataString });
-  const response = await client.get(endpoint, {
-    jar: session.jar,
-    headers: {
-      Accept: '*/*',
-      Referer: 'https://es.aliexpress.com/',
-      'User-Agent':
-        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36',
-    },
-    params: {
-      jsv: '2.5.1',
-      appKey,
-      t,
-      sign,
-      api: 'mtop.aliexpress.pdp.pc.query',
-      type: 'originaljsonp',
-      v: '1.0',
-      timeout: '15000',
-      dataType: 'originaljsonp',
-      callback: 'mtopjsonp1',
-      data: dataString,
-    },
-    responseType: 'text',
-  });
+  const url = new URL(endpoint);
+  url.search = new URLSearchParams({
+    jsv: '2.5.1',
+    appKey,
+    t,
+    sign,
+    api: 'mtop.aliexpress.pdp.pc.query',
+    type: 'originaljsonp',
+    v: '1.0',
+    timeout: '15000',
+    dataType: 'originaljsonp',
+    callback: 'mtopjsonp1',
+    data: dataString,
+  }).toString();
+  const abortController = new AbortController();
+  const timeout = setTimeout(() => abortController.abort(), 15_000);
 
-  logAliExpressDebug('aliexpress_debug_upstream_status', {
-    productId,
-    upstreamStatus: response.status,
-  });
+  let response: MtopHttpResponse;
+  try {
+    response = await client(url, {
+      headers: {
+        Accept: '*/*',
+        Referer: 'https://es.aliexpress.com/',
+        'User-Agent':
+          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36',
+        Cookie: buildCookieHeader(session.cookies),
+      },
+      signal: abortController.signal,
+    });
+  } finally {
+    clearTimeout(timeout);
+  }
 
-  return { upstreamStatus: response.status, body: parseJsonp(response.data), missingToken: false };
+  const changedCookieNames = await session.applySetCookies(getSetCookieHeaders(response.headers));
+  if (changedCookieNames.length > 0) {
+    logAliExpressDebug('aliexpress_debug_cookies_updated', {
+      cookieCount: Object.keys(session.cookies).length,
+      changedCookieNames,
+    });
+  }
+
+  return { upstreamStatus: response.status, body: parseJsonp(await response.text()), missingToken: false };
 }
 
 function createReauthResponse({
@@ -365,8 +375,8 @@ function createReauthResponse({
   session: SessionDiagnostic;
 }): DebugResult {
   logAliExpressDebug('aliexpress_debug_error', {
-    productId,
-    errorCode: 'ALIEXPRESS_SESSION_REAUTH_REQUIRED',
+    mtopCode: getMtopCode(mtopRet) ?? 'ALIEXPRESS_SESSION_REAUTH_REQUIRED',
+    retriedAfterTokenRefresh: session.retriedAfterTokenRefresh,
   });
 
   return {
@@ -397,8 +407,8 @@ export async function debugAliExpressProduct(
     client?: MtopHttpClient;
   } = {},
 ): Promise<DebugResult> {
-  if (!hasMatchingApiKey(debugApiKey)) {
-    logAliExpressDebug('aliexpress_debug_error', { productId, errorType: 'validation' });
+  if (!hasMatchingDebugApiKey(debugApiKey)) {
+    logAliExpressDebug('aliexpress_debug_error', { mtopCode: 'VALIDATION_ERROR' });
     return { status: 401, body: createResponse(productId, { errorType: 'validation' }) };
   }
 
@@ -406,9 +416,11 @@ export async function debugAliExpressProduct(
     return await sessionRunner.withSession(async (session) => {
       try {
         const firstAttempt = await requestMtopProduct({ productId, session, client });
-        await session.persist();
         const firstRet = getRet(firstAttempt.body);
-        logAliExpressDebug('aliexpress_debug_mtop_ret', { productId, mtopRet: firstRet });
+        logAliExpressDebug('aliexpress_debug_mtop_ret', {
+          mtopCode: getMtopCode(firstRet),
+          retriedAfterTokenRefresh: false,
+        });
         const firstSessionDiagnostic = await getSessionDiagnostic(session, false);
 
         if (
@@ -425,7 +437,7 @@ export async function debugAliExpressProduct(
         }
 
         if (isMtopTokenError(firstRet)) {
-          if (!(await session.getToken())) {
+          if (!session.getToken()) {
             return createReauthResponse({
               productId,
               upstreamStatus: firstAttempt.upstreamStatus,
@@ -435,9 +447,11 @@ export async function debugAliExpressProduct(
           }
 
           const secondAttempt = await requestMtopProduct({ productId, session, client });
-          await session.persist();
           const secondRet = getRet(secondAttempt.body);
-          logAliExpressDebug('aliexpress_debug_mtop_ret', { productId, mtopRet: secondRet });
+          logAliExpressDebug('aliexpress_debug_mtop_ret', {
+            mtopCode: getMtopCode(secondRet),
+            retriedAfterTokenRefresh: true,
+          });
           const secondSessionDiagnostic = await getSessionDiagnostic(session, true);
 
           if (
@@ -468,7 +482,10 @@ export async function debugAliExpressProduct(
         }
 
         if (!firstAttempt.body || !isSuccessfulMtopResponse(firstRet, firstAttempt.upstreamStatus ?? 0)) {
-          logAliExpressDebug('aliexpress_debug_error', { productId, errorType: 'upstream' });
+          logAliExpressDebug('aliexpress_debug_error', {
+            mtopCode: getMtopCode(firstRet) ?? 'UPSTREAM_ERROR',
+            retriedAfterTokenRefresh: false,
+          });
           return {
             status: 502,
             body: createResponse(productId, {
@@ -492,7 +509,7 @@ export async function debugAliExpressProduct(
           }),
         };
       } catch {
-        logAliExpressDebug('aliexpress_debug_error', { productId, errorType: 'upstream' });
+        logAliExpressDebug('aliexpress_debug_error', { mtopCode: 'UPSTREAM_ERROR' });
         return {
           status: 502,
           body: createResponse(productId, {
@@ -503,7 +520,7 @@ export async function debugAliExpressProduct(
       }
     });
   } catch {
-    logAliExpressDebug('aliexpress_debug_error', { productId, errorType: 'upstream' });
+    logAliExpressDebug('aliexpress_debug_error', { mtopCode: 'UPSTREAM_ERROR' });
     return { status: 503, body: createResponse(productId, { errorType: 'upstream' }) };
   }
 }
