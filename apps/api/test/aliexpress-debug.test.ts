@@ -60,6 +60,12 @@ describe('GET /api/debug/aliexpress/product/:productId', () => {
         { skuId: 'sku-a', price: { skuAmount: '1.00' } },
         { skuId: 'sku-b', price: { skuAmount: '2.00' } },
       ],
+      debugShape: {
+        topLevelKeys: ['ret', 'data'],
+        dataKeys: ['data'],
+        resultKeys: [],
+        resultPreview: '{}',
+      },
       errorType: null,
       upstreamStatus: 200,
     });

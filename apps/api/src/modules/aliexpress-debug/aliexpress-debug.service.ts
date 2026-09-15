@@ -7,6 +7,13 @@ const endpoint = 'https://acs.aliexpress.com/h5/mtop.aliexpress.pdp.pc.query/1.0
 
 type JsonRecord = Record<string, unknown>;
 
+type DebugShape = {
+  topLevelKeys: string[];
+  dataKeys: string[];
+  resultKeys: string[];
+  resultPreview: string;
+};
+
 type DebugResponse = {
   success: boolean;
   mtopRet: string[] | null;
@@ -14,6 +21,7 @@ type DebugResponse = {
   productName: string | null;
   skuCount: number;
   skuPrices: Array<{ skuId: string; price: unknown }>;
+  debugShape: DebugShape | null;
   errorType: 'token' | 'validation' | 'upstream' | null;
   upstreamStatus: number | null;
 };
@@ -43,6 +51,7 @@ const createResponse = (
   productName: null,
   skuCount: 0,
   skuPrices: [],
+  debugShape: null,
   errorType: 'upstream',
   upstreamStatus: null,
   ...overrides,
@@ -115,6 +124,18 @@ function getProductDetails(body: JsonRecord) {
       null,
     skuCount: skuEntries.length,
     skuPrices: skuEntries.slice(0, 5).map(([skuId, priceInfo]) => ({ skuId, price: priceInfo })),
+  };
+}
+
+function getDebugShape(body: JsonRecord): DebugShape {
+  const data = isRecord(body.data) ? body.data : {};
+  const result = data.result ?? {};
+
+  return {
+    topLevelKeys: Object.keys(body),
+    dataKeys: Object.keys(data),
+    resultKeys: isRecord(result) ? Object.keys(result) : [],
+    resultPreview: JSON.stringify(result).slice(0, 8000),
   };
 }
 
@@ -224,6 +245,7 @@ export async function debugAliExpressProduct({
         success: errorType === null,
         mtopRet,
         ...getProductDetails(body),
+        debugShape: getDebugShape(body),
         errorType,
         upstreamStatus,
       }),
