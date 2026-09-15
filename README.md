@@ -57,6 +57,8 @@ R2_ACCESS_KEY_ID=your-r2-access-key-id
 R2_SECRET_ACCESS_KEY=your-r2-secret-access-key
 R2_BUCKET=your-r2-bucket-name
 R2_PUBLIC_URL=https://media.example.com
+ALIEXPRESS_COOKIE=full-Cookie-header-copied-from-an-authenticated-Chrome-MTop-request
+DEBUG_API_KEY=a-long-random-secret
 ```
 
 `apps/web/.env`:
@@ -122,6 +124,24 @@ Connect this same GitHub repository to both platforms.
 - Set `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET`, and
   `R2_PUBLIC_URL` with the Cloudflare R2 bucket configuration.
 - Recommended watch paths: `/apps/api/**` and `/packages/shared/**`.
+
+### AliExpress debug check (temporary)
+
+To test Railway's outgoing request to AliExpress MTop, configure these API service variables in
+Railway:
+
+- `ALIEXPRESS_COOKIE`: the complete `Cookie` header from an authenticated MTop request copied from
+  Chrome.
+- `DEBUG_API_KEY`: a separate secret used in the `x-debug-api-key` request header.
+
+Call the API route with:
+
+```bash
+curl -H "x-debug-api-key: TU_DEBUG_API_KEY" https://TU_DOMINIO/api/debug/aliexpress/product/1005010519851506
+```
+
+This is only a temporary diagnostic endpoint. Remove it, or replace it with production-grade
+access controls, before deploying to production.
 
 ## R2 connection check
 

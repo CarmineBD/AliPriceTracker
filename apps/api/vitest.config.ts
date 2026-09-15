@@ -9,6 +9,8 @@ export default defineConfig({
       R2_SECRET_ACCESS_KEY: 'test-secret-key',
       R2_BUCKET: 'test-bucket',
       R2_PUBLIC_URL: 'https://media.example.test',
+      ALIEXPRESS_COOKIE: '_m_h5_tk=test-token_12345; test=value',
+      DEBUG_API_KEY: 'test-debug-api-key',
     },
   },
 });
