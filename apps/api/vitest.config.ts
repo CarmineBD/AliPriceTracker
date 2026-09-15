@@ -10,6 +10,7 @@ export default defineConfig({
       R2_BUCKET: 'test-bucket',
       R2_PUBLIC_URL: 'https://media.example.test',
       ALIEXPRESS_COOKIE: '_m_h5_tk=test-token_12345; test=value',
+      ALIEXPRESS_SESSION_ENCRYPTION_KEY: 'test-only-long-encryption-secret',
       DEBUG_API_KEY: 'test-debug-api-key',
     },
   },

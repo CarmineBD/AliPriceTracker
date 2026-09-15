@@ -58,6 +58,7 @@ R2_SECRET_ACCESS_KEY=your-r2-secret-access-key
 R2_BUCKET=your-r2-bucket-name
 R2_PUBLIC_URL=https://media.example.com
 ALIEXPRESS_COOKIE=full-Cookie-header-copied-from-an-authenticated-Chrome-MTop-request
+ALIEXPRESS_SESSION_ENCRYPTION_KEY=a-long-random-secret-created-by-you
 DEBUG_API_KEY=a-long-random-secret
 ```
 
@@ -131,7 +132,10 @@ To test Railway's outgoing request to AliExpress MTop, configure these API servi
 Railway:
 
 - `ALIEXPRESS_COOKIE`: the complete `Cookie` header from an authenticated MTop request copied from
-  Chrome.
+  Chrome. It is only used to create the initial persisted session; later restarts use the encrypted
+  database session instead.
+- `ALIEXPRESS_SESSION_ENCRYPTION_KEY`: a long secret phrase you create and store only in Railway.
+  It encrypts the persisted Cookie Jar and must not be changed while that session is in use.
 - `DEBUG_API_KEY`: a separate secret used in the `x-debug-api-key` request header.
 
 Call the API route with:

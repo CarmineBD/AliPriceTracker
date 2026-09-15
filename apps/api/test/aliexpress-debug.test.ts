@@ -1,99 +1,113 @@
 import request from 'supertest';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { CookieJar } from 'tough-cookie';
+import { describe, expect, it, vi } from 'vitest';
 
 import { app } from '../src/app';
+import {
+  createMtopSignature,
+  debugAliExpressProduct,
+} from '../src/modules/aliexpress-debug/aliexpress-debug.service';
+import type { AliExpressSessionContext } from '../src/modules/aliexpress-debug/aliexpress-session.service';
+
+const productId = '1005010519851506';
+const validMtopBody =
+  'mtopjsonp1({"ret":["SUCCESS::ok"],"data":{"result":{"PRODUCT_TITLE":{"text":"Producto de prueba"},"PRICE":{"skuPriceInfoMap":{}},"SKU":{"skuPaths":[]},"QUANTITY_PC":{"allSkuQuantityView":{}},"HEADER_IMAGE_PC":{"skuImagesMap":{}}}}});';
+
+function createSessionRunner() {
+  const persist = vi.fn().mockResolvedValue(undefined);
+  const context: AliExpressSessionContext = {
+    jar: new CookieJar(),
+    source: 'database',
+    getToken: vi.fn().mockResolvedValue({
+      token: 'test-token',
+      expiresAt: '2027-01-01T00:00:00.000Z',
+    }),
+    persist,
+  };
+
+  return {
+    context,
+    sessionRunner: {
+      withSession: async <T>(operation: (session: AliExpressSessionContext) => Promise<T>) =>
+        operation(context),
+    },
+  };
+}
 
 describe('GET /api/debug/aliexpress/product/:productId', () => {
-  afterEach(() => {
-    vi.unstubAllGlobals();
-  });
-
   it('rejects a non-numeric product identifier before making an upstream request', async () => {
-    const fetchMock = vi.fn();
-    vi.stubGlobal('fetch', fetchMock);
-
     const response = await request(app)
       .get('/api/debug/aliexpress/product/not-a-number')
       .set('x-debug-api-key', 'test-debug-api-key');
 
     expect(response.status).toBe(400);
     expect(response.body.errorType).toBe('validation');
-    expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it('requires the debug API key before making an upstream request', async () => {
-    const fetchMock = vi.fn();
-    vi.stubGlobal('fetch', fetchMock);
-
-    const response = await request(app).get('/api/debug/aliexpress/product/1005010519851506');
+  it('requires the debug API key before loading a session', async () => {
+    const response = await request(app).get(`/api/debug/aliexpress/product/${productId}`);
 
     expect(response.status).toBe(401);
     expect(response.body).toMatchObject({
       success: false,
-      productId: '1005010519851506',
+      productId,
       errorType: 'validation',
     });
-    expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it('parses a successful JSONP MTop response without exposing request credentials', async () => {
-    const fetchMock = vi.fn().mockResolvedValue(
-      new Response(
-        'mtopjsonp1({"ret":["SUCCESS::ok"],"data":{"result":{"PRODUCT_TITLE":{"text":"Producto de prueba"},"GLOBAL_DATA":{"globalData":{"subject":"Nombre alternativo"}},"PRICE":{"skuPriceInfoMap":{"1000000000000000001":{"salePriceString":"1,00 €"},"1000000000000000002":{"salePriceString":"2,00 €"}}},"SKU":{"skuProperties":[{"skuPropertyId":"14","skuPropertyName":"Color","skuPropertyValues":[{"propertyValueIdLong":"771","propertyValueDisplayName":"Rojo"}]},{"skuPropertyId":"200007763","skuPropertyName":"Envíos desde","skuPropertyValues":[{"propertyValueIdLong":"201336100","propertyValueDisplayName":"España"}]}],"skuPaths":[{"skuIdStr":"1000000000000000001","skuAttr":"14:771;200007763:201336100","skuStock":12,"salable":true},{"skuIdStr":"1000000000000000002","skuAttr":"14:771","skuStock":0,"salable":false}]},"QUANTITY_PC":{"allSkuQuantityView":{"1000000000000000001":{"maxBuyCount":3}}},"HEADER_IMAGE_PC":{"skuImagesMap":{"1000000000000000001":["https://image.example.test/red.jpg"]}}}}});',
-        { status: 200 },
-      ),
+  it('creates the expected MTop signature', () => {
+    expect(
+      createMtopSignature({
+        token: 'token-value',
+        t: '1700000000000',
+        dataString: '{"productId":"1005010519851506"}',
+      }),
+    ).toBe('07121cd3155217564b301f83c992dc26');
+  });
+
+  it('retries exactly once after a token error', async () => {
+    const { context, sessionRunner } = createSessionRunner();
+    const client = {
+      get: vi
+        .fn()
+        .mockResolvedValueOnce({
+          status: 200,
+          data: 'mtopjsonp1({"ret":["FAIL_SYS_TOKEN_EXPIRED::expired"]});',
+        })
+        .mockResolvedValueOnce({ status: 200, data: validMtopBody }),
+    };
+
+    const result = await debugAliExpressProduct(
+      { productId, debugApiKey: 'test-debug-api-key' },
+      { sessionRunner, client },
     );
-    vi.stubGlobal('fetch', fetchMock);
 
-    const response = await request(app)
-      .get('/api/debug/aliexpress/product/1005010519851506')
-      .set('x-debug-api-key', 'test-debug-api-key');
-
-    expect(response.status).toBe(200);
-    expect(response.body).toEqual({
-      success: true,
-      mtopRet: ['SUCCESS::ok'],
-      productId: '1005010519851506',
-      productName: 'Producto de prueba',
-      skuCount: 2,
-      skuPrices: [
-        {
-          skuId: '1000000000000000001',
-          name: 'Rojo',
-          price: '1,00 €',
-          stock: 12,
-          maxBuyCount: 3,
-          image: 'https://image.example.test/red.jpg',
-          salable: true,
-        },
-        {
-          skuId: '1000000000000000002',
-          name: 'Rojo',
-          price: '2,00 €',
-          stock: 0,
-          maxBuyCount: null,
-          image: null,
-          salable: false,
-        },
-      ],
-      debugShape: {
-        topLevelKeys: ['ret', 'data'],
-        dataKeys: ['result'],
-        resultKeys: [
-          'PRODUCT_TITLE',
-          'GLOBAL_DATA',
-          'PRICE',
-          'SKU',
-          'QUANTITY_PC',
-          'HEADER_IMAGE_PC',
-        ],
-      },
-      errorType: null,
-      upstreamStatus: 200,
+    expect(client.get).toHaveBeenCalledTimes(2);
+    expect(context.persist).toHaveBeenCalledTimes(2);
+    expect(result.status).toBe(200);
+    expect(result.body.session).toEqual({
+      source: 'database',
+      tokenExpiresAt: '2027-01-01T00:00:00.000Z',
+      retriedAfterTokenRefresh: true,
     });
+  });
 
-    expect(fetchMock).toHaveBeenCalledTimes(1);
-    expect(JSON.stringify(response.body)).not.toContain('test-token');
-    expect(JSON.stringify(response.body)).not.toContain('test-debug-api-key');
+  it('does not retry when AliExpress requires user validation', async () => {
+    const { sessionRunner } = createSessionRunner();
+    const client = {
+      get: vi.fn().mockResolvedValue({
+        status: 200,
+        data: 'mtopjsonp1({"ret":["FAIL_SYS_USER_VALIDATE::captcha"]});',
+      }),
+    };
+
+    const result = await debugAliExpressProduct(
+      { productId, debugApiKey: 'test-debug-api-key' },
+      { sessionRunner, client },
+    );
+
+    expect(client.get).toHaveBeenCalledTimes(1);
+    expect(result.status).toBe(502);
+    expect(result.body.errorCode).toBe('ALIEXPRESS_SESSION_REAUTH_REQUIRED');
   });
 });

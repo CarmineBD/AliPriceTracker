@@ -23,7 +23,9 @@ export const getProduct: RequestHandler = async (request, response) => {
       skuCount: 0,
       skuPrices: [],
       errorType: 'validation',
+      errorCode: null,
       upstreamStatus: null,
+      session: null,
     });
     return;
   }

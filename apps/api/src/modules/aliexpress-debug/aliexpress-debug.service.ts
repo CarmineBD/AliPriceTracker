@@ -1,16 +1,35 @@
 import { createHash, timingSafeEqual } from 'node:crypto';
 
+import axios from 'axios';
+import { wrapper } from 'axios-cookiejar-support';
+import type { CookieJar } from 'tough-cookie';
+
 import { env } from '../../config/env';
+import {
+  AliExpressSessionService,
+  type AliExpressSessionContext,
+  type AliExpressSessionSource,
+} from './aliexpress-session.service';
 
 const appKey = '12574478';
 const endpoint = 'https://acs.aliexpress.com/h5/mtop.aliexpress.pdp.pc.query/1.0/';
 
 type JsonRecord = Record<string, unknown>;
 
-type DebugShape = {
-  topLevelKeys: string[];
-  dataKeys: string[];
-  resultKeys: string[];
+type SessionDiagnostic = {
+  source: AliExpressSessionSource;
+  tokenExpiresAt: string | null;
+  retriedAfterTokenRefresh: boolean;
+};
+
+type SkuPrice = {
+  skuId: string;
+  name: string;
+  price: string | null;
+  stock: number;
+  maxBuyCount: number | null;
+  image: string | null;
+  salable: boolean;
 };
 
 type DebugResponse = {
@@ -19,24 +38,39 @@ type DebugResponse = {
   productId: string;
   productName: string | null;
   skuCount: number;
-  skuPrices: Array<{
-    skuId: string;
-    name: string;
-    price: string | null;
-    stock: number;
-    maxBuyCount: number | null;
-    image: string | null;
-    salable: boolean;
-  }>;
-  debugShape: DebugShape | null;
-  errorType: 'token' | 'validation' | 'upstream' | null;
+  skuPrices: SkuPrice[];
+  errorType: 'token' | 'validation' | 'upstream' | 'reauth' | null;
+  errorCode: 'ALIEXPRESS_SESSION_REAUTH_REQUIRED' | null;
   upstreamStatus: number | null;
+  session: SessionDiagnostic | null;
 };
 
 type DebugResult = {
   status: 200 | 401 | 502 | 503;
   body: DebugResponse;
 };
+
+type MtopHttpClient = {
+  get: (
+    url: string,
+    config: {
+      headers: Record<string, string>;
+      jar: CookieJar;
+      params: Record<string, string>;
+      responseType: 'text';
+    },
+  ) => Promise<{ status: number; data: unknown }>;
+};
+
+type SessionRunner = Pick<AliExpressSessionService, 'withSession'>;
+
+const mtopHttpClient: MtopHttpClient = wrapper(
+  axios.create({
+    timeout: 15_000,
+    validateStatus: () => true,
+  }),
+);
+const sessionService = new AliExpressSessionService();
 
 const isRecord = (value: unknown): value is JsonRecord =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -69,8 +103,8 @@ const getFirstImage = (value: unknown): string | null => {
     : null;
 };
 
-const getRet = (body: JsonRecord): string[] | null =>
-  Array.isArray(body.ret) && body.ret.every((entry) => typeof entry === 'string')
+const getRet = (body: JsonRecord | null): string[] | null =>
+  body && Array.isArray(body.ret) && body.ret.every((entry) => typeof entry === 'string')
     ? body.ret
     : null;
 
@@ -84,9 +118,10 @@ const createResponse = (
   productName: null,
   skuCount: 0,
   skuPrices: [],
-  debugShape: null,
   errorType: 'upstream',
+  errorCode: null,
   upstreamStatus: null,
+  session: null,
   ...overrides,
 });
 
@@ -100,33 +135,43 @@ function hasMatchingApiKey(providedKey: string | undefined): boolean {
   }
 
   const digest = (value: string) => createHash('sha256').update(value).digest();
-  const provided = digest(providedKey);
-  const expected = digest(env.DEBUG_API_KEY);
-
-  return timingSafeEqual(provided, expected);
+  return timingSafeEqual(digest(providedKey), digest(env.DEBUG_API_KEY));
 }
 
-function getMtopToken(cookie: string): string | null {
-  const match = /(?:^|;\s*)_m_h5_tk=([^;]*)/.exec(cookie);
+export function createMtopSignature({
+  token,
+  t,
+  dataString,
+}: {
+  token: string;
+  t: string;
+  dataString: string;
+}): string {
+  return createHash('md5').update(`${token}&${t}&${appKey}&${dataString}`).digest('hex');
+}
 
-  if (!match?.[1]) {
+function createMtopData(productId: string) {
+  return {
+    productId,
+    _lang: 'es_ES',
+    _currency: 'EUR',
+    country: 'ES',
+    province: '919967846682000000',
+    city: '919967846682127000',
+    channel: '',
+    pdp_ext_f: '{"order":"4603","eval":"1","fromPage":"search"}',
+    sourceType: '',
+    clientType: 'pc',
+    ext: '{"site":"esp","crawler":false,"signedIn":true,"host":"es.aliexpress.com"}',
+  };
+}
+
+function parseJsonp(body: unknown): JsonRecord | null {
+  if (typeof body !== 'string') {
     return null;
   }
 
-  let decoded: string;
-  try {
-    decoded = decodeURIComponent(match[1]);
-  } catch {
-    return null;
-  }
-
-  const lastUnderscore = decoded.lastIndexOf('_');
-  return lastUnderscore > 0 ? decoded.slice(0, lastUnderscore) : null;
-}
-
-function parseJsonp(body: string): JsonRecord | null {
   const match = /^\s*mtopjsonp1\(([\s\S]*)\)\s*;?\s*$/.exec(body);
-
   if (!match?.[1]) {
     return null;
   }
@@ -193,7 +238,7 @@ function getProductDetails(body: JsonRecord) {
   const headerImage = isRecord(result.HEADER_IMAGE_PC) ? result.HEADER_IMAGE_PC : {};
   const images = isRecord(headerImage.skuImagesMap) ? headerImage.skuImagesMap : {};
   const skuPrices = skuPaths
-    .map((skuPath) => {
+    .map((skuPath): SkuPrice | null => {
       const skuId = getString(skuPath.skuIdStr);
       if (!skuId) {
         return null;
@@ -212,19 +257,7 @@ function getProductDetails(body: JsonRecord) {
         salable: Boolean(skuPath.salable),
       };
     })
-    .filter(
-      (
-        sku,
-      ): sku is {
-        skuId: string;
-        name: string;
-        price: string | null;
-        stock: number;
-        maxBuyCount: number | null;
-        image: string | null;
-        salable: boolean;
-      } => sku !== null,
-    )
+    .filter((skuPath): skuPath is SkuPrice => skuPath !== null)
     .slice(0, 10);
 
   return {
@@ -234,132 +267,243 @@ function getProductDetails(body: JsonRecord) {
   };
 }
 
-function getDebugShape(body: JsonRecord): DebugShape {
-  const data = isRecord(body.data) ? body.data : {};
-  const result = data.result ?? {};
+export function isMtopTokenError(ret: string[] | null): boolean {
+  return (
+    ret?.some((entry) => {
+      const code = entry.toUpperCase();
+      return code.includes('FAIL_SYS_TOKEN') || code.includes('TOKEN_EXPIRED') || code.includes('TOKEN_EXOIRED');
+    }) ?? false
+  );
+}
 
+export function isMtopUserValidationError(ret: string[] | null): boolean {
+  return ret?.some((entry) => entry.toUpperCase().includes('FAIL_SYS_USER_VALIDATE')) ?? false;
+}
+
+function isMtopSessionInvalidationError(ret: string[] | null): boolean {
+  return (
+    ret?.some((entry) => {
+      const code = entry.toUpperCase();
+      return code.includes('FAIL_SYS_SESSION_EXPIRED') || code.includes('FAIL_SYS_ILLEGAL_ACCESS');
+    }) ?? false
+  );
+}
+
+function isSuccessfulMtopResponse(ret: string[] | null, upstreamStatus: number): boolean {
+  return upstreamStatus >= 200 && upstreamStatus < 300 && (ret?.some((entry) => entry.startsWith('SUCCESS')) ?? false);
+}
+
+async function getSessionDiagnostic(
+  session: AliExpressSessionContext,
+  retriedAfterTokenRefresh: boolean,
+): Promise<SessionDiagnostic> {
   return {
-    topLevelKeys: Object.keys(body),
-    dataKeys: Object.keys(data),
-    resultKeys: isRecord(result) ? Object.keys(result) : [],
+    source: session.source,
+    tokenExpiresAt: (await session.getToken())?.expiresAt ?? null,
+    retriedAfterTokenRefresh,
   };
 }
 
-function getErrorType(ret: string[] | null, upstreamStatus: number): 'token' | 'upstream' | null {
-  if (ret?.some((entry) => entry.toUpperCase().includes('TOKEN'))) {
-    return 'token';
-  }
-
-  if (!ret?.some((entry) => entry.startsWith('SUCCESS')) || !upstreamStatus.toString().startsWith('2')) {
-    return 'upstream';
-  }
-
-  return null;
-}
-
-export async function debugAliExpressProduct({
+async function requestMtopProduct({
   productId,
-  debugApiKey,
+  session,
+  client,
 }: {
   productId: string;
-  debugApiKey: string | undefined;
-}): Promise<DebugResult> {
+  session: AliExpressSessionContext;
+  client: MtopHttpClient;
+}): Promise<{ upstreamStatus: number | null; body: JsonRecord | null; missingToken: boolean }> {
+  const mtopToken = await session.getToken();
+  if (!mtopToken) {
+    return { upstreamStatus: null, body: null, missingToken: true };
+  }
+
+  const t = Date.now().toString();
+  const dataString = JSON.stringify(createMtopData(productId));
+  const sign = createMtopSignature({ token: mtopToken.token, t, dataString });
+  const response = await client.get(endpoint, {
+    jar: session.jar,
+    headers: {
+      Accept: '*/*',
+      Referer: 'https://es.aliexpress.com/',
+      'User-Agent':
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36',
+    },
+    params: {
+      jsv: '2.5.1',
+      appKey,
+      t,
+      sign,
+      api: 'mtop.aliexpress.pdp.pc.query',
+      type: 'originaljsonp',
+      v: '1.0',
+      timeout: '15000',
+      dataType: 'originaljsonp',
+      callback: 'mtopjsonp1',
+      data: dataString,
+    },
+    responseType: 'text',
+  });
+
+  logAliExpressDebug('aliexpress_debug_upstream_status', {
+    productId,
+    upstreamStatus: response.status,
+  });
+
+  return { upstreamStatus: response.status, body: parseJsonp(response.data), missingToken: false };
+}
+
+function createReauthResponse({
+  productId,
+  upstreamStatus,
+  mtopRet,
+  session,
+}: {
+  productId: string;
+  upstreamStatus: number | null;
+  mtopRet: string[] | null;
+  session: SessionDiagnostic;
+}): DebugResult {
+  logAliExpressDebug('aliexpress_debug_error', {
+    productId,
+    errorCode: 'ALIEXPRESS_SESSION_REAUTH_REQUIRED',
+  });
+
+  return {
+    status: 502,
+    body: createResponse(productId, {
+      mtopRet,
+      errorType: 'reauth',
+      errorCode: 'ALIEXPRESS_SESSION_REAUTH_REQUIRED',
+      upstreamStatus,
+      session,
+    }),
+  };
+}
+
+export async function debugAliExpressProduct(
+  {
+    productId,
+    debugApiKey,
+  }: {
+    productId: string;
+    debugApiKey: string | undefined;
+  },
+  {
+    sessionRunner = sessionService,
+    client = mtopHttpClient,
+  }: {
+    sessionRunner?: SessionRunner;
+    client?: MtopHttpClient;
+  } = {},
+): Promise<DebugResult> {
   if (!hasMatchingApiKey(debugApiKey)) {
     logAliExpressDebug('aliexpress_debug_error', { productId, errorType: 'validation' });
     return { status: 401, body: createResponse(productId, { errorType: 'validation' }) };
   }
 
-  if (!env.ALIEXPRESS_COOKIE) {
-    logAliExpressDebug('aliexpress_debug_error', { productId, errorType: 'validation' });
-    return { status: 503, body: createResponse(productId, { errorType: 'validation' }) };
-  }
-
-  const token = getMtopToken(env.ALIEXPRESS_COOKIE);
-  if (!token) {
-    logAliExpressDebug('aliexpress_debug_error', { productId, errorType: 'validation' });
-    return { status: 503, body: createResponse(productId, { errorType: 'validation' }) };
-  }
-
-  const t = Date.now().toString();
-  const data = {
-    productId,
-    _lang: 'es_ES',
-    _currency: 'EUR',
-    country: 'ES',
-    province: '919967846682000000',
-    city: '919967846682127000',
-    channel: '',
-    pdp_ext_f: '{"order":"4603","eval":"1","fromPage":"search"}',
-    sourceType: '',
-    clientType: 'pc',
-    ext: '{"site":"esp","crawler":false,"signedIn":true,"host":"es.aliexpress.com"}',
-  };
-  const dataString = JSON.stringify(data);
-  const sign = createHash('md5').update(`${token}&${t}&${appKey}&${dataString}`).digest('hex');
-  const url = new URL(endpoint);
-  url.search = new URLSearchParams({
-    jsv: '2.5.1',
-    appKey,
-    t,
-    sign,
-    api: 'mtop.aliexpress.pdp.pc.query',
-    type: 'originaljsonp',
-    v: '1.0',
-    timeout: '15000',
-    dataType: 'originaljsonp',
-    callback: 'mtopjsonp1',
-    data: dataString,
-  }).toString();
-
-  const abortController = new AbortController();
-  const timeout = setTimeout(() => abortController.abort(), 15_000);
-
   try {
-    const upstreamResponse = await fetch(url, {
-      headers: {
-        Accept: '*/*',
-        Referer: 'https://es.aliexpress.com/',
-        'User-Agent':
-          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36',
-        Cookie: env.ALIEXPRESS_COOKIE,
-      },
-      signal: abortController.signal,
+    return await sessionRunner.withSession(async (session) => {
+      try {
+        const firstAttempt = await requestMtopProduct({ productId, session, client });
+        await session.persist();
+        const firstRet = getRet(firstAttempt.body);
+        logAliExpressDebug('aliexpress_debug_mtop_ret', { productId, mtopRet: firstRet });
+        const firstSessionDiagnostic = await getSessionDiagnostic(session, false);
+
+        if (
+          firstAttempt.missingToken ||
+          isMtopUserValidationError(firstRet) ||
+          isMtopSessionInvalidationError(firstRet)
+        ) {
+          return createReauthResponse({
+            productId,
+            upstreamStatus: firstAttempt.upstreamStatus,
+            mtopRet: firstRet,
+            session: firstSessionDiagnostic,
+          });
+        }
+
+        if (isMtopTokenError(firstRet)) {
+          if (!(await session.getToken())) {
+            return createReauthResponse({
+              productId,
+              upstreamStatus: firstAttempt.upstreamStatus,
+              mtopRet: firstRet,
+              session: firstSessionDiagnostic,
+            });
+          }
+
+          const secondAttempt = await requestMtopProduct({ productId, session, client });
+          await session.persist();
+          const secondRet = getRet(secondAttempt.body);
+          logAliExpressDebug('aliexpress_debug_mtop_ret', { productId, mtopRet: secondRet });
+          const secondSessionDiagnostic = await getSessionDiagnostic(session, true);
+
+          if (
+            secondAttempt.missingToken ||
+            isMtopUserValidationError(secondRet) ||
+            isMtopSessionInvalidationError(secondRet) ||
+            !isSuccessfulMtopResponse(secondRet, secondAttempt.upstreamStatus ?? 0)
+          ) {
+            return createReauthResponse({
+              productId,
+              upstreamStatus: secondAttempt.upstreamStatus,
+              mtopRet: secondRet,
+              session: secondSessionDiagnostic,
+            });
+          }
+
+          return {
+            status: 200,
+            body: createResponse(productId, {
+              success: true,
+              mtopRet: secondRet,
+              ...getProductDetails(secondAttempt.body!),
+              errorType: null,
+              upstreamStatus: secondAttempt.upstreamStatus,
+              session: secondSessionDiagnostic,
+            }),
+          };
+        }
+
+        if (!firstAttempt.body || !isSuccessfulMtopResponse(firstRet, firstAttempt.upstreamStatus ?? 0)) {
+          logAliExpressDebug('aliexpress_debug_error', { productId, errorType: 'upstream' });
+          return {
+            status: 502,
+            body: createResponse(productId, {
+              mtopRet: firstRet,
+              errorType: 'upstream',
+              upstreamStatus: firstAttempt.upstreamStatus,
+              session: firstSessionDiagnostic,
+            }),
+          };
+        }
+
+        return {
+          status: 200,
+          body: createResponse(productId, {
+            success: true,
+            mtopRet: firstRet,
+            ...getProductDetails(firstAttempt.body),
+            errorType: null,
+            upstreamStatus: firstAttempt.upstreamStatus,
+            session: firstSessionDiagnostic,
+          }),
+        };
+      } catch {
+        logAliExpressDebug('aliexpress_debug_error', { productId, errorType: 'upstream' });
+        return {
+          status: 502,
+          body: createResponse(productId, {
+            errorType: 'upstream',
+            session: await getSessionDiagnostic(session, false),
+          }),
+        };
+      }
     });
-    const upstreamStatus = upstreamResponse.status;
-    logAliExpressDebug('aliexpress_debug_upstream_status', { productId, upstreamStatus });
-
-    const body = parseJsonp(await upstreamResponse.text());
-    if (!body) {
-      logAliExpressDebug('aliexpress_debug_error', { productId, errorType: 'upstream' });
-      return {
-        status: 502,
-        body: createResponse(productId, { upstreamStatus, errorType: 'upstream' }),
-      };
-    }
-
-    const mtopRet = getRet(body);
-    logAliExpressDebug('aliexpress_debug_mtop_ret', { productId, mtopRet });
-    const errorType = getErrorType(mtopRet, upstreamStatus);
-
-    if (errorType) {
-      logAliExpressDebug('aliexpress_debug_error', { productId, errorType });
-    }
-
-    return {
-      status: errorType === null ? 200 : 502,
-      body: createResponse(productId, {
-        success: errorType === null,
-        mtopRet,
-        ...getProductDetails(body),
-        debugShape: getDebugShape(body),
-        errorType,
-        upstreamStatus,
-      }),
-    };
   } catch {
     logAliExpressDebug('aliexpress_debug_error', { productId, errorType: 'upstream' });
-    return { status: 502, body: createResponse(productId, { errorType: 'upstream' }) };
-  } finally {
-    clearTimeout(timeout);
+    return { status: 503, body: createResponse(productId, { errorType: 'upstream' }) };
   }
 }
