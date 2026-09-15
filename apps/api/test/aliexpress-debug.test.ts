@@ -39,7 +39,7 @@ describe('GET /api/debug/aliexpress/product/:productId', () => {
   it('parses a successful JSONP MTop response without exposing request credentials', async () => {
     const fetchMock = vi.fn().mockResolvedValue(
       new Response(
-        'mtopjsonp1({"ret":["SUCCESS::ok"],"data":{"data":{"PRODUCT":{"productTitle":"Producto de prueba"},"PRICE":{"skuPriceInfoMap":{"sku-a":{"skuAmount":"1.00"},"sku-b":{"skuAmount":"2.00"}}}}}});',
+        'mtopjsonp1({"ret":["SUCCESS::ok"],"data":{"result":{"PRODUCT_TITLE":{"text":"Producto de prueba"},"GLOBAL_DATA":{"globalData":{"subject":"Nombre alternativo"}},"PRICE":{"skuPriceInfoMap":{"1000000000000000001":{"salePriceString":"1,00 €"},"1000000000000000002":{"salePriceString":"2,00 €"}}},"SKU":{"skuProperties":[{"skuPropertyId":"14","skuPropertyName":"Color","skuPropertyValues":[{"propertyValueIdLong":"771","propertyValueDisplayName":"Rojo"}]},{"skuPropertyId":"200007763","skuPropertyName":"Envíos desde","skuPropertyValues":[{"propertyValueIdLong":"201336100","propertyValueDisplayName":"España"}]}],"skuPaths":[{"skuIdStr":"1000000000000000001","skuAttr":"14:771;200007763:201336100","skuStock":12,"salable":true},{"skuIdStr":"1000000000000000002","skuAttr":"14:771","skuStock":0,"salable":false}]},"QUANTITY_PC":{"allSkuQuantityView":{"1000000000000000001":{"maxBuyCount":3}}},"HEADER_IMAGE_PC":{"skuImagesMap":{"1000000000000000001":["https://image.example.test/red.jpg"]}}}}});',
         { status: 200 },
       ),
     );
@@ -57,14 +57,36 @@ describe('GET /api/debug/aliexpress/product/:productId', () => {
       productName: 'Producto de prueba',
       skuCount: 2,
       skuPrices: [
-        { skuId: 'sku-a', price: { skuAmount: '1.00' } },
-        { skuId: 'sku-b', price: { skuAmount: '2.00' } },
+        {
+          skuId: '1000000000000000001',
+          name: 'Rojo',
+          price: '1,00 €',
+          stock: 12,
+          maxBuyCount: 3,
+          image: 'https://image.example.test/red.jpg',
+          salable: true,
+        },
+        {
+          skuId: '1000000000000000002',
+          name: 'Rojo',
+          price: '2,00 €',
+          stock: 0,
+          maxBuyCount: null,
+          image: null,
+          salable: false,
+        },
       ],
       debugShape: {
         topLevelKeys: ['ret', 'data'],
-        dataKeys: ['data'],
-        resultKeys: [],
-        resultPreview: '{}',
+        dataKeys: ['result'],
+        resultKeys: [
+          'PRODUCT_TITLE',
+          'GLOBAL_DATA',
+          'PRICE',
+          'SKU',
+          'QUANTITY_PC',
+          'HEADER_IMAGE_PC',
+        ],
       },
       errorType: null,
       upstreamStatus: 200,

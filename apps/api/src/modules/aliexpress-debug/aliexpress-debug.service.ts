@@ -11,7 +11,6 @@ type DebugShape = {
   topLevelKeys: string[];
   dataKeys: string[];
   resultKeys: string[];
-  resultPreview: string;
 };
 
 type DebugResponse = {
@@ -20,7 +19,15 @@ type DebugResponse = {
   productId: string;
   productName: string | null;
   skuCount: number;
-  skuPrices: Array<{ skuId: string; price: unknown }>;
+  skuPrices: Array<{
+    skuId: string;
+    name: string;
+    price: string | null;
+    stock: number;
+    maxBuyCount: number | null;
+    image: string | null;
+    salable: boolean;
+  }>;
   debugShape: DebugShape | null;
   errorType: 'token' | 'validation' | 'upstream' | null;
   upstreamStatus: number | null;
@@ -35,6 +42,32 @@ const isRecord = (value: unknown): value is JsonRecord =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
 const getString = (value: unknown): string | null => (typeof value === 'string' ? value : null);
+
+const asRecords = (value: unknown): JsonRecord[] =>
+  Array.isArray(value) ? value.filter(isRecord) : [];
+
+const asInteger = (value: unknown): number | null => {
+  if (typeof value === 'number' && Number.isSafeInteger(value)) {
+    return value;
+  }
+
+  if (typeof value === 'string' && /^\d+$/.test(value)) {
+    const parsed = Number(value);
+    return Number.isSafeInteger(parsed) ? parsed : null;
+  }
+
+  return null;
+};
+
+const getFirstImage = (value: unknown): string | null => {
+  if (typeof value === 'string' && value.trim() !== '') {
+    return value;
+  }
+
+  return Array.isArray(value)
+    ? (value.find((image): image is string => typeof image === 'string' && image.trim() !== '') ?? null)
+    : null;
+};
 
 const getRet = (body: JsonRecord): string[] | null =>
   Array.isArray(body.ret) && body.ret.every((entry) => typeof entry === 'string')
@@ -106,24 +139,98 @@ function parseJsonp(body: string): JsonRecord | null {
   }
 }
 
+function resolveSkuVariantName(skuAttr: string, skuProperties: JsonRecord[]): string {
+  const names = skuAttr
+    .split(';')
+    .map((attribute) => attribute.split(':', 2))
+    .map(([propertyId, valueId]) => {
+      if (!propertyId || valueId === undefined) {
+        return null;
+      }
+
+      const property = skuProperties.find(
+        (candidate) => String(candidate.skuPropertyId) === propertyId,
+      );
+      if (!property) {
+        return null;
+      }
+
+      const propertyName = getString(property.skuPropertyName) ?? getString(property.propertyName);
+      if (propertyName && /^(envíos desde|ships from)$/i.test(propertyName.trim())) {
+        return null;
+      }
+
+      const values = asRecords(
+        property.skuPropertyValues ?? property.propertyValues ?? property.values,
+      );
+      const matchedValue = values.find(
+        (candidate) => String(candidate.propertyValueIdLong ?? candidate.propertyValueId) === valueId,
+      );
+
+      return matchedValue
+        ? (getString(matchedValue.propertyValueDisplayName) ??
+            getString(matchedValue.propertyValueName))
+        : null;
+    })
+    .filter((name): name is string => name !== null);
+
+  return names.join(' / ');
+}
+
 function getProductDetails(body: JsonRecord) {
-  const rootData = isRecord(body.data) ? body.data : null;
-  const data = rootData && isRecord(rootData.data) ? rootData.data : rootData;
-  const product = data && isRecord(data.PRODUCT) ? data.PRODUCT : null;
-  const title = data && isRecord(data.TITLE) ? data.TITLE : null;
-  const price = data && isRecord(data.PRICE) ? data.PRICE : null;
-  const skuPriceInfoMap = price && isRecord(price.skuPriceInfoMap) ? price.skuPriceInfoMap : {};
-  const skuEntries = Object.entries(skuPriceInfoMap);
+  const data = isRecord(body.data) ? body.data : {};
+  const result = isRecord(data.result) ? data.result : {};
+  const productTitle = isRecord(result.PRODUCT_TITLE) ? result.PRODUCT_TITLE : {};
+  const globalDataContainer = isRecord(result.GLOBAL_DATA) ? result.GLOBAL_DATA : {};
+  const globalData = isRecord(globalDataContainer.globalData) ? globalDataContainer.globalData : {};
+  const sku = isRecord(result.SKU) ? result.SKU : {};
+  const skuPaths = asRecords(sku.skuPaths);
+  const skuProperties = asRecords(sku.skuProperties);
+  const price = isRecord(result.PRICE) ? result.PRICE : {};
+  const prices = isRecord(price.skuPriceInfoMap) ? price.skuPriceInfoMap : {};
+  const quantity = isRecord(result.QUANTITY_PC) ? result.QUANTITY_PC : {};
+  const quantities = isRecord(quantity.allSkuQuantityView) ? quantity.allSkuQuantityView : {};
+  const headerImage = isRecord(result.HEADER_IMAGE_PC) ? result.HEADER_IMAGE_PC : {};
+  const images = isRecord(headerImage.skuImagesMap) ? headerImage.skuImagesMap : {};
+  const skuPrices = skuPaths
+    .map((skuPath) => {
+      const skuId = getString(skuPath.skuIdStr);
+      if (!skuId) {
+        return null;
+      }
+
+      const priceInfo = isRecord(prices[skuId]) ? prices[skuId] : {};
+      const quantityInfo = isRecord(quantities[skuId]) ? quantities[skuId] : {};
+
+      return {
+        skuId,
+        name: resolveSkuVariantName(getString(skuPath.skuAttr) ?? '', skuProperties) || `SKU ${skuId}`,
+        price: getString(priceInfo.salePriceString),
+        stock: asInteger(skuPath.skuStock) ?? 0,
+        maxBuyCount: asInteger(quantityInfo.maxBuyCount),
+        image: getFirstImage(images[skuId]),
+        salable: Boolean(skuPath.salable),
+      };
+    })
+    .filter(
+      (
+        sku,
+      ): sku is {
+        skuId: string;
+        name: string;
+        price: string | null;
+        stock: number;
+        maxBuyCount: number | null;
+        image: string | null;
+        salable: boolean;
+      } => sku !== null,
+    )
+    .slice(0, 10);
 
   return {
-    productName:
-      getString(product?.productTitle) ??
-      getString(product?.title) ??
-      getString(title?.productTitle) ??
-      getString(title?.subject) ??
-      null,
-    skuCount: skuEntries.length,
-    skuPrices: skuEntries.slice(0, 5).map(([skuId, priceInfo]) => ({ skuId, price: priceInfo })),
+    productName: getString(productTitle.text) ?? getString(globalData.subject) ?? null,
+    skuCount: skuPaths.length,
+    skuPrices,
   };
 }
 
@@ -135,7 +242,6 @@ function getDebugShape(body: JsonRecord): DebugShape {
     topLevelKeys: Object.keys(body),
     dataKeys: Object.keys(data),
     resultKeys: isRecord(result) ? Object.keys(result) : [],
-    resultPreview: JSON.stringify(result).slice(0, 8000),
   };
 }
 
