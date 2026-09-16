@@ -1,19 +1,15 @@
 import { z } from 'zod';
 
-const optionalText = (maximumLength: number) =>
-  z.preprocess(
-    (value) => (value === '' ? null : value),
-    z.string().trim().max(maximumLength).nullable().optional(),
-  );
-
 const optionalDescription = z.preprocess(
   (value) => (value === '' ? null : value),
   z.string().trim().nullable().optional(),
 );
 
+const requiredShortName = z.string().trim().min(1, 'El nombre corto es obligatorio.').max(80);
+
 export const productCreateSchema = z.object({
   name: z.string().trim().min(1, 'El nombre es obligatorio.').max(160),
-  shortName: optionalText(80),
+  shortName: requiredShortName,
   description: optionalDescription,
 });
 
@@ -49,7 +45,10 @@ export const productOfferSchema = z.object({
   sellerReviewScore: z.string().nullable(),
   sellerSalesCount: z.number().int().nullable(),
   // PostgreSQL numeric is deliberately kept as a string to avoid losing monetary precision.
-  price: z.string().regex(/^\d+(\.\d{1,2})?$/).nullable(),
+  price: z
+    .string()
+    .regex(/^\d+(\.\d{1,2})?$/)
+    .nullable(),
   currency: z.string().length(3).nullable(),
   quantityAvailable: z.number().int(),
   maxPurchase: z.number().int(),
@@ -59,7 +58,7 @@ export const productOfferSchema = z.object({
 export const productResponseSchema = z.object({
   id: productIdSchema,
   name: z.string(),
-  shortName: z.string().nullable(),
+  shortName: z.string(),
   imageKey: z.string().nullable(),
   imageUrl: z.string().url().nullable(),
   description: z.string().nullable(),
@@ -89,7 +88,7 @@ export type ProductsList = z.infer<typeof productsListResponseSchema>;
 export const productOptionSchema = z.object({
   id: productIdSchema,
   name: z.string(),
-  shortName: z.string().nullable(),
+  shortName: z.string(),
 });
 
 export const productOptionsResponseSchema = z.array(productOptionSchema);

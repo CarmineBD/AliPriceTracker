@@ -29,6 +29,13 @@
       "when": 1789480696430,
       "tag": "0003_empty_thor_girl",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1789581165918,
+      "tag": "0004_enforce_product_short_name",
+      "breakpoints": true
     }
   ]
 }

@@ -55,7 +55,11 @@ const mockedGetAliExpressProduct = vi.mocked(getAliExpressProduct);
 const mockedGetProductOptions = vi.mocked(getProductOptions);
 const mockedImportAliExpressPublication = vi.mocked(importAliExpressPublication);
 
-const productOne = { id: '9f98dbb8-99f6-4058-96f0-9577322cffdb', name: 'DJI Lito X1', shortName: null };
+const productOne = {
+  id: '9f98dbb8-99f6-4058-96f0-9577322cffdb',
+  name: 'DJI Lito X1',
+  shortName: 'DJI Lito X1',
+};
 const productTwo = {
   id: '9ceaa3f1-6d2c-4405-8414-323045d94219',
   name: 'DJI Lito X1 Fly More',
@@ -243,7 +247,9 @@ describe('AliExpressProductSearchPage', () => {
 
     expect(await screen.findByText('No se pudo añadir la publicación')).toBeInTheDocument();
     expect(
-      screen.getByText('La publicación de AliExpress 1005012470064491 ya está registrada en el sistema.'),
+      screen.getByText(
+        'La publicación de AliExpress 1005012470064491 ya está registrada en el sistema.',
+      ),
     ).toBeInTheDocument();
   });
 
@@ -266,13 +272,11 @@ describe('AliExpressProductSearchPage', () => {
   });
 
   it('resets associations when searching for another publication', async () => {
-    mockedGetAliExpressProduct
-      .mockResolvedValueOnce(preview)
-      .mockResolvedValueOnce({
-        ...preview,
-        publication: { ...preview.publication, aliexpressProductId: '1005012470064492' },
-        productId: '1005012470064492',
-      });
+    mockedGetAliExpressProduct.mockResolvedValueOnce(preview).mockResolvedValueOnce({
+      ...preview,
+      publication: { ...preview.publication, aliexpressProductId: '1005012470064492' },
+      productId: '1005012470064492',
+    });
     mockedGetProductOptions.mockResolvedValue([productOne, productTwo]);
 
     renderPage();

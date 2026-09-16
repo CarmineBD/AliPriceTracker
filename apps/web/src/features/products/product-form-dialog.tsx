@@ -88,6 +88,7 @@ export function ProductFormDialog({
 }: ProductFormDialogProps) {
   const [values, setValues] = useState<ProductFormValues>(() => toFormValues(product));
   const [nameError, setNameError] = useState<string>();
+  const [shortNameError, setShortNameError] = useState<string>();
   const [imageError, setImageError] = useState<string>();
   const [imageFile, setImageFile] = useState<File>();
   const [imagePreviewUrl, setImagePreviewUrl] = useState<string>();
@@ -97,6 +98,7 @@ export function ProductFormDialog({
     if (open) {
       setValues(toFormValues(product));
       setNameError(undefined);
+      setShortNameError(undefined);
       setImageError(undefined);
       setImageFile(undefined);
     }
@@ -146,10 +148,16 @@ export function ProductFormDialog({
       return;
     }
 
+    const shortName = values.shortName.trim();
+    if (!shortName) {
+      setShortNameError('El nombre corto es obligatorio.');
+      return;
+    }
+
     onSubmit({
       input: {
         name,
-        shortName: values.shortName,
+        shortName,
         description: values.description,
       },
       imageFile,
@@ -212,15 +220,22 @@ export function ProductFormDialog({
                   <FieldError id="product-name-error">{nameError}</FieldError>
                 </FieldContent>
               </Field>
-              <Field>
+              <Field data-invalid={Boolean(shortNameError)}>
                 <FieldLabel htmlFor="product-short-name">Nombre corto</FieldLabel>
                 <FieldContent>
                   <Input
                     id="product-short-name"
                     value={values.shortName}
                     maxLength={80}
-                    onChange={(event) => setValue('shortName', event.target.value)}
+                    required
+                    onChange={(event) => {
+                      setValue('shortName', event.target.value);
+                      if (shortNameError) setShortNameError(undefined);
+                    }}
+                    aria-invalid={Boolean(shortNameError)}
+                    aria-describedby={shortNameError ? 'product-short-name-error' : undefined}
                   />
+                  <FieldError id="product-short-name-error">{shortNameError}</FieldError>
                 </FieldContent>
               </Field>
               <Field data-invalid={Boolean(imageError)}>

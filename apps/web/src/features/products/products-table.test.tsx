@@ -17,7 +17,7 @@ afterEach(() => {
 const product: Product = {
   id: '8d8c883c-7e36-4af0-a8b3-152b20c41f3c',
   name: 'Producto de prueba',
-  shortName: null,
+  shortName: 'Producto de prueba',
   imageKey: 'products/8d8c883c-7e36-4af0-a8b3-152b20c41f3c/example.png',
   imageUrl: 'https://media.example.test/products/8d8c883c-7e36-4af0-a8b3-152b20c41f3c/example.png',
   description: null,

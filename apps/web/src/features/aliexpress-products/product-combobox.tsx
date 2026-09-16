@@ -17,7 +17,7 @@ type ProductComboboxProps = {
 };
 
 function getProductLabel(product: ProductOption): string {
-  return product.shortName ? `${product.shortName} — ${product.name}` : product.name;
+  return product.shortName;
 }
 
 export function ProductCombobox({
@@ -45,7 +45,10 @@ export function ProductCombobox({
         <ComboboxList>
           {(option: ProductOption) => (
             <ComboboxItem key={option.id} value={option}>
-              {getProductLabel(option)}
+              <span className="flex min-w-0 flex-col items-start">
+                <span>{getProductLabel(option)}</span>
+                <span className="text-xs text-muted-foreground">{option.name}</span>
+              </span>
             </ComboboxItem>
           )}
         </ComboboxList>

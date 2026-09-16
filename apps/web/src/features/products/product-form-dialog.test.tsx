@@ -13,6 +13,7 @@ describe('ProductFormDialog', () => {
     expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
     expect(screen.getByRole('group', { name: 'Datos del producto' })).toBeInTheDocument();
     expect(screen.getByRole('textbox', { name: 'Nombre' })).toBeRequired();
+    expect(screen.getByRole('textbox', { name: 'Nombre corto' })).toBeRequired();
   });
 
   it('uses DialogClose for the cancel action', () => {
