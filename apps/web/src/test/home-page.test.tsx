@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, screen } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
 
 import { ProductsPage } from '@/pages/products-page';
@@ -22,9 +23,11 @@ describe('ProductsPage', () => {
     });
 
     render(
-      <QueryClientProvider client={queryClient}>
-        <ProductsPage />
-      </QueryClientProvider>,
+      <MemoryRouter>
+        <QueryClientProvider client={queryClient}>
+          <ProductsPage />
+        </QueryClientProvider>
+      </MemoryRouter>,
     );
 
     expect(screen.getByRole('heading', { name: 'Productos' })).toBeInTheDocument();
