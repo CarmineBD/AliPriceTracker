@@ -6,7 +6,7 @@ import {
   type AliExpressSessionContext,
   type AliExpressSessionSource,
   buildCookieHeader,
-} from './aliexpress-session.service';
+} from './aliexpress-session.service.js';
 
 const appKey = '12574478';
 const endpoint = 'https://acs.aliexpress.com/h5/mtop.aliexpress.pdp.pc.query/1.0/';

@@ -1,7 +1,7 @@
 import { eq } from 'drizzle-orm';
 
-import { getDatabase } from '../../db/client';
-import { externalSessions } from '../../db/schema/external-sessions';
+import { getDatabase } from '../../db/client.js';
+import { externalSessions } from '../../db/schema/external-sessions.js';
 
 const aliexpressProvider = 'aliexpress';
 

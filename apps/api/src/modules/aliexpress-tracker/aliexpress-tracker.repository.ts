@@ -1,11 +1,11 @@
 import { asc, eq, inArray } from 'drizzle-orm';
 
-import { getDatabase } from '../../db/client';
+import { getDatabase } from '../../db/client.js';
 import {
   publicationProductHistory,
   publicationProducts,
   publications,
-} from '../../db/schema/aliexpress-publications';
+} from '../../db/schema/aliexpress-publications.js';
 
 export type TrackedPublicationProduct = {
   id: string;

@@ -12,7 +12,7 @@ import {
   varchar,
 } from 'drizzle-orm/pg-core';
 
-import { products } from './products';
+import { products } from './products.js';
 
 export const stores = pgTable(
   'stores',

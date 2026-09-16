@@ -2,12 +2,12 @@ import {
   AliExpressClient,
   aliexpressClient,
   type AliExpressProductResult,
-} from '../aliexpress-client/aliexpress-client';
+} from '../aliexpress-client/aliexpress-client.js';
 import {
   AliExpressTrackerRepository,
   type PublicationObservation,
   type TrackedPublication,
-} from './aliexpress-tracker.repository';
+} from './aliexpress-tracker.repository.js';
 
 const defaultDelayMilliseconds = 1_000;
 

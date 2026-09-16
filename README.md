@@ -126,6 +126,29 @@ Connect this same GitHub repository to both platforms.
   `R2_PUBLIC_URL` with the Cloudflare R2 bucket configuration.
 - Recommended watch paths: `/apps/api/**` and `/packages/shared/**`.
 
+### Railway AliExpress tracker Cron
+
+Create a separate Railway service from this repository; it does not need public networking or a
+domain. Keep the repository root as the service root so pnpm can resolve the workspace packages.
+
+- Build Command: `pnpm --filter @alitracker/shared build && pnpm --filter @alitracker/api build`
+- Start Command: `pnpm --filter @alitracker/api tracker:prod`
+- Cron Schedule: `*/30 * * * *`
+- Restart Policy: Never
+
+The tracker needs `DATABASE_URL`, `ALIEXPRESS_SESSION_ENCRYPTION_KEY`, and the R2 variables that
+the current API environment schema requires: `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`,
+`R2_SECRET_ACCESS_KEY`, `R2_BUCKET`, and `R2_PUBLIC_URL`. Copy
+`ALIEXPRESS_SESSION_ENCRYPTION_KEY` from the API service exactly, because it decrypts the shared
+persisted AliExpress session. `ALIEXPRESS_COOKIE` is only needed to bootstrap a session when the
+database does not already contain one. `DEBUG_API_KEY` is not required by the tracker job.
+
+The manual development command remains:
+
+```bash
+pnpm --filter @alitracker/api tracker
+```
+
 ### AliExpress debug check (temporary)
 
 To test Railway's outgoing request to AliExpress MTop, configure these API service variables in

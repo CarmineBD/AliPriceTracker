@@ -1,7 +1,7 @@
 import { createCipheriv, createDecipheriv, randomBytes, scryptSync } from 'node:crypto';
 
-import { env } from '../../config/env';
-import { AliExpressSessionRepository } from './aliexpress-session.repository';
+import { env } from '../../config/env.js';
+import { AliExpressSessionRepository } from './aliexpress-session.repository.js';
 
 type EncryptedCookieMap = {
   version: 1;

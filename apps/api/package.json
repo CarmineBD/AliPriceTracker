@@ -10,6 +10,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "tracker": "tsx src/jobs/aliexpress-tracker.job.ts",
+    "tracker:prod": "node dist/jobs/aliexpress-tracker.job.js",
     "r2:test": "tsx scripts/test-r2.ts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate"
