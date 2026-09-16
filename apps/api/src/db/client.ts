@@ -19,3 +19,7 @@ export function getDatabase() {
 
   return db;
 }
+
+export async function closeDatabase(): Promise<void> {
+  await queryClient?.end();
+}

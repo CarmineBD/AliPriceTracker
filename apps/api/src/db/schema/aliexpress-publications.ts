@@ -1,6 +1,7 @@
 import { relations } from 'drizzle-orm';
 import {
   bigint,
+  index,
   integer,
   numeric,
   pgTable,
@@ -41,6 +42,7 @@ export const publications = pgTable(
     salesCount: varchar('sales_count', { length: 32 }),
     reviewScore: numeric('review_score'),
     reviewCount: integer('review_count'),
+    lastCheckedAt: timestamp('last_checked_at', { withTimezone: true }),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
   },
@@ -72,6 +74,26 @@ export const publicationProducts = pgTable(
   ],
 );
 
+export const publicationProductHistory = pgTable(
+  'publication_product_history',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    publicationProductId: uuid('publication_product_id')
+      .notNull()
+      .references(() => publicationProducts.id, { onDelete: 'cascade' }),
+    price: numeric('price', { precision: 12, scale: 2 }),
+    currency: varchar('currency', { length: 3 }),
+    quantityAvailable: integer('quantity_available'),
+    capturedAt: timestamp('captured_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    index('publication_product_history_product_captured_at_index').on(
+      table.publicationProductId,
+      table.capturedAt,
+    ),
+  ],
+);
+
 export const storesRelations = relations(stores, ({ many }) => ({
   publications: many(publications),
 }));
@@ -84,7 +106,7 @@ export const publicationsRelations = relations(publications, ({ one, many }) => 
   publicationProducts: many(publicationProducts),
 }));
 
-export const publicationProductsRelations = relations(publicationProducts, ({ one }) => ({
+export const publicationProductsRelations = relations(publicationProducts, ({ one, many }) => ({
   publication: one(publications, {
     fields: [publicationProducts.publicationId],
     references: [publications.id],
@@ -93,4 +115,15 @@ export const publicationProductsRelations = relations(publicationProducts, ({ on
     fields: [publicationProducts.productId],
     references: [products.id],
   }),
+  history: many(publicationProductHistory),
 }));
+
+export const publicationProductHistoryRelations = relations(
+  publicationProductHistory,
+  ({ one }) => ({
+    publicationProduct: one(publicationProducts, {
+      fields: [publicationProductHistory.publicationProductId],
+      references: [publicationProducts.id],
+    }),
+  }),
+);

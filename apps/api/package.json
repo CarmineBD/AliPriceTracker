@@ -9,6 +9,7 @@
     "lint": "eslint src scripts test drizzle.config.ts --max-warnings=0",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
+    "tracker": "tsx src/jobs/aliexpress-tracker.job.ts",
     "r2:test": "tsx scripts/test-r2.ts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate"
