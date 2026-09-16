@@ -2,15 +2,19 @@ import type { AliExpressProductLookup } from '@alitracker/shared';
 
 import { env } from '../../config/env';
 import { debugAliExpressProduct } from '../aliexpress-debug/aliexpress-debug.service';
+import { AliExpressProductLookupRepository } from './aliexpress-product-lookup.repository';
 
 type DebugProductRequest = typeof debugAliExpressProduct;
 
 type ProductLookupResult =
   { status: 200; body: AliExpressProductLookup } | { status: 502 | 503; body: { error: string } };
 
+type ProductLookupRepository = Pick<AliExpressProductLookupRepository, 'findImportedSkuIds'>;
+
 export async function lookupAliExpressProduct(
   productId: string,
   requestProduct: DebugProductRequest = debugAliExpressProduct,
+  repository: ProductLookupRepository = new AliExpressProductLookupRepository(),
 ): Promise<ProductLookupResult> {
   const result = await requestProduct({
     productId,
@@ -31,6 +35,11 @@ export async function lookupAliExpressProduct(
     };
   }
 
+  const importedSkuIds = await repository.findImportedSkuIds(
+    result.body.publication.aliexpressProductId,
+    result.body.products.map((product) => product.aliexpressSkuId),
+  );
+
   return {
     status: 200,
     body: {
@@ -42,6 +51,8 @@ export async function lookupAliExpressProduct(
       products: result.body.products.map((product) => ({
         ...product,
         id: product.aliexpressSkuId,
+        productId: importedSkuIds.get(product.aliexpressSkuId) ?? null,
+        isImported: importedSkuIds.has(product.aliexpressSkuId),
       })),
     },
   };

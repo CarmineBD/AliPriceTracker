@@ -96,6 +96,8 @@ const preview = {
       maxPurchase: 1,
       imageUrl: 'https://example.test/rc2.jpg',
       salable: true,
+      productId: null,
+      isImported: false,
     },
     {
       aliexpressSkuId: '12000058446755028',
@@ -108,6 +110,8 @@ const preview = {
       maxPurchase: 1,
       imageUrl: 'https://example.test/rc-n3.jpg',
       salable: false,
+      productId: null,
+      isImported: false,
     },
   ],
 };
@@ -169,7 +173,7 @@ describe('AliExpressProductSearchPage', () => {
     expect(mockedGetAliExpressProduct).toHaveBeenCalledWith('1005010608116819');
   });
 
-  it('keeps the import button disabled while variants have no associated product', async () => {
+  it('keeps the import button disabled when no variant has an associated product', async () => {
     mockedGetAliExpressProduct.mockResolvedValue(preview);
     mockedGetProductOptions.mockResolvedValue([productOne, productTwo]);
 
@@ -178,8 +182,72 @@ describe('AliExpressProductSearchPage', () => {
 
     expect(screen.getByRole('button', { name: 'Añadir al sistema' })).toBeDisabled();
     expect(
-      screen.getByText('Debes asociar un producto a todas las variantes antes de continuar.'),
+      screen.getByText('Debes asociar al menos una variante a un producto interno antes de continuar.'),
     ).toBeInTheDocument();
+  });
+
+  it('allows importing only the associated variants', async () => {
+    mockedGetAliExpressProduct.mockResolvedValue(preview);
+    mockedGetProductOptions.mockResolvedValue([productOne, productTwo]);
+    mockedImportAliExpressPublication.mockResolvedValue({
+      success: true,
+      message: 'Publicación importada correctamente.',
+      store: { id: 'store-id', aliexpressStoreId: '1105347613', created: false },
+      publication: { id: 'publication-id', aliexpressProductId: '1005012470064491' },
+      publicationProducts: [],
+    });
+
+    renderPage();
+    await searchPublication();
+    associateVariant(0, productOne.id);
+
+    const importButton = screen.getByRole('button', { name: 'Añadir al sistema' });
+    await waitFor(() => expect(importButton).toBeEnabled());
+    fireEvent.click(importButton);
+
+    await waitFor(() => {
+      expect(mockedImportAliExpressPublication.mock.calls[0]?.[0].products).toEqual([
+        {
+          aliexpressSkuId: '12000058446755029',
+          productId: productOne.id,
+          price: 591.7,
+          currency: 'EUR',
+          quantityAvailable: 17,
+          maxPurchase: 1,
+        },
+      ]);
+    });
+  });
+
+  it('preselects an existing product association and allows changing it', async () => {
+    mockedGetAliExpressProduct.mockResolvedValue({
+      ...preview,
+      products: [
+        { ...preview.products[0]!, productId: productOne.id, isImported: true },
+        preview.products[1]!,
+      ],
+    });
+    mockedGetProductOptions.mockResolvedValue([productOne, productTwo]);
+    mockedImportAliExpressPublication.mockResolvedValue({
+      success: true,
+      message: 'Publicación importada correctamente.',
+      store: { id: 'store-id', aliexpressStoreId: '1105347613', created: false },
+      publication: { id: 'publication-id', aliexpressProductId: '1005012470064491' },
+      publicationProducts: [],
+    });
+
+    renderPage();
+    await searchPublication();
+
+    expect(screen.getAllByLabelText('Producto asociado')[0]).toHaveValue(productOne.id);
+    associateVariant(0, productTwo.id);
+    fireEvent.click(screen.getByRole('button', { name: 'Añadir al sistema' }));
+
+    await waitFor(() => {
+      expect(mockedImportAliExpressPublication.mock.calls[0]?.[0].products[0]?.productId).toBe(
+        productTwo.id,
+      );
+    });
   });
 
   it('associates each SKU independently and sends the phase-2 payload', async () => {

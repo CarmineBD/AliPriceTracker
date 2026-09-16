@@ -159,10 +159,13 @@ export function AliExpressProductSearchPage() {
   }
 
   const preview = productQuery.data;
-  const allVariantsAssociated =
-    preview !== undefined &&
-    preview.products.length > 0 &&
-    preview.products.every((product) => Boolean(associations[product.aliexpressSkuId]));
+  const getAssociatedProductId = (skuId: string, linkedProductId: string | null) =>
+    Object.hasOwn(associations, skuId) ? associations[skuId] : linkedProductId ?? undefined;
+  const associatedVariantCount =
+    preview?.products.filter((product) =>
+      Boolean(getAssociatedProductId(product.aliexpressSkuId, product.productId)),
+    ).length ?? 0;
+  const canImport = associatedVariantCount > 0;
 
   return (
     <AppLayout>
@@ -172,7 +175,12 @@ export function AliExpressProductSearchPage() {
           Busca una publicación, asocia sus variantes a productos internos y añádela al sistema.
         </p>
 
-        <form className="mt-8 flex flex-col gap-3 sm:flex-row" onSubmit={handleSearch} noValidate>
+        <form
+          className="mt-8 flex flex-col gap-3 sm:flex-row"
+          onSubmit={handleSearch}
+          noValidate
+          autoComplete="off"
+        >
           <div className="flex-1">
             <label htmlFor="aliexpress-product-id" className="sr-only">
               ID o URL de publicación AliExpress
@@ -181,6 +189,7 @@ export function AliExpressProductSearchPage() {
               id="aliexpress-product-id"
               value={inputValue}
               onChange={(event) => setInputValue(event.target.value)}
+              autoComplete="off"
               placeholder="Ej.: 1005012470064491 o https://es.aliexpress.com/item/1005012470064491.html"
               aria-invalid={Boolean(inputError)}
               aria-describedby={inputError ? 'aliexpress-product-id-error' : undefined}
@@ -227,15 +236,15 @@ export function AliExpressProductSearchPage() {
               )}
             </div>
 
-            {!allVariantsAssociated && preview.products.length > 0 && !productOptionsQuery.isLoading && (
+            {preview.products.length > 0 && !canImport && !productOptionsQuery.isLoading && (
               <p className="mt-4 text-sm text-muted-foreground">
-                Debes asociar un producto a todas las variantes antes de continuar.
+                Debes asociar al menos una variante a un producto interno antes de continuar.
               </p>
             )}
             <Button
               className="mt-6"
               onClick={handleImport}
-              disabled={!allVariantsAssociated || importMutation.isPending || productOptionsQuery.isLoading}
+              disabled={!canImport || importMutation.isPending || productOptionsQuery.isLoading}
             >
               {importMutation.isPending ? 'Añadiendo…' : 'Añadir al sistema'}
             </Button>

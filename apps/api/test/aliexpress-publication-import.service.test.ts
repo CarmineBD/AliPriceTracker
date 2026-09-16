@@ -279,16 +279,21 @@ describe('importAliExpressPublication', () => {
     expect(state.stores[0]?.name).toBe('Tienda Marco Europa');
   });
 
-  it('rejects an existing publication without changing the store', async () => {
+  it('reuses an existing publication and links its selected products', async () => {
     const { repository, state } = createRepository({
       publications: [
         { id: 'publication-existing', aliexpressProductId: 1005012470064491n, storeId: 'store-1' },
       ],
     });
 
-    await expectImportError(baseInput, repository, 'PUBLICATION_ALREADY_EXISTS');
-    expect(state.stores).toHaveLength(0);
-    expect(state.publicationProducts).toHaveLength(0);
+    const result = await importAliExpressPublication(baseInput, repository as never);
+
+    expect(result.publication).toEqual({
+      id: 'publication-existing',
+      aliexpressProductId: '1005012470064491',
+    });
+    expect(state.stores).toHaveLength(1);
+    expect(state.publicationProducts).toHaveLength(2);
   });
 
   it('normalizes a concurrent publication unique violation as a conflict', async () => {

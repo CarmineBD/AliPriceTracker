@@ -63,15 +63,6 @@ export async function importAliExpressPublication(
       const existingPublication = await transaction.findPublicationByAliExpressProductId(
         input.publication.aliexpressProductId,
       );
-      if (existingPublication) {
-        throw new HttpError(
-          `La publicación de AliExpress ${input.publication.aliexpressProductId} ya está registrada en el sistema.`,
-          409,
-          'PUBLICATION_ALREADY_EXISTS',
-          { aliexpressProductId: input.publication.aliexpressProductId },
-        );
-      }
-
       const requestedProductIds = [...new Set(input.products.map((product) => product.productId))];
       const existingProductIds = new Set(
         (await transaction.findExistingProductIds(requestedProductIds)).map((product) => product.id),
@@ -87,15 +78,12 @@ export async function importAliExpressPublication(
       }
 
       const { store, created } = await transaction.findOrCreateStore(input.store);
-      const publication = await transaction.createPublication(store.id, input.publication);
+      const publication =
+        existingPublication ?? (await transaction.createPublication(store.id, input.publication));
       const publicationProducts = await transaction.createPublicationProducts(
         publication.id,
         input.products,
       );
-
-      if (publicationProducts.length !== input.products.length) {
-        throw new Error('Publication product creation did not return every SKU.');
-      }
 
       return {
         success: true,

@@ -3,6 +3,12 @@ import { describe, expect, it, vi } from 'vitest';
 import { lookupAliExpressProduct } from '../src/modules/aliexpress-product-lookup/aliexpress-product-lookup.service';
 
 describe('lookupAliExpressProduct', () => {
+  const repository = {
+    findImportedSkuIds: vi
+      .fn()
+      .mockResolvedValue(new Map<string, string>([['sku-1', '9f98dbb8-99f6-4058-96f0-9577322cffdb']])),
+  };
+
   it('adapts the existing AliExpress lookup result for the frontend', async () => {
     const requestProduct = vi.fn().mockResolvedValue({
       status: 200,
@@ -51,7 +57,9 @@ describe('lookupAliExpressProduct', () => {
       },
     });
 
-    await expect(lookupAliExpressProduct('1005010519851506', requestProduct)).resolves.toEqual({
+    await expect(
+      lookupAliExpressProduct('1005010519851506', requestProduct, repository),
+    ).resolves.toEqual({
       status: 200,
       body: {
         store: {
@@ -83,6 +91,8 @@ describe('lookupAliExpressProduct', () => {
             maxPurchase: 1,
             imageUrl: 'https://example.test/drone.jpg',
             salable: true,
+            productId: '9f98dbb8-99f6-4058-96f0-9577322cffdb',
+            isImported: true,
           },
         ],
       },
@@ -95,7 +105,9 @@ describe('lookupAliExpressProduct', () => {
       body: { success: false },
     });
 
-    await expect(lookupAliExpressProduct('1005010519851506', requestProduct)).resolves.toEqual({
+    await expect(
+      lookupAliExpressProduct('1005010519851506', requestProduct, repository),
+    ).resolves.toEqual({
       status: 502,
       body: { error: 'No se pudo consultar la publicación de AliExpress.' },
     });

@@ -112,6 +112,8 @@ export const aliExpressProductVariantSchema = z.object({
   maxPurchase: z.number().int().nonnegative().nullable(),
   imageUrl: z.string().url().nullable(),
   salable: z.boolean(),
+  productId: productIdSchema.nullable(),
+  isImported: z.boolean(),
 });
 
 export const aliExpressStoreSchema = z.object({

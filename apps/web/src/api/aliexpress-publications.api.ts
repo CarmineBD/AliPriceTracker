@@ -16,21 +16,27 @@ export function buildImportAliExpressPublicationPayload(
     throw new Error('La respuesta de AliExpress no incluye el identificador de la tienda.');
   }
 
-  const products = preview.products.map((product) => {
-    const productId = associations[product.aliexpressSkuId];
+  const products = preview.products.flatMap((product) => {
+    const productId = Object.hasOwn(associations, product.aliexpressSkuId)
+      ? associations[product.aliexpressSkuId]
+      : product.productId ?? undefined;
     if (!productId) {
-      throw new Error('Debes asociar un producto a todas las variantes antes de continuar.');
+      return [];
     }
 
-    return {
+    return [{
       aliexpressSkuId: product.aliexpressSkuId,
       productId,
       price: product.priceAmount,
       currency: product.currency,
       quantityAvailable: product.quantityAvailable,
       maxPurchase: product.maxPurchase,
-    };
+    }];
   });
+
+  if (products.length === 0) {
+    throw new Error('Debes asociar al menos una variante a un producto interno antes de continuar.');
+  }
 
   return aliExpressPublicationImportSchema.parse({
     store: preview.store,

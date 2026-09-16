@@ -1,6 +1,7 @@
 import type { AliExpressProductVariant, ProductOption } from '@alitracker/shared';
 import { ImageOff } from 'lucide-react';
 
+import { Badge } from '@/components/ui/badge';
 import { ProductCombobox } from './product-combobox';
 import {
   Table,
@@ -45,12 +46,15 @@ export function AliExpressProductsTable({
             <TableHead className="text-right">Stock</TableHead>
             <TableHead className="text-right">Máx. compra</TableHead>
             <TableHead>Estado</TableHead>
+            <TableHead>En el sistema</TableHead>
             <TableHead className="min-w-64">Producto asociado</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {products.map((product) => {
-            const associatedProductId = associations[product.aliexpressSkuId];
+            const associatedProductId = Object.hasOwn(associations, product.aliexpressSkuId)
+              ? associations[product.aliexpressSkuId]
+              : product.productId ?? undefined;
             const isPending = showValidation && !associatedProductId;
 
             return (
@@ -90,6 +94,11 @@ export function AliExpressProductsTable({
                   >
                     {product.salable ? 'Disponible' : 'No disponible'}
                   </span>
+                </TableCell>
+                <TableCell>
+                  <Badge variant={product.isImported ? 'secondary' : 'outline'}>
+                    {product.isImported ? 'Añadido' : 'Pendiente'}
+                  </Badge>
                 </TableCell>
                 <TableCell>
                   <ProductCombobox

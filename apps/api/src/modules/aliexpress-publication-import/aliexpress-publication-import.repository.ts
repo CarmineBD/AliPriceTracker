@@ -1,4 +1,4 @@
-import { count, eq, inArray } from 'drizzle-orm';
+import { count, eq, inArray, sql } from 'drizzle-orm';
 
 import type { AliExpressPublicationImportInput } from '@alitracker/shared';
 
@@ -164,6 +164,13 @@ export class AliExpressPublicationImportRepository {
           maxPurchase: input.maxPurchase,
         })),
       )
+      .onConflictDoUpdate({
+        target: publicationProducts.aliexpressSkuId,
+        set: {
+          productId: sql`excluded.product_id`,
+          updatedAt: new Date(),
+        },
+      })
       .returning();
   }
 }
