@@ -26,9 +26,11 @@ export function ProductCombobox({
 
   return (
     <Combobox
+      items={options}
       value={selectedProduct}
       onValueChange={(product) => onProductIdChange(product?.id)}
-      itemToStringLabel={(product) => product.name}
+      itemToStringLabel={(product) => product.shortName ?? 'Sin nombre corto'}
+      itemToStringValue={(product) => product.id}
     >
       <ComboboxInput
         placeholder="Seleccionar producto..."
@@ -37,16 +39,11 @@ export function ProductCombobox({
       />
       <ComboboxContent>
         <ComboboxList>
-          {options.map((option) => (
+          {(option: ProductOption) => (
             <ComboboxItem key={option.id} value={option}>
-              <span className="flex min-w-0 flex-col">
-                <span className="truncate">{option.name}</span>
-                {option.shortName && (
-                  <span className="truncate text-xs text-muted-foreground">{option.shortName}</span>
-                )}
-              </span>
+              {option.shortName ?? 'Sin nombre corto'}
             </ComboboxItem>
-          ))}
+          )}
         </ComboboxList>
         <ComboboxEmpty>No se encontraron productos.</ComboboxEmpty>
       </ComboboxContent>

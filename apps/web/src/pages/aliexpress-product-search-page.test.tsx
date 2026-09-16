@@ -117,7 +117,9 @@ function renderPage() {
 }
 
 async function searchPublication(id = '1005012470064491') {
-  fireEvent.change(screen.getByLabelText('ID de publicación AliExpress'), { target: { value: id } });
+  fireEvent.change(screen.getByLabelText('ID o URL de publicación AliExpress'), {
+    target: { value: id },
+  });
   fireEvent.click(screen.getByRole('button', { name: 'Buscar' }));
   await screen.findByRole('heading', { name: 'Vista previa de la publicación' });
 }
@@ -146,6 +148,18 @@ describe('AliExpressProductSearchPage', () => {
     expect(screen.getByText('Disponible')).toBeInTheDocument();
     expect(screen.getByText('No disponible')).toBeInTheDocument();
     expect(mockedGetAliExpressProduct).toHaveBeenCalledWith('1005012470064491');
+  });
+
+  it('extracts the publication ID from an AliExpress URL before searching', async () => {
+    mockedGetAliExpressProduct.mockResolvedValue(preview);
+    mockedGetProductOptions.mockResolvedValue([productOne, productTwo]);
+
+    renderPage();
+    await searchPublication(
+      'https://es.aliexpress.com/item/1005010608116819.html?spm=a2g0o.productlist.main.1',
+    );
+
+    expect(mockedGetAliExpressProduct).toHaveBeenCalledWith('1005010608116819');
   });
 
   it('keeps the import button disabled while variants have no associated product', async () => {
@@ -261,7 +275,7 @@ describe('AliExpressProductSearchPage', () => {
     renderPage();
     await searchPublication();
     associateVariant(0, productOne.id);
-    fireEvent.change(screen.getByLabelText('ID de publicación AliExpress'), {
+    fireEvent.change(screen.getByLabelText('ID o URL de publicación AliExpress'), {
       target: { value: '1005012470064492' },
     });
     fireEvent.click(screen.getByRole('button', { name: 'Buscar' }));
@@ -290,19 +304,21 @@ describe('AliExpressProductSearchPage', () => {
     await waitFor(() => {
       expect(screen.queryByRole('heading', { name: 'Vista previa de la publicación' })).toBeNull();
     });
-    expect(screen.getByLabelText('ID de publicación AliExpress')).toHaveValue('');
+    expect(screen.getByLabelText('ID o URL de publicación AliExpress')).toHaveValue('');
   });
 
   it('does not make a request for a non-numeric identifier', () => {
     mockedGetProductOptions.mockResolvedValue([]);
     renderPage();
 
-    fireEvent.change(screen.getByLabelText('ID de publicación AliExpress'), {
+    fireEvent.change(screen.getByLabelText('ID o URL de publicación AliExpress'), {
       target: { value: 'abc-123' },
     });
     fireEvent.click(screen.getByRole('button', { name: 'Buscar' }));
 
-    expect(screen.getByRole('alert')).toHaveTextContent('Introduce un ID de publicación numérico.');
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'Introduce un ID numérico o una URL válida de una publicación de AliExpress.',
+    );
     expect(mockedGetAliExpressProduct).not.toHaveBeenCalled();
   });
 });

@@ -28,6 +28,7 @@ import { toast } from '@/components/ui/toast';
 import { AppLayout } from '@/layouts/app-layout';
 
 const productIdPattern = /^\d+$/;
+const aliExpressProductUrlPattern = /\/item\/(\d+)\.html$/;
 
 type DialogContent = {
   title: string;
@@ -45,6 +46,19 @@ function getErrorDescription(error: unknown, fallback: string): string {
   }
 
   return error.message;
+}
+
+function getAliExpressProductId(value: string): string | undefined {
+  const trimmedValue = value.trim();
+  if (productIdPattern.test(trimmedValue)) {
+    return trimmedValue;
+  }
+
+  try {
+    return new URL(trimmedValue).pathname.match(aliExpressProductUrlPattern)?.[1];
+  } catch {
+    return undefined;
+  }
 }
 
 export function AliExpressProductSearchPage() {
@@ -110,10 +124,10 @@ export function AliExpressProductSearchPage() {
 
   function handleSearch(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const id = inputValue.trim();
+    const id = getAliExpressProductId(inputValue);
 
-    if (!productIdPattern.test(id)) {
-      setInputError('Introduce un ID de publicación numérico.');
+    if (!id) {
+      setInputError('Introduce un ID numérico o una URL válida de una publicación de AliExpress.');
       return;
     }
 
@@ -161,14 +175,13 @@ export function AliExpressProductSearchPage() {
         <form className="mt-8 flex flex-col gap-3 sm:flex-row" onSubmit={handleSearch} noValidate>
           <div className="flex-1">
             <label htmlFor="aliexpress-product-id" className="sr-only">
-              ID de publicación AliExpress
+              ID o URL de publicación AliExpress
             </label>
             <Input
               id="aliexpress-product-id"
               value={inputValue}
               onChange={(event) => setInputValue(event.target.value)}
-              placeholder="Ej.: 1005012470064491"
-              inputMode="numeric"
+              placeholder="Ej.: 1005012470064491 o https://es.aliexpress.com/item/1005012470064491.html"
               aria-invalid={Boolean(inputError)}
               aria-describedby={inputError ? 'aliexpress-product-id-error' : undefined}
             />
