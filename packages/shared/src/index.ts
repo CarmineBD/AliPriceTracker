@@ -213,8 +213,10 @@ export const aliExpressPublicationImportSchema = z.object({
 
 export type AliExpressPublicationImportInput = z.infer<typeof aliExpressPublicationImportSchema>;
 
+export const storeIdSchema = z.string().uuid();
+
 export const storeResponseSchema = z.object({
-  id: z.string().uuid(),
+  id: storeIdSchema,
   aliexpressStoreId: z.string(),
   name: z.string().nullable(),
   location: z.string().nullable(),
@@ -226,3 +228,32 @@ export const storeResponseSchema = z.object({
 export const storesListResponseSchema = z.array(storeResponseSchema);
 
 export type Store = z.infer<typeof storeResponseSchema>;
+
+export const publicationProductDetailSchema = z.object({
+  id: z.string().uuid(),
+  productId: productIdSchema,
+  productName: z.string(),
+  productShortName: z.string(),
+  aliexpressSkuId: z.string(),
+  price: z.string().nullable(),
+  currency: z.string().length(3).nullable(),
+  quantityAvailable: z.number().int().nonnegative().nullable(),
+  maxPurchase: z.number().int().nonnegative().nullable(),
+});
+
+export const storePublicationDetailSchema = z.object({
+  id: z.string().uuid(),
+  aliexpressProductId: z.string(),
+  name: z.string().nullable(),
+  url: z.string().url().nullable(),
+  salesCount: z.string().nullable(),
+  reviewScore: z.number().finite().nullable(),
+  reviewCount: z.number().int().nonnegative().nullable(),
+  products: z.array(publicationProductDetailSchema),
+});
+
+export const storeDetailResponseSchema = storeResponseSchema.extend({
+  publications: z.array(storePublicationDetailSchema),
+});
+
+export type StoreDetail = z.infer<typeof storeDetailResponseSchema>;

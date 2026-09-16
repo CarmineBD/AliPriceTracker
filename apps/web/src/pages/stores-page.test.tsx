@@ -37,6 +37,10 @@ describe('StoresPage', () => {
 
     expect(screen.getByRole('heading', { name: 'Tiendas' })).toBeInTheDocument();
     expect(await screen.findByText('Tienda Marco Europa')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Tienda Marco Europa' })).toHaveAttribute(
+      'href',
+      '/stores/9f98dbb8-99f6-4058-96f0-9577322cffdb',
+    );
     expect(screen.getByText('España')).toBeInTheDocument();
     expect(screen.getByText('4.000+')).toBeInTheDocument();
     expect(screen.getByRole('cell', { name: '3' })).toBeInTheDocument();

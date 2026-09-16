@@ -4,6 +4,7 @@ import { AliExpressProductSearchPage } from '@/pages/aliexpress-product-search-p
 import { ProductDetailPage } from '@/pages/product-detail-page';
 import { ProductsPage } from '@/pages/products-page';
 import { StoresPage } from '@/pages/stores-page';
+import { StoreDetailPage } from '@/pages/store-detail-page';
 
 export const router = createBrowserRouter([
   {
@@ -21,5 +22,9 @@ export const router = createBrowserRouter([
   {
     path: '/stores',
     element: <StoresPage />,
+  },
+  {
+    path: '/stores/:id',
+    element: <StoreDetailPage />,
   },
 ]);

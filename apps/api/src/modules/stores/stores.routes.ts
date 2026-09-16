@@ -1,7 +1,8 @@
 import { Router } from 'express';
 
-import { list } from './stores.controller';
+import { getById, list } from './stores.controller';
 
 export const storesRouter = Router();
 
 storesRouter.get('/', list);
+storesRouter.get('/:id', getById);

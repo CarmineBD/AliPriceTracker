@@ -1,4 +1,5 @@
 import type { Store } from '@alitracker/shared';
+import { Link } from 'react-router-dom';
 
 import {
   Table,
@@ -37,7 +38,14 @@ export function StoresTable({ stores }: StoresTableProps) {
         <TableBody>
           {stores.map((store) => (
             <TableRow key={store.id}>
-              <TableCell className="font-medium">{displayValue(store.name)}</TableCell>
+              <TableCell className="font-medium">
+                <Link
+                  to={`/stores/${store.id}`}
+                  className="text-primary underline-offset-4 hover:underline"
+                >
+                  {displayValue(store.name)}
+                </Link>
+              </TableCell>
               <TableCell>{displayValue(store.location)}</TableCell>
               <TableCell className="text-right">{displayValue(store.reviewScore)}</TableCell>
               <TableCell className="text-right">{displayValue(store.sales180d)}</TableCell>
