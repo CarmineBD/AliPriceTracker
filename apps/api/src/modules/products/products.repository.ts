@@ -17,15 +17,13 @@ export class ProductsRepository {
   async findPage({ page, pageSize }: ProductsListQuery) {
     const offset = (page - 1) * pageSize;
     const database = getDatabase();
-    const offersCount = sql<number>`(
-      SELECT count(*)::int
-      FROM ${publicationProducts}
-      WHERE ${publicationProducts.productId} = ${products.id}
-    )`.as('offers_count');
+    const offersCount = sql<number>`count(${publicationProducts.id})::int`.as('offers_count');
     const [items, countResult] = await Promise.all([
       database
         .select({ ...getTableColumns(products), offersCount })
         .from(products)
+        .leftJoin(publicationProducts, eq(publicationProducts.productId, products.id))
+        .groupBy(products.id)
         .orderBy(asc(products.name), asc(products.createdAt))
         .limit(pageSize)
         .offset(offset),
