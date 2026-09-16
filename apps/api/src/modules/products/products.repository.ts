@@ -52,6 +52,8 @@ export class ProductsRepository {
         sellerLocation: stores.location,
         sellerReviewScore: stores.reviewScore,
         sellerSalesCount: sql<number | null>`null`,
+        price: publicationProducts.price,
+        currency: publicationProducts.currency,
         quantityAvailable: publicationProducts.quantityAvailable,
         maxPurchase: publicationProducts.maxPurchase,
         url: publications.url,

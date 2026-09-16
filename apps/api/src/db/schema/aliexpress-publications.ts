@@ -60,6 +60,8 @@ export const publicationProducts = pgTable(
       .notNull()
       .references(() => products.id),
     aliexpressSkuId: varchar('aliexpress_sku_id', { length: 32 }).notNull(),
+    price: numeric('price', { precision: 12, scale: 2 }),
+    currency: varchar('currency', { length: 3 }),
     quantityAvailable: integer('quantity_available'),
     maxPurchase: integer('max_purchase'),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),

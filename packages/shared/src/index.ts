@@ -48,6 +48,9 @@ export const productOfferSchema = z.object({
   sellerLocation: z.string().nullable(),
   sellerReviewScore: z.string().nullable(),
   sellerSalesCount: z.number().int().nullable(),
+  // PostgreSQL numeric is deliberately kept as a string to avoid losing monetary precision.
+  price: z.string().regex(/^\d+(\.\d{1,2})?$/).nullable(),
+  currency: z.string().length(3).nullable(),
   quantityAvailable: z.number().int(),
   maxPurchase: z.number().int(),
   url: z.string().url(),
@@ -104,6 +107,8 @@ export const aliExpressProductVariantSchema = z.object({
   id: z.string(),
   variantName: z.string().nullable(),
   price: z.string().nullable(),
+  priceAmount: z.number().finite().nonnegative().nullable(),
+  currency: z.string().length(3).nullable(),
   quantityAvailable: z.number().int().nonnegative().nullable(),
   maxPurchase: z.number().int().nonnegative().nullable(),
   imageUrl: z.string().url().nullable(),
@@ -153,6 +158,24 @@ const aliexpressDatabaseIdSchema = z
 const nullableImportText = (maximumLength: number) =>
   z.string().trim().max(maximumLength).nullable();
 
+const nullableCurrencyCode = z
+  .string()
+  .trim()
+  .regex(/^[a-zA-Z]{3}$/, 'La moneda debe ser un código ISO de tres letras.')
+  .transform((value) => value.toUpperCase())
+  .nullable();
+
+const nullableMoneyAmount = z
+  .number()
+  .finite()
+  .nonnegative()
+  .max(9_999_999_999.99)
+  .refine(
+    (value) => Math.abs(value * 100 - Math.round(value * 100)) < 0.000_001,
+    'El precio puede tener como máximo dos decimales.',
+  )
+  .nullable();
+
 export const aliExpressPublicationImportSchema = z.object({
   store: z.object({
     aliexpressStoreId: aliexpressDatabaseIdSchema,
@@ -178,6 +201,8 @@ export const aliExpressPublicationImportSchema = z.object({
           .regex(/^\d+$/, 'El SKU de AliExpress debe contener solo números.')
           .max(32),
         productId: productIdSchema,
+        price: nullableMoneyAmount,
+        currency: nullableCurrencyCode,
         quantityAvailable: z.number().int().nonnegative().nullable(),
         maxPurchase: z.number().int().nonnegative().nullable(),
       }),

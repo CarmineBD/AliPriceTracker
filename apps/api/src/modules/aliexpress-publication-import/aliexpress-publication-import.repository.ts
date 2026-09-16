@@ -156,6 +156,10 @@ export class AliExpressPublicationImportRepository {
           publicationId,
           productId: input.productId,
           aliexpressSkuId: input.aliexpressSkuId,
+          // Drizzle maps PostgreSQL numeric columns to strings by default, which preserves money
+          // values exactly instead of relying on binary floating-point conversion in the driver.
+          price: input.price === null ? null : input.price.toFixed(2),
+          currency: input.currency,
           quantityAvailable: input.quantityAvailable,
           maxPurchase: input.maxPurchase,
         })),

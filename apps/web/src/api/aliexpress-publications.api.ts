@@ -25,6 +25,8 @@ export function buildImportAliExpressPublicationPayload(
     return {
       aliexpressSkuId: product.aliexpressSkuId,
       productId,
+      price: product.priceAmount,
+      currency: product.currency,
       quantityAvailable: product.quantityAvailable,
       maxPurchase: product.maxPurchase,
     };

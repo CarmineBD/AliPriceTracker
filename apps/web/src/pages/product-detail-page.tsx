@@ -18,8 +18,23 @@ const dateFormatter = new Intl.DateTimeFormat('es-ES', {
   timeStyle: 'short',
 });
 
+const wholeNumberFormatter = new Intl.NumberFormat('es-ES', { maximumFractionDigits: 0 });
+
 function formatDate(date: string) {
   return dateFormatter.format(new Date(date));
+}
+
+function formatOfferPrice(price: string | null, currency: string | null): string {
+  if (price === null) {
+    return '—';
+  }
+
+  const [whole, decimal] = price.split('.');
+  const formattedAmount = `${wholeNumberFormatter.format(BigInt(whole ?? '0'))}${
+    decimal ? `,${decimal.padEnd(2, '0')}` : ''
+  }`;
+
+  return currency === 'EUR' ? `${formattedAmount} €` : `${formattedAmount}${currency ? ` ${currency}` : ''}`;
 }
 
 export function ProductDetailPage() {
@@ -101,6 +116,7 @@ export function ProductDetailPage() {
                       <TableHead>Ubicación</TableHead>
                       <TableHead>Puntuación</TableHead>
                       <TableHead>Ventas</TableHead>
+                      <TableHead className="text-right">Precio</TableHead>
                       <TableHead>Cantidad disponible</TableHead>
                       <TableHead>Máximo por compra</TableHead>
                       <TableHead>URL</TableHead>
@@ -113,6 +129,9 @@ export function ProductDetailPage() {
                         <TableCell>{offer.sellerLocation ?? '—'}</TableCell>
                         <TableCell>{offer.sellerReviewScore ?? '—'}</TableCell>
                         <TableCell>{offer.sellerSalesCount ?? '—'}</TableCell>
+                        <TableCell className="text-right">
+                          {formatOfferPrice(offer.price, offer.currency)}
+                        </TableCell>
                         <TableCell>{offer.quantityAvailable}</TableCell>
                         <TableCell>{offer.maxPurchase}</TableCell>
                         <TableCell>

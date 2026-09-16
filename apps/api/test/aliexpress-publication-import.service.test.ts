@@ -35,12 +35,16 @@ const baseInput: AliExpressPublicationImportInput = aliExpressPublicationImportS
     {
       aliexpressSkuId: '12000058446755029',
       productId: productIdOne,
+      price: 591.7,
+      currency: 'EUR',
       quantityAvailable: 17,
       maxPurchase: 1,
     },
     {
       aliexpressSkuId: '12000058446755028',
       productId: productIdTwo,
+      price: 539.32,
+      currency: 'EUR',
       quantityAvailable: 1,
       maxPurchase: 1,
     },
@@ -49,7 +53,14 @@ const baseInput: AliExpressPublicationImportInput = aliExpressPublicationImportS
 
 type FakeStore = { id: string; aliexpressStoreId: bigint; name: string | null };
 type FakePublication = { id: string; aliexpressProductId: bigint; storeId: string };
-type FakePublicationProduct = { id: string; publicationId: string; productId: string; aliexpressSkuId: string };
+type FakePublicationProduct = {
+  id: string;
+  publicationId: string;
+  productId: string;
+  aliexpressSkuId: string;
+  price: number | null;
+  currency: string | null;
+};
 type FakeRepository = {
   transaction<T>(operation: (transaction: FakeRepository) => Promise<T>): Promise<T>;
   findPublicationByAliExpressProductId(aliexpressProductId: string): Promise<FakePublication | undefined>;
@@ -141,6 +152,8 @@ function createRepository({
         publicationId,
         productId: product.productId,
         aliexpressSkuId: product.aliexpressSkuId,
+        price: product.price,
+        currency: product.currency,
       }));
       state.publicationProducts.push(...created);
       if (failPublicationProducts) throw new Error('insert failed');
@@ -195,6 +208,59 @@ describe('importAliExpressPublication', () => {
       ],
     });
     expect(state.publicationProducts).toHaveLength(2);
+    expect(state.publicationProducts).toMatchObject([
+      { aliexpressSkuId: '12000058446755029', price: 591.7, currency: 'EUR' },
+      { aliexpressSkuId: '12000058446755028', price: 539.32, currency: 'EUR' },
+    ]);
+  });
+
+  it('keeps distinct current prices and currencies per SKU', async () => {
+    const { repository, state } = createRepository({
+      productIds: [productIdOne, productIdTwo, missingProductIdOne],
+    });
+    const input = {
+      ...baseInput,
+      products: [
+        ...baseInput.products,
+        {
+          aliexpressSkuId: '12000058446755027',
+          productId: missingProductIdOne,
+          price: 364.5,
+          currency: 'EUR',
+          quantityAvailable: 5,
+          maxPurchase: 1,
+        },
+      ],
+    } satisfies AliExpressPublicationImportInput;
+
+    await importAliExpressPublication(input, repository as never);
+
+    expect(state.publicationProducts).toMatchObject([
+      { price: 591.7, currency: 'EUR' },
+      { price: 539.32, currency: 'EUR' },
+      { price: 364.5, currency: 'EUR' },
+    ]);
+  });
+
+  it('preserves an unknown current price as null instead of zero', async () => {
+    const { repository, state } = createRepository();
+    const input = {
+      ...baseInput,
+      products: [{ ...baseInput.products[0]!, price: null, currency: null }],
+    } satisfies AliExpressPublicationImportInput;
+
+    await importAliExpressPublication(input, repository as never);
+
+    expect(state.publicationProducts[0]).toMatchObject({ price: null, currency: null });
+  });
+
+  it('accepts a valid current price and normalizes its currency code', () => {
+    const parsed = aliExpressPublicationImportSchema.parse({
+      ...baseInput,
+      products: [{ ...baseInput.products[0]!, currency: 'eur' }],
+    });
+
+    expect(parsed.products[0]).toMatchObject({ price: 591.7, currency: 'EUR' });
   });
 
   it('reuses and updates an existing store for a new publication', async () => {

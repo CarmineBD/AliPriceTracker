@@ -5,6 +5,7 @@ import { app } from '../src/app';
 import {
   createMtopSignature,
   debugAliExpressProduct,
+  parseAliExpressPriceAmount,
 } from '../src/modules/aliexpress-debug/aliexpress-debug.service';
 import {
   applySetCookies,
@@ -89,6 +90,7 @@ const completeProductMtopBody = `mtopjsonp1(${JSON.stringify({
       GLOBAL_DATA: {
         globalData: {
           subject: 'Título alternativo',
+          currencyCode: 'EUR',
           productInfo: {
             productId,
             detailUrl: `https://www.aliexpress.com/item/${productId}.html`,
@@ -129,7 +131,7 @@ const completeProductMtopBody = `mtopjsonp1(${JSON.stringify({
       },
       PRICE: {
         skuIdStrPriceInfoMap: {
-          '12000052796795561': { salePriceString: '273,69€' },
+          '12000052796795561': { salePriceString: '273,69€', salePriceLocal: '2736927369' },
         },
       },
       QUANTITY_PC: { allSkuQuantityView: { '12000052796795561': { maxBuyCount: 1 } } },
@@ -286,12 +288,21 @@ describe('GET /api/debug/aliexpress/product/:productId', () => {
         aliexpressSkuId: '12000052796795561',
         variantName: 'DJI Neo2 Combo-Only Drone',
         price: '273,69€',
+        priceAmount: 273.69,
+        currency: 'EUR',
         quantityAvailable: 165,
         maxPurchase: 1,
         imageUrl: 'https://example.test/drone.jpg',
         salable: true,
       },
     ]);
+  });
+
+  it('parses a localized visual price when no structured price is available', () => {
+    expect(parseAliExpressPriceAmount('591,70€')).toBe(591.7);
+    expect(parseAliExpressPriceAmount('17,64€')).toBe(17.64);
+    expect(parseAliExpressPriceAmount('$1,234.56')).toBe(1234.56);
+    expect(parseAliExpressPriceAmount(null)).toBeNull();
   });
 
   it('retries once using the token received in Set-Cookie', async () => {

@@ -19,6 +19,8 @@ const product = {
       sellerLocation: 'Madrid',
       sellerReviewScore: '4.8',
       sellerSalesCount: 125,
+      price: '591.70',
+      currency: 'EUR',
       quantityAvailable: 10,
       maxPurchase: 2,
       url: 'https://www.aliexpress.com/item/123.html',
@@ -56,6 +58,7 @@ describe('ProductDetailPage', () => {
     expect(screen.getByRole('heading', { name: product.name })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Ofertas disponibles (1)' })).toBeInTheDocument();
     expect(screen.getByText('Tienda de prueba')).toBeInTheDocument();
+    expect(screen.getByText('591,70 €')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Ver oferta' })).toHaveAttribute(
       'href',
       'https://www.aliexpress.com/item/123.html',

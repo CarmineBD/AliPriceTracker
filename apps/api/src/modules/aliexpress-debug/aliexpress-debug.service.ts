@@ -25,6 +25,8 @@ type SkuPrice = {
   skuId: string;
   variantName: string | null;
   price: string | null;
+  priceAmount: number | null;
+  currency: string | null;
   stock: number | null;
   maxBuyCount: number | null;
   image: string | null;
@@ -52,6 +54,8 @@ export type AliExpressSkuDetails = {
   aliexpressSkuId: string;
   variantName: string | null;
   price: string | null;
+  priceAmount: number | null;
+  currency: string | null;
   quantityAvailable: number | null;
   maxPurchase: number | null;
   imageUrl: string | null;
@@ -121,6 +125,42 @@ const asFiniteNumber = (value: unknown): number | null => {
 
   return null;
 };
+
+const asCurrencyCode = (value: unknown): string | null => {
+  const currency = getString(value)?.trim().toUpperCase();
+  return currency && /^[A-Z]{3}$/.test(currency) ? currency : null;
+};
+
+/** Parses AliExpress's visual price text; the final dot/comma is its decimal separator. */
+export function parseAliExpressPriceAmount(value: unknown): number | null {
+  if (typeof value === 'number') {
+    return Number.isFinite(value) && value >= 0 ? value : null;
+  }
+
+  if (typeof value !== 'string') {
+    return null;
+  }
+
+  const numericText = value.trim().replace(/[^0-9,.'\s]/g, '').replace(/[\s']/g, '');
+  if (!numericText || !/\d/.test(numericText)) {
+    return null;
+  }
+
+  const separators = [...numericText.matchAll(/[.,]/g)].map((match) => match.index ?? -1);
+  const lastSeparator = separators.at(-1) ?? -1;
+  const decimalDigits = lastSeparator === -1 ? 0 : numericText.length - lastSeparator - 1;
+  const hasDecimalSeparator = decimalDigits > 0 && decimalDigits <= 2;
+  const digits = numericText.replace(/[.,]/g, '');
+  if (!digits) {
+    return null;
+  }
+
+  const normalized = hasDecimalSeparator
+    ? `${digits.slice(0, -decimalDigits)}.${digits.slice(-decimalDigits)}`
+    : digits;
+  const amount = Number(normalized);
+  return Number.isFinite(amount) && amount >= 0 ? amount : null;
+}
 
 const asIdentifierString = (value: unknown): string | null => {
   if (typeof value === 'string' && value.trim() !== '') {
@@ -353,6 +393,7 @@ function getProductDetails(body: JsonRecord, productId: string) {
   const productTitle = isRecord(result.PRODUCT_TITLE) ? result.PRODUCT_TITLE : {};
   const globalDataContainer = isRecord(result.GLOBAL_DATA) ? result.GLOBAL_DATA : {};
   const globalData = isRecord(globalDataContainer.globalData) ? globalDataContainer.globalData : {};
+  const globalCurrency = asCurrencyCode(globalData.currencyCode) ?? asCurrencyCode(globalData.currency);
   const shopCard = isRecord(result.SHOP_CARD_PC) ? result.SHOP_CARD_PC : {};
   const rating = isRecord(result.PC_RATING) ? result.PC_RATING : {};
   const sku = isRecord(result.SKU) ? result.SKU : {};
@@ -378,11 +419,19 @@ function getProductDetails(body: JsonRecord, productId: string) {
           ? legacySkuPrices[skuId]
           : {};
       const quantityInfo = isRecord(quantities[skuId]) ? quantities[skuId] : {};
+      // salePriceLocal can be a non-decimal internal value (for example, 17641764).
+      // The displayed salePriceString is the source of truth for the amount we persist.
+      const visualPrice = getString(priceInfo.salePriceString);
+      const priceAmount = parseAliExpressPriceAmount(visualPrice);
+      const currency =
+        globalCurrency ?? asCurrencyCode(priceInfo.currencyCode) ?? asCurrencyCode(priceInfo.currency);
 
       return {
         skuId,
         variantName: resolveSkuVariantName(getString(skuPath.skuAttr) ?? '', skuProperties) || null,
-        price: getString(priceInfo.salePriceString),
+        price: visualPrice,
+        priceAmount,
+        currency,
         stock: asInteger(skuPath.skuStock),
         maxBuyCount: asInteger(quantityInfo.maxBuyCount),
         image: getFirstImage(images[skuId]),
@@ -404,6 +453,8 @@ function getProductDetails(body: JsonRecord, productId: string) {
       aliexpressSkuId: skuPrice.skuId,
       variantName: skuPrice.variantName ?? `SKU ${skuPrice.skuId}`,
       price: skuPrice.price,
+      priceAmount: skuPrice.priceAmount,
+      currency: skuPrice.currency,
       quantityAvailable: skuPrice.stock,
       maxPurchase: skuPrice.maxBuyCount,
       imageUrl: skuPrice.image,
