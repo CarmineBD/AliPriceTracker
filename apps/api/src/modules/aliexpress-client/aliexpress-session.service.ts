@@ -1,9 +1,4 @@
-import {
-  createCipheriv,
-  createDecipheriv,
-  randomBytes,
-  scryptSync,
-} from 'node:crypto';
+import { createCipheriv, createDecipheriv, randomBytes, scryptSync } from 'node:crypto';
 
 import { env } from '../../config/env';
 import { AliExpressSessionRepository } from './aliexpress-session.repository';
@@ -203,7 +198,10 @@ export function encryptCookieMap(cookies: CookieMap, secret: string): string {
   } satisfies EncryptedCookieMap);
 }
 
-export function decryptCookieMap(encryptedCookies: string, secret: string): {
+export function decryptCookieMap(
+  encryptedCookies: string,
+  secret: string,
+): {
   cookies: CookieMap;
   requiresMigration: boolean;
 } {
@@ -225,7 +223,9 @@ export function decryptCookieMap(encryptedCookies: string, secret: string): {
     const ciphertext = Buffer.from(parsedEnvelope.ciphertext, 'base64url');
     const decipher = createDecipheriv('aes-256-gcm', deriveEncryptionKey(secret, salt), iv);
     decipher.setAuthTag(authTag);
-    const plaintext = Buffer.concat([decipher.update(ciphertext), decipher.final()]).toString('utf8');
+    const plaintext = Buffer.concat([decipher.update(ciphertext), decipher.final()]).toString(
+      'utf8',
+    );
     const parsedCookies: unknown = JSON.parse(plaintext);
     const cookies = asCookieMap(parsedCookies);
 
@@ -263,9 +263,10 @@ export function extractMtopToken(cookieValue: string): MtopToken | null {
 
   return {
     token,
-    expiresAt: Number.isFinite(expiresAtMilliseconds) && !Number.isNaN(expiresAt.valueOf())
-      ? expiresAt.toISOString()
-      : null,
+    expiresAt:
+      Number.isFinite(expiresAtMilliseconds) && !Number.isNaN(expiresAt.valueOf())
+        ? expiresAt.toISOString()
+        : null,
   };
 }
 
@@ -327,7 +328,10 @@ export class AliExpressSessionService {
   private async loadSession(): Promise<{ cookies: CookieMap; source: AliExpressSessionSource }> {
     const storedSession = await this.repository.find();
     if (storedSession) {
-      const decryptedSession = decryptCookieMap(storedSession.encryptedCookieJar, this.encryptionKey);
+      const decryptedSession = decryptCookieMap(
+        storedSession.encryptedCookieJar,
+        this.encryptionKey,
+      );
       if (decryptedSession.requiresMigration) {
         await this.repository.save(encryptCookieMap(decryptedSession.cookies, this.encryptionKey));
       }

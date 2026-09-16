@@ -1,10 +1,13 @@
 import type { AliExpressProductLookup } from '@alitracker/shared';
 
 import { env } from '../../config/env';
-import { debugAliExpressProduct } from '../aliexpress-debug/aliexpress-debug.service';
+import {
+  aliexpressClient,
+  type AliExpressProductResult,
+} from '../aliexpress-client/aliexpress-client';
 import { AliExpressProductLookupRepository } from './aliexpress-product-lookup.repository';
 
-type DebugProductRequest = typeof debugAliExpressProduct;
+type ProductRequest = (productId: string) => Promise<AliExpressProductResult>;
 
 type ProductLookupResult =
   { status: 200; body: AliExpressProductLookup } | { status: 502 | 503; body: { error: string } };
@@ -13,13 +16,20 @@ type ProductLookupRepository = Pick<AliExpressProductLookupRepository, 'findImpo
 
 export async function lookupAliExpressProduct(
   productId: string,
-  requestProduct: DebugProductRequest = debugAliExpressProduct,
+  requestProduct: ProductRequest = (requestedProductId) =>
+    aliexpressClient.getProduct(requestedProductId),
   repository: ProductLookupRepository = new AliExpressProductLookupRepository(),
 ): Promise<ProductLookupResult> {
-  const result = await requestProduct({
-    productId,
-    debugApiKey: env.DEBUG_API_KEY,
-  });
+  // The previous implementation could only reach AliExpress through the protected debug service.
+  // Keep its configuration precondition in this refactor so the endpoint's behaviour does not change.
+  if (!env.DEBUG_API_KEY) {
+    return {
+      status: 502,
+      body: { error: 'No se pudo consultar la publicación de AliExpress.' },
+    };
+  }
+
+  const result = await requestProduct(productId);
 
   if (result.status !== 200 || !result.body.success) {
     return {

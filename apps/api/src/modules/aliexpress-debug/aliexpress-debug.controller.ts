@@ -6,7 +6,7 @@ import {
   hasMatchingDebugApiKey,
   logAliExpressDebug,
 } from './aliexpress-debug.service';
-import { aliexpressSessionService } from './aliexpress-session.service';
+import { aliexpressClient } from '../aliexpress-client/aliexpress-client';
 
 const productIdSchema = z.string().regex(/^\d+$/, 'productId must contain only digits.');
 const productQuerySchema = z.object({
@@ -57,7 +57,7 @@ export const reseedSession: RequestHandler = async (request, response) => {
   }
 
   try {
-    const session = await aliexpressSessionService.reseed();
+    const session = await aliexpressClient.reseedSession();
     logAliExpressDebug('aliexpress_debug_session_reseeded', { cookieCount: session.cookieCount });
     response.status(200).json({
       success: true,

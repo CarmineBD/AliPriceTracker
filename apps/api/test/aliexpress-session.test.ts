@@ -7,7 +7,7 @@ import {
   decryptCookieMap,
   encryptCookieMap,
   parseCookieHeader,
-} from '../src/modules/aliexpress-debug/aliexpress-session.service';
+} from '../src/modules/aliexpress-client/aliexpress-session.service';
 
 const encryptionKey = 'a long secret used only by this test suite';
 
@@ -21,9 +21,9 @@ describe('AliExpress session persistence', () => {
   });
 
   it('builds a Cookie header from the persisted map without altering values', () => {
-    expect(
-      buildCookieHeader({ first: 'one==two', second: 'abc%3Ddef==', third: 'value' }),
-    ).toBe('first=one==two; second=abc%3Ddef==; third=value');
+    expect(buildCookieHeader({ first: 'one==two', second: 'abc%3Ddef==', third: 'value' })).toBe(
+      'first=one==two; second=abc%3Ddef==; third=value',
+    );
   });
 
   it('applies Set-Cookie values without saving attributes in the map', () => {
@@ -44,10 +44,7 @@ describe('AliExpress session persistence', () => {
 
     applySetCookies(
       cookies,
-      [
-        'byMaxAge=updated; Max-Age=0',
-        'byExpires=updated; Expires=Mon, 01 Jan 2001 00:00:00 GMT',
-      ],
+      ['byMaxAge=updated; Max-Age=0', 'byExpires=updated; Expires=Mon, 01 Jan 2001 00:00:00 GMT'],
       new Date('2030-01-01T00:00:00.000Z'),
     );
 
@@ -65,14 +62,17 @@ describe('AliExpress session persistence', () => {
 
   it('uses ALIEXPRESS_COOKIE only when no database session exists', async () => {
     const repository = {
-      find: vi.fn().mockResolvedValueOnce(undefined).mockResolvedValueOnce({
-        encryptedCookieJar: encryptCookieMap(
-          { _m_h5_tk: 'database-token_1893456000000' },
-          encryptionKey,
-        ),
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      }),
+      find: vi
+        .fn()
+        .mockResolvedValueOnce(undefined)
+        .mockResolvedValueOnce({
+          encryptedCookieJar: encryptCookieMap(
+            { _m_h5_tk: 'database-token_1893456000000' },
+            encryptionKey,
+          ),
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        }),
       save: vi.fn().mockResolvedValue(undefined),
     };
     const sessionService = new AliExpressSessionService(

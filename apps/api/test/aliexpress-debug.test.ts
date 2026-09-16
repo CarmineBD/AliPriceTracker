@@ -3,17 +3,18 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { app } from '../src/app';
 import {
+  AliExpressClient,
   createMtopSignature,
-  debugAliExpressProduct,
   parseAliExpressPriceAmount,
-} from '../src/modules/aliexpress-debug/aliexpress-debug.service';
+} from '../src/modules/aliexpress-client/aliexpress-client';
+import { debugAliExpressProduct } from '../src/modules/aliexpress-debug/aliexpress-debug.service';
 import {
   applySetCookies,
   getMtopTokenFromCookieMap,
   type AliExpressSessionContext,
   type CookieMap,
-} from '../src/modules/aliexpress-debug/aliexpress-session.service';
-import { aliexpressSessionService } from '../src/modules/aliexpress-debug/aliexpress-session.service';
+} from '../src/modules/aliexpress-client/aliexpress-session.service';
+import { aliexpressSessionService } from '../src/modules/aliexpress-client/aliexpress-session.service';
 
 const productId = '1005010519851506';
 const validMtopBody =
@@ -223,16 +224,14 @@ describe('GET /api/debug/aliexpress/product/:productId', () => {
     ).toBe('07121cd3155217564b301f83c992dc26');
   });
 
-  it('returns the original parsed MTop response when requested', async () => {
+  it('returns the original parsed MTop response from AliExpressClient when requested', async () => {
     const { sessionRunner } = createSessionRunner({
       _m_h5_tk: 'token_1893456000000',
     });
     const client = vi.fn().mockResolvedValue(response(200, validMtopBody));
 
-    const result = await debugAliExpressProduct(
-      { productId, debugApiKey: 'test-debug-api-key', includeRaw: true },
-      { sessionRunner, client },
-    );
+    const aliexpressClient = new AliExpressClient({ sessionRunner, httpClient: client });
+    const result = await aliexpressClient.getProduct(productId, { includeRaw: true });
 
     expect(result.status).toBe(200);
     expect(result.body.rawResponse).toMatchObject({
@@ -247,7 +246,7 @@ describe('GET /api/debug/aliexpress/product/:productId', () => {
 
     const result = await debugAliExpressProduct(
       { productId, debugApiKey: 'test-debug-api-key' },
-      { sessionRunner, client },
+      { sessionRunner, httpClient: client },
     );
 
     expect(result.status).toBe(200);
@@ -264,7 +263,7 @@ describe('GET /api/debug/aliexpress/product/:productId', () => {
 
     const result = await debugAliExpressProduct(
       { productId, debugApiKey: 'test-debug-api-key' },
-      { sessionRunner, client },
+      { sessionRunner, httpClient: client },
     );
 
     expect(result.status).toBe(200);
@@ -323,7 +322,7 @@ describe('GET /api/debug/aliexpress/product/:productId', () => {
 
     const result = await debugAliExpressProduct(
       { productId, debugApiKey: 'test-debug-api-key', includeRaw: true },
-      { sessionRunner, client },
+      { sessionRunner, httpClient: client },
     );
 
     expect(client).toHaveBeenCalledTimes(2);
@@ -352,7 +351,7 @@ describe('GET /api/debug/aliexpress/product/:productId', () => {
 
     const result = await debugAliExpressProduct(
       { productId, debugApiKey: 'test-debug-api-key', includeRaw: true },
-      { sessionRunner, client },
+      { sessionRunner, httpClient: client },
     );
 
     expect(client).toHaveBeenCalledTimes(1);
