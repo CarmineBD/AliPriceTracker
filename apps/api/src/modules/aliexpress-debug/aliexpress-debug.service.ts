@@ -25,9 +25,36 @@ type SkuPrice = {
   skuId: string;
   variantName: string | null;
   price: string | null;
-  stock: number;
+  stock: number | null;
   maxBuyCount: number | null;
   image: string | null;
+  salable: boolean;
+};
+
+export type AliExpressStoreDetails = {
+  aliexpressStoreId: string | null;
+  name: string | null;
+  location: string | null;
+  reviewScore: number | null;
+  sales180d: string | null;
+};
+
+export type AliExpressPublicationDetails = {
+  aliexpressProductId: string;
+  name: string | null;
+  url: string | null;
+  salesCount: string | null;
+  reviewScore: number | null;
+  reviewCount: number | null;
+};
+
+export type AliExpressSkuDetails = {
+  aliexpressSkuId: string;
+  variantName: string | null;
+  price: string | null;
+  quantityAvailable: number | null;
+  maxPurchase: number | null;
+  imageUrl: string | null;
   salable: boolean;
 };
 
@@ -38,6 +65,9 @@ type DebugResponse = {
   productName: string | null;
   skuCount: number;
   skuPrices: SkuPrice[];
+  store: AliExpressStoreDetails | null;
+  publication: AliExpressPublicationDetails | null;
+  products: AliExpressSkuDetails[];
   errorType: 'token' | 'validation' | 'upstream' | 'reauth' | null;
   errorCode: 'ALIEXPRESS_SESSION_REAUTH_REQUIRED' | null;
   upstreamStatus: number | null;
@@ -79,6 +109,27 @@ const asInteger = (value: unknown): number | null => {
   return null;
 };
 
+const asFiniteNumber = (value: unknown): number | null => {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return value;
+  }
+
+  if (typeof value === 'string' && value.trim() !== '') {
+    const parsed = Number(value.trim().replace(',', '.'));
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+
+  return null;
+};
+
+const asIdentifierString = (value: unknown): string | null => {
+  if (typeof value === 'string' && value.trim() !== '') {
+    return value;
+  }
+
+  return typeof value === 'number' && Number.isSafeInteger(value) ? String(value) : null;
+};
+
 const getFirstImage = (value: unknown): string | null => {
   if (typeof value === 'string' && value.trim() !== '') {
     return value;
@@ -107,6 +158,9 @@ const createResponse = (
   productName: null,
   skuCount: 0,
   skuPrices: [],
+  store: null,
+  publication: null,
+  products: [],
   errorType: 'upstream',
   errorCode: null,
   upstreamStatus: null,
@@ -214,17 +268,99 @@ function resolveSkuVariantName(skuAttr: string, skuProperties: JsonRecord[]): st
   return names.join(' / ');
 }
 
-function getProductDetails(body: JsonRecord) {
+function getBenefitValue(
+  benefitInfoList: JsonRecord[],
+  matcher: (normalizedTitle: string) => boolean,
+): string | null {
+  for (const benefit of benefitInfoList) {
+    const title = getString(benefit.title) ?? getString(benefit.name) ?? getString(benefit.label);
+    const value = getString(benefit.value) ?? getString(benefit.text);
+    if (title && value && matcher(normalizeLabel(title))) {
+      return value;
+    }
+  }
+
+  return null;
+}
+
+function normalizeLabel(value: string): string {
+  return value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLocaleLowerCase();
+}
+
+function parseVisibleSalesCount(value: unknown): string | null {
+  const text = getString(value)?.trim();
+  if (!text) {
+    return null;
+  }
+
+  return text.match(/\d(?:[\d.,\s]*\d)?\+?/)?.[0].trim() ?? null;
+}
+
+function parseAliExpressStore(shopCard: JsonRecord): AliExpressStoreDetails {
+  const sellerInfo = isRecord(shopCard.sellerInfo) ? shopCard.sellerInfo : {};
+  const benefitInfoList = asRecords(shopCard.benefitInfoList);
+  const structuredReviewScore =
+    asFiniteNumber(shopCard.reviewScore) ??
+    asFiniteNumber(shopCard.storeRating) ??
+    asFiniteNumber(sellerInfo.reviewScore) ??
+    asFiniteNumber(sellerInfo.storeRating);
+  const reviewScoreValue = getBenefitValue(
+    benefitInfoList,
+    (title) => /rating|calificacion|valoracion|puntuacion|feedback/.test(title),
+  );
+
+  return {
+    aliexpressStoreId: asIdentifierString(sellerInfo.storeNum),
+    name: getString(shopCard.storeName),
+    location: getString(sellerInfo.countryCompleteName),
+    reviewScore: structuredReviewScore ?? asFiniteNumber(reviewScoreValue),
+    sales180d: getBenefitValue(
+      benefitInfoList,
+      (title) => title.includes('180') && /sold|vendid|ventas|sales/.test(title),
+    ),
+  };
+}
+
+function parseAliExpressPublication({
+  productId,
+  productTitle,
+  globalData,
+  rating,
+}: {
+  productId: string;
+  productTitle: JsonRecord;
+  globalData: JsonRecord;
+  rating: JsonRecord;
+}): AliExpressPublicationDetails {
+  const productInfo = isRecord(globalData.productInfo) ? globalData.productInfo : {};
+
+  return {
+    aliexpressProductId: asIdentifierString(productInfo.productId) ?? productId,
+    name: getString(productTitle.text) ?? getString(globalData.subject),
+    url: getString(productInfo.detailUrl),
+    salesCount: parseVisibleSalesCount(rating.otherText),
+    reviewScore: asFiniteNumber(rating.rating),
+    reviewCount: asInteger(rating.totalValidNum),
+  };
+}
+
+function getProductDetails(body: JsonRecord, productId: string) {
   const data = isRecord(body.data) ? body.data : {};
   const result = isRecord(data.result) ? data.result : {};
   const productTitle = isRecord(result.PRODUCT_TITLE) ? result.PRODUCT_TITLE : {};
   const globalDataContainer = isRecord(result.GLOBAL_DATA) ? result.GLOBAL_DATA : {};
   const globalData = isRecord(globalDataContainer.globalData) ? globalDataContainer.globalData : {};
+  const shopCard = isRecord(result.SHOP_CARD_PC) ? result.SHOP_CARD_PC : {};
+  const rating = isRecord(result.PC_RATING) ? result.PC_RATING : {};
   const sku = isRecord(result.SKU) ? result.SKU : {};
   const skuPaths = asRecords(sku.skuPaths);
   const skuProperties = asRecords(sku.skuProperties);
   const price = isRecord(result.PRICE) ? result.PRICE : {};
-  const prices = isRecord(price.skuPriceInfoMap) ? price.skuPriceInfoMap : {};
+  const stringSkuPrices = isRecord(price.skuIdStrPriceInfoMap) ? price.skuIdStrPriceInfoMap : {};
+  const legacySkuPrices = isRecord(price.skuPriceInfoMap) ? price.skuPriceInfoMap : {};
   const quantity = isRecord(result.QUANTITY_PC) ? result.QUANTITY_PC : {};
   const quantities = isRecord(quantity.allSkuQuantityView) ? quantity.allSkuQuantityView : {};
   const headerImage = isRecord(result.HEADER_IMAGE_PC) ? result.HEADER_IMAGE_PC : {};
@@ -236,14 +372,18 @@ function getProductDetails(body: JsonRecord) {
         return null;
       }
 
-      const priceInfo = isRecord(prices[skuId]) ? prices[skuId] : {};
+      const priceInfo = isRecord(stringSkuPrices[skuId])
+        ? stringSkuPrices[skuId]
+        : isRecord(legacySkuPrices[skuId])
+          ? legacySkuPrices[skuId]
+          : {};
       const quantityInfo = isRecord(quantities[skuId]) ? quantities[skuId] : {};
 
       return {
         skuId,
         variantName: resolveSkuVariantName(getString(skuPath.skuAttr) ?? '', skuProperties) || null,
         price: getString(priceInfo.salePriceString),
-        stock: asInteger(skuPath.skuStock) ?? 0,
+        stock: asInteger(skuPath.skuStock),
         maxBuyCount: asInteger(quantityInfo.maxBuyCount),
         image: getFirstImage(images[skuId]),
         salable: Boolean(skuPath.salable),
@@ -252,10 +392,23 @@ function getProductDetails(body: JsonRecord) {
     .filter((skuPath): skuPath is SkuPrice => skuPath !== null)
     .slice(0, 10);
 
+  const publication = parseAliExpressPublication({ productId, productTitle, globalData, rating });
+
   return {
-    productName: getString(productTitle.text) ?? getString(globalData.subject) ?? null,
+    productName: publication.name,
     skuCount: skuPaths.length,
     skuPrices,
+    store: parseAliExpressStore(shopCard),
+    publication,
+    products: skuPrices.map((skuPrice) => ({
+      aliexpressSkuId: skuPrice.skuId,
+      variantName: skuPrice.variantName ?? `SKU ${skuPrice.skuId}`,
+      price: skuPrice.price,
+      quantityAvailable: skuPrice.stock,
+      maxPurchase: skuPrice.maxBuyCount,
+      imageUrl: skuPrice.image,
+      salable: skuPrice.salable,
+    })),
   };
 }
 
@@ -498,7 +651,7 @@ export async function debugAliExpressProduct(
             body: createResponse(productId, {
               success: true,
               mtopRet: secondRet,
-              ...getProductDetails(secondAttempt.body!),
+              ...getProductDetails(secondAttempt.body!, productId),
               errorType: null,
               upstreamStatus: secondAttempt.upstreamStatus,
               session: secondSessionDiagnostic,
@@ -532,7 +685,7 @@ export async function debugAliExpressProduct(
           body: createResponse(productId, {
             success: true,
             mtopRet: firstRet,
-            ...getProductDetails(firstAttempt.body),
+            ...getProductDetails(firstAttempt.body, productId),
             errorType: null,
             upstreamStatus: firstAttempt.upstreamStatus,
             session: firstSessionDiagnostic,

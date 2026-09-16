@@ -90,15 +90,39 @@ export const aliExpressProductIdSchema = z
   .max(100);
 
 export const aliExpressProductVariantSchema = z.object({
+  // Kept optional in the shared client type until the untouched phase-1 UI is migrated.
+  // The API always includes it in its response.
+  aliexpressSkuId: z.string().optional(),
   id: z.string(),
   variantName: z.string().nullable(),
   price: z.string().nullable(),
-  quantityAvailable: z.number().int().nonnegative(),
+  quantityAvailable: z.number().int().nonnegative().nullable(),
+  maxPurchase: z.number().int().nonnegative().nullable().optional(),
   imageUrl: z.string().url().nullable(),
   salable: z.boolean(),
 });
 
+export const aliExpressStoreSchema = z.object({
+  aliexpressStoreId: z.string().nullable(),
+  name: z.string().nullable(),
+  location: z.string().nullable(),
+  reviewScore: z.number().finite().nullable(),
+  sales180d: z.string().nullable(),
+});
+
+export const aliExpressPublicationSchema = z.object({
+  aliexpressProductId: aliExpressProductIdSchema,
+  name: z.string().nullable(),
+  url: z.string().url().nullable(),
+  salesCount: z.string().nullable(),
+  reviewScore: z.number().finite().nullable(),
+  reviewCount: z.number().int().nonnegative().nullable(),
+});
+
 export const aliExpressProductLookupResponseSchema = z.object({
+  // Optional only for backwards-compatible consumers during phase 1; the API emits both.
+  store: aliExpressStoreSchema.optional(),
+  publication: aliExpressPublicationSchema.optional(),
   productId: aliExpressProductIdSchema,
   productName: z.string().nullable(),
   products: z.array(aliExpressProductVariantSchema),
@@ -106,6 +130,8 @@ export const aliExpressProductLookupResponseSchema = z.object({
 
 export type AliExpressProductLookup = z.infer<typeof aliExpressProductLookupResponseSchema>;
 export type AliExpressProductVariant = z.infer<typeof aliExpressProductVariantSchema>;
+export type AliExpressStore = z.infer<typeof aliExpressStoreSchema>;
+export type AliExpressPublication = z.infer<typeof aliExpressPublicationSchema>;
 
 const optionalNonNegativeNumber = z.preprocess(
   (value) => (value === '' ? null : value),

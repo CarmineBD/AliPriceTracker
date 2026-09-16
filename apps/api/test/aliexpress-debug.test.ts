@@ -81,6 +81,65 @@ const variantsMtopBody = `mtopjsonp1(${JSON.stringify({
   },
 })});`;
 
+const completeProductMtopBody = `mtopjsonp1(${JSON.stringify({
+  ret: ['SUCCESS::ok'],
+  data: {
+    result: {
+      PRODUCT_TITLE: { text: 'DJI Neo2 Drone Fly Camera' },
+      GLOBAL_DATA: {
+        globalData: {
+          subject: 'Título alternativo',
+          productInfo: {
+            productId,
+            detailUrl: `https://www.aliexpress.com/item/${productId}.html`,
+          },
+        },
+      },
+      SHOP_CARD_PC: {
+        storeName: 'Euro Frame Store',
+        sellerInfo: { storeNum: 1104930936, countryCompleteName: 'France' },
+        benefitInfoList: [
+          { title: 'Store Rating', value: '4.9' },
+          { title: '# Sold in 180 Days', value: '20,000+' },
+        ],
+      },
+      PC_RATING: { otherText: '4.000+ vendido(s)', rating: '4.7', totalValidNum: 777 },
+      SKU: {
+        skuPaths: [
+          {
+            skuId: 12000052796795560,
+            skuIdStr: '12000052796795561',
+            skuAttr: '14:175#DJI Neo2 Combo-Only Drone',
+            skuStock: 165,
+            salable: true,
+          },
+        ],
+        skuProperties: [
+          {
+            skuPropertyId: 14,
+            skuPropertyName: 'Color',
+            skuPropertyValues: [
+              {
+                propertyValueIdLong: 175,
+                propertyValueDefinitionName: 'DJI Neo2 Combo-Only Drone',
+              },
+            ],
+          },
+        ],
+      },
+      PRICE: {
+        skuIdStrPriceInfoMap: {
+          '12000052796795561': { salePriceString: '273,69€' },
+        },
+      },
+      QUANTITY_PC: { allSkuQuantityView: { '12000052796795561': { maxBuyCount: 1 } } },
+      HEADER_IMAGE_PC: {
+        skuImagesMap: { '12000052796795561': ['https://example.test/drone.jpg'] },
+      },
+    },
+  },
+})});`;
+
 function createSessionRunner(cookies: CookieMap) {
   const context: AliExpressSessionContext = {
     cookies,
@@ -194,6 +253,44 @@ describe('GET /api/debug/aliexpress/product/:productId', () => {
       'DJI Neo2',
       'DJI Neo2 Combo-Only Drone',
       'Fly Combo-YKTZ',
+    ]);
+  });
+
+  it('parses the store, publication, and SKU data without losing the string SKU identifier', async () => {
+    const { sessionRunner } = createSessionRunner({ _m_h5_tk: 'token_1893456000000' });
+    const client = vi.fn().mockResolvedValue(response(200, completeProductMtopBody));
+
+    const result = await debugAliExpressProduct(
+      { productId, debugApiKey: 'test-debug-api-key' },
+      { sessionRunner, client },
+    );
+
+    expect(result.status).toBe(200);
+    expect(result.body.store).toEqual({
+      aliexpressStoreId: '1104930936',
+      name: 'Euro Frame Store',
+      location: 'France',
+      reviewScore: 4.9,
+      sales180d: '20,000+',
+    });
+    expect(result.body.publication).toEqual({
+      aliexpressProductId: productId,
+      name: 'DJI Neo2 Drone Fly Camera',
+      url: `https://www.aliexpress.com/item/${productId}.html`,
+      salesCount: '4.000+',
+      reviewScore: 4.7,
+      reviewCount: 777,
+    });
+    expect(result.body.products).toEqual([
+      {
+        aliexpressSkuId: '12000052796795561',
+        variantName: 'DJI Neo2 Combo-Only Drone',
+        price: '273,69€',
+        quantityAvailable: 165,
+        maxPurchase: 1,
+        imageUrl: 'https://example.test/drone.jpg',
+        salable: true,
+      },
     ]);
   });
 

@@ -24,18 +24,24 @@ export async function lookupAliExpressProduct(
     };
   }
 
+  if (!result.body.store || !result.body.publication) {
+    return {
+      status: 502,
+      body: { error: 'No se pudo procesar la publicaciÃ³n de AliExpress.' },
+    };
+  }
+
   return {
     status: 200,
     body: {
-      productId: result.body.productId,
-      productName: result.body.productName,
-      products: result.body.skuPrices.map((sku) => ({
-        id: sku.skuId,
-        variantName: sku.variantName,
-        price: sku.price,
-        quantityAvailable: sku.stock,
-        imageUrl: sku.image,
-        salable: sku.salable,
+      store: result.body.store,
+      publication: result.body.publication,
+      // These aliases keep the existing, unmodified search UI working during phase 1.
+      productId: result.body.publication.aliexpressProductId,
+      productName: result.body.publication.name,
+      products: result.body.products.map((product) => ({
+        ...product,
+        id: product.aliexpressSkuId,
       })),
     },
   };
