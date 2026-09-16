@@ -16,6 +16,10 @@ type ProductComboboxProps = {
   invalid?: boolean;
 };
 
+function getProductLabel(product: ProductOption): string {
+  return product.shortName ? `${product.shortName} — ${product.name}` : product.name;
+}
+
 export function ProductCombobox({
   options,
   productId,
@@ -29,7 +33,7 @@ export function ProductCombobox({
       items={options}
       value={selectedProduct}
       onValueChange={(product) => onProductIdChange(product?.id)}
-      itemToStringLabel={(product) => product.shortName ?? 'Sin nombre corto'}
+      itemToStringLabel={getProductLabel}
       itemToStringValue={(product) => product.id}
     >
       <ComboboxInput
@@ -41,7 +45,7 @@ export function ProductCombobox({
         <ComboboxList>
           {(option: ProductOption) => (
             <ComboboxItem key={option.id} value={option}>
-              {option.shortName ?? 'Sin nombre corto'}
+              {getProductLabel(option)}
             </ComboboxItem>
           )}
         </ComboboxList>
