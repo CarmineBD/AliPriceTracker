@@ -23,7 +23,7 @@ type SessionDiagnostic = {
 
 type SkuPrice = {
   skuId: string;
-  name: string;
+  variantName: string | null;
   price: string | null;
   stock: number;
   maxBuyCount: number | null;
@@ -177,7 +177,8 @@ function resolveSkuVariantName(skuAttr: string, skuProperties: JsonRecord[]): st
   const names = skuAttr
     .split(';')
     .map((attribute) => attribute.split(':', 2))
-    .map(([propertyId, valueId]) => {
+    .map(([propertyId, rawValueId]) => {
+      const valueId = rawValueId?.split('#', 1)[0];
       if (!propertyId || valueId === undefined) {
         return null;
       }
@@ -203,7 +204,8 @@ function resolveSkuVariantName(skuAttr: string, skuProperties: JsonRecord[]): st
       );
 
       return matchedValue
-        ? (getString(matchedValue.propertyValueDisplayName) ??
+        ? (getString(matchedValue.propertyValueDefinitionName) ??
+            getString(matchedValue.propertyValueDisplayName) ??
             getString(matchedValue.propertyValueName))
         : null;
     })
@@ -239,8 +241,7 @@ function getProductDetails(body: JsonRecord) {
 
       return {
         skuId,
-        name:
-          resolveSkuVariantName(getString(skuPath.skuAttr) ?? '', skuProperties) || `SKU ${skuId}`,
+        variantName: resolveSkuVariantName(getString(skuPath.skuAttr) ?? '', skuProperties) || null,
         price: getString(priceInfo.salePriceString),
         stock: asInteger(skuPath.skuStock) ?? 0,
         maxBuyCount: asInteger(quantityInfo.maxBuyCount),

@@ -31,7 +31,7 @@ export async function lookupAliExpressProduct(
       productName: result.body.productName,
       products: result.body.skuPrices.map((sku) => ({
         id: sku.skuId,
-        name: sku.name,
+        variantName: sku.variantName,
         price: sku.price,
         quantityAvailable: sku.stock,
         imageUrl: sku.image,

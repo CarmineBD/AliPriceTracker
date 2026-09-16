@@ -29,6 +29,7 @@ export function AliExpressProductsTable({ products }: AliExpressProductsTablePro
         <TableRow>
           <TableHead>Imagen</TableHead>
           <TableHead>Nombre</TableHead>
+          <TableHead>ID de variante</TableHead>
           <TableHead className="text-right">Precio</TableHead>
           <TableHead className="text-right">Cantidad disponible</TableHead>
         </TableRow>
@@ -40,24 +41,25 @@ export function AliExpressProductsTable({ products }: AliExpressProductsTablePro
               {product.imageUrl ? (
                 <img
                   src={product.imageUrl}
-                  alt={`Imagen de ${product.name}`}
+                  alt={`Imagen de ${product.variantName}`}
                   className="size-16 shrink-0 rounded-md border object-cover"
                 />
               ) : (
                 <div
                   className="flex size-16 shrink-0 items-center justify-center rounded-md border bg-muted text-muted-foreground"
-                  aria-label={`Sin imagen para ${product.name}`}
+                  aria-label={`Sin imagen para ${product.variantName}`}
                 >
                   <ImageOff />
                 </div>
               )}
             </TableCell>
             <TableCell className="max-w-96 whitespace-normal">
-              <p className="font-medium">{product.name}</p>
+              <p className="font-medium">{product.variantName}</p>
               {!product.salable && (
                 <p className="mt-1 text-xs text-muted-foreground">No disponible</p>
               )}
             </TableCell>
+            <TableCell className="font-mono text-xs">{product.id}</TableCell>
             <TableCell className="text-right">{product.price ?? '—'}</TableCell>
             <TableCell className="text-right">{product.quantityAvailable}</TableCell>
           </TableRow>

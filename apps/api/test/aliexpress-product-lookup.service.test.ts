@@ -13,7 +13,7 @@ describe('lookupAliExpressProduct', () => {
         skuPrices: [
           {
             skuId: 'sku-1',
-            name: 'Negro',
+            variantName: 'DJI Neo2 Combo-Only Drone',
             price: '205,96€',
             stock: 222,
             image: 'https://example.test/drone.jpg',
@@ -31,7 +31,7 @@ describe('lookupAliExpressProduct', () => {
         products: [
           {
             id: 'sku-1',
-            name: 'Negro',
+            variantName: 'DJI Neo2 Combo-Only Drone',
             price: '205,96€',
             quantityAvailable: 222,
             imageUrl: 'https://example.test/drone.jpg',

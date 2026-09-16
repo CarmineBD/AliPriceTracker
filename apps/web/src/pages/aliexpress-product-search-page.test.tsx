@@ -24,7 +24,7 @@ describe('AliExpressProductSearchPage', () => {
       products: [
         {
           id: 'sku-1',
-          name: 'Negro',
+          variantName: 'DJI Neo2 Combo-Only Drone',
           price: '205,96€',
           quantityAvailable: 222,
           imageUrl: 'https://example.test/drone.jpg',
@@ -46,7 +46,8 @@ describe('AliExpressProductSearchPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Buscar' }));
 
     expect(await screen.findByRole('heading', { name: 'Dron de prueba' })).toBeInTheDocument();
-    expect(screen.getByText('Negro')).toBeInTheDocument();
+    expect(screen.getByText('DJI Neo2 Combo-Only Drone')).toBeInTheDocument();
+    expect(screen.getByText('sku-1')).toBeInTheDocument();
     expect(screen.getByText('205,96€')).toBeInTheDocument();
     expect(screen.getByText('222')).toBeInTheDocument();
     expect(mockedGetAliExpressProduct).toHaveBeenCalledWith('1005010519851506');

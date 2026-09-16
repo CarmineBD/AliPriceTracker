@@ -91,7 +91,7 @@ export const aliExpressProductIdSchema = z
 
 export const aliExpressProductVariantSchema = z.object({
   id: z.string(),
-  name: z.string(),
+  variantName: z.string().nullable(),
   price: z.string().nullable(),
   quantityAvailable: z.number().int().nonnegative(),
   imageUrl: z.string().url().nullable(),

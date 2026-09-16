@@ -18,6 +18,69 @@ const productId = '1005010519851506';
 const validMtopBody =
   'mtopjsonp1({"ret":["SUCCESS::ok"],"data":{"result":{"PRODUCT_TITLE":{"text":"Producto de prueba"},"PRICE":{"skuPriceInfoMap":{}},"SKU":{"skuPaths":[]},"QUANTITY_PC":{"allSkuQuantityView":{}},"HEADER_IMAGE_PC":{"skuImagesMap":{}}}}});';
 
+const variantsMtopBody = `mtopjsonp1(${JSON.stringify({
+  ret: ['SUCCESS::ok'],
+  data: {
+    result: {
+      SKU: {
+        skuPaths: [
+          {
+            skuIdStr: 'sku-29',
+            skuAttr: '14:29#DJI Neo2;200007763:201336342',
+            skuStock: 222,
+            salable: true,
+          },
+          {
+            skuIdStr: 'sku-175',
+            skuAttr: '14:175#DJI Neo2 Combo-Only Drone;200007763:201336342',
+            skuStock: 165,
+            salable: true,
+          },
+          {
+            skuIdStr: 'sku-193',
+            skuAttr: '14:193#Fly Combo-YKTZ;200007763:201336342',
+            skuStock: 46,
+            salable: true,
+          },
+        ],
+        skuProperties: [
+          {
+            skuPropertyId: 14,
+            skuPropertyName: 'Color',
+            skuPropertyValues: [
+              {
+                propertyValueIdLong: 29,
+                propertyValueDefinitionName: 'DJI Neo2',
+                propertyValueDisplayName: 'BLANCO',
+              },
+              {
+                propertyValueIdLong: 175,
+                propertyValueDefinitionName: 'DJI Neo2 Combo-Only Drone',
+                propertyValueDisplayName: 'verde',
+              },
+              {
+                propertyValueIdLong: 193,
+                propertyValueDefinitionName: 'Fly Combo-YKTZ',
+                propertyValueDisplayName: 'Negro',
+              },
+            ],
+          },
+          {
+            skuPropertyId: 200007763,
+            skuPropertyName: 'Ships from',
+            skuPropertyValues: [
+              { propertyValueIdLong: 201336342, propertyValueDisplayName: 'Francia' },
+            ],
+          },
+        ],
+      },
+      PRICE: { skuPriceInfoMap: {} },
+      QUANTITY_PC: { allSkuQuantityView: {} },
+      HEADER_IMAGE_PC: { skuImagesMap: {} },
+    },
+  },
+})});`;
+
 function createSessionRunner(cookies: CookieMap) {
   const context: AliExpressSessionContext = {
     cookies,
@@ -115,6 +178,23 @@ describe('GET /api/debug/aliexpress/product/:productId', () => {
       ret: ['SUCCESS::ok'],
       data: { result: { PRODUCT_TITLE: { text: 'Producto de prueba' } } },
     });
+  });
+
+  it('uses the AliExpress variant definition names in parsed SKU names', async () => {
+    const { sessionRunner } = createSessionRunner({ _m_h5_tk: 'token_1893456000000' });
+    const client = vi.fn().mockResolvedValue(response(200, variantsMtopBody));
+
+    const result = await debugAliExpressProduct(
+      { productId, debugApiKey: 'test-debug-api-key' },
+      { sessionRunner, client },
+    );
+
+    expect(result.status).toBe(200);
+    expect(result.body.skuPrices.map(({ variantName }) => variantName)).toEqual([
+      'DJI Neo2',
+      'DJI Neo2 Combo-Only Drone',
+      'Fly Combo-YKTZ',
+    ]);
   });
 
   it('retries once using the token received in Set-Cookie', async () => {
