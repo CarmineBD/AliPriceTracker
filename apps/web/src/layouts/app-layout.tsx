@@ -13,6 +13,9 @@ export function AppLayout({ children }: PropsWithChildren) {
           <Link to="/" className={navigationLinkClass}>
             Productos
           </Link>
+          <Link to="/stores" className={navigationLinkClass}>
+            Tiendas
+          </Link>
           <Link to="/aliexpress" className={navigationLinkClass}>
             Buscar en AliExpress
           </Link>

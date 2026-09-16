@@ -212,3 +212,17 @@ export const aliExpressPublicationImportSchema = z.object({
 });
 
 export type AliExpressPublicationImportInput = z.infer<typeof aliExpressPublicationImportSchema>;
+
+export const storeResponseSchema = z.object({
+  id: z.string().uuid(),
+  aliexpressStoreId: z.string(),
+  name: z.string().nullable(),
+  location: z.string().nullable(),
+  reviewScore: z.number().finite().nullable(),
+  sales180d: z.string().nullable(),
+  publicationsCount: z.number().int().nonnegative(),
+});
+
+export const storesListResponseSchema = z.array(storeResponseSchema);
+
+export type Store = z.infer<typeof storeResponseSchema>;
