@@ -7,6 +7,13 @@ import { publicationProducts, publications, stores } from '../../db/schema/aliex
 import { products } from '../../db/schema/products';
 
 export class ProductsRepository {
+  async findOptions() {
+    return getDatabase()
+      .select({ id: products.id, name: products.name, shortName: products.shortName })
+      .from(products)
+      .orderBy(asc(products.name), asc(products.createdAt));
+  }
+
   async findPage({ page, pageSize }: ProductsListQuery) {
     const offset = (page - 1) * pageSize;
     const database = getDatabase();

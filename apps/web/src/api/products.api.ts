@@ -8,7 +8,9 @@ import {
   type ProductsList,
   type ProductsListQuery,
   type ProductUpdateInput,
+  type ProductOption,
   productsListResponseSchema,
+  productOptionsResponseSchema,
 } from '@alitracker/shared';
 
 import { request } from './client';
@@ -24,6 +26,10 @@ export async function getProducts({ page, pageSize }: ProductsListQuery): Promis
   return productsListResponseSchema.parse(
     await request<unknown>(`/api/products?${search.toString()}`),
   );
+}
+
+export async function getProductOptions(): Promise<ProductOption[]> {
+  return productOptionsResponseSchema.parse(await request<unknown>('/api/products/options'));
 }
 
 export async function getProduct(id: string): Promise<Product> {

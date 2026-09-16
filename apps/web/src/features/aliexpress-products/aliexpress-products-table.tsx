@@ -1,6 +1,7 @@
-import type { AliExpressProductVariant } from '@alitracker/shared';
+import type { AliExpressProductVariant, ProductOption } from '@alitracker/shared';
 import { ImageOff } from 'lucide-react';
 
+import { ProductCombobox } from './product-combobox';
 import {
   Table,
   TableBody,
@@ -12,9 +13,19 @@ import {
 
 type AliExpressProductsTableProps = {
   products: AliExpressProductVariant[];
+  productOptions: ProductOption[];
+  associations: Record<string, string | undefined>;
+  showValidation: boolean;
+  onAssociationChange: (aliexpressSkuId: string, productId: string | undefined) => void;
 };
 
-export function AliExpressProductsTable({ products }: AliExpressProductsTableProps) {
+export function AliExpressProductsTable({
+  products,
+  productOptions,
+  associations,
+  showValidation,
+  onAssociationChange,
+}: AliExpressProductsTableProps) {
   if (products.length === 0) {
     return (
       <p className="py-8 text-center text-sm text-muted-foreground">
@@ -24,47 +35,80 @@ export function AliExpressProductsTable({ products }: AliExpressProductsTablePro
   }
 
   return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead>Imagen</TableHead>
-          <TableHead>Nombre</TableHead>
-          <TableHead>ID de variante</TableHead>
-          <TableHead className="text-right">Precio</TableHead>
-          <TableHead className="text-right">Cantidad disponible</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {products.map((product) => (
-          <TableRow key={product.id} className={!product.salable ? 'opacity-60' : undefined}>
-            <TableCell>
-              {product.imageUrl ? (
-                <img
-                  src={product.imageUrl}
-                  alt={`Imagen de ${product.variantName}`}
-                  className="size-16 shrink-0 rounded-md border object-cover"
-                />
-              ) : (
-                <div
-                  className="flex size-16 shrink-0 items-center justify-center rounded-md border bg-muted text-muted-foreground"
-                  aria-label={`Sin imagen para ${product.variantName}`}
-                >
-                  <ImageOff />
-                </div>
-              )}
-            </TableCell>
-            <TableCell className="max-w-96 whitespace-normal">
-              <p className="font-medium">{product.variantName}</p>
-              {!product.salable && (
-                <p className="mt-1 text-xs text-muted-foreground">No disponible</p>
-              )}
-            </TableCell>
-            <TableCell className="font-mono text-xs">{product.id}</TableCell>
-            <TableCell className="text-right">{product.price ?? '—'}</TableCell>
-            <TableCell className="text-right">{product.quantityAvailable}</TableCell>
+    <div className="overflow-x-auto">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Imagen</TableHead>
+            <TableHead>Variante</TableHead>
+            <TableHead className="text-right">Precio</TableHead>
+            <TableHead className="text-right">Stock</TableHead>
+            <TableHead className="text-right">Máx. compra</TableHead>
+            <TableHead>Estado</TableHead>
+            <TableHead className="min-w-64">Producto asociado</TableHead>
           </TableRow>
-        ))}
-      </TableBody>
-    </Table>
+        </TableHeader>
+        <TableBody>
+          {products.map((product) => {
+            const associatedProductId = associations[product.aliexpressSkuId];
+            const isPending = showValidation && !associatedProductId;
+
+            return (
+              <TableRow key={product.aliexpressSkuId}>
+                <TableCell>
+                  {product.imageUrl ? (
+                    <img
+                      src={product.imageUrl}
+                      alt={`Imagen de ${product.variantName ?? product.aliexpressSkuId}`}
+                      className="size-16 shrink-0 rounded-md border object-cover"
+                    />
+                  ) : (
+                    <div
+                      className="flex size-16 shrink-0 items-center justify-center rounded-md border bg-muted text-muted-foreground"
+                      aria-label={`Sin imagen para ${product.variantName ?? product.aliexpressSkuId}`}
+                    >
+                      <ImageOff />
+                    </div>
+                  )}
+                </TableCell>
+                <TableCell className="max-w-72 whitespace-normal">
+                  <p className="font-medium">{product.variantName ?? product.aliexpressSkuId}</p>
+                  <p className="mt-1 font-mono text-xs text-muted-foreground">
+                    {product.aliexpressSkuId}
+                  </p>
+                </TableCell>
+                <TableCell className="text-right">{product.price ?? '—'}</TableCell>
+                <TableCell className="text-right">{product.quantityAvailable ?? '—'}</TableCell>
+                <TableCell className="text-right">{product.maxPurchase ?? '—'}</TableCell>
+                <TableCell>
+                  <span
+                    className={
+                      product.salable
+                        ? 'text-sm font-medium text-emerald-700'
+                        : 'text-sm text-muted-foreground'
+                    }
+                  >
+                    {product.salable ? 'Disponible' : 'No disponible'}
+                  </span>
+                </TableCell>
+                <TableCell>
+                  <ProductCombobox
+                    options={productOptions}
+                    productId={associatedProductId}
+                    onProductIdChange={(productId) =>
+                      onAssociationChange(product.aliexpressSkuId, productId)
+                    }
+                    invalid={isPending}
+                  />
+                  {isPending && (
+                    <p className="mt-1 text-xs text-destructive">Selecciona un producto.</p>
+                  )}
+                </TableCell>
+              </TableRow>
+            );
+          })}
+        </TableBody>
+      </Table>
+    </div>
   );
 }

@@ -13,6 +13,7 @@ import {
   createProduct,
   deleteProduct,
   getProduct,
+  listProductOptions,
   listProducts,
   uploadProductImage,
   updateProduct,
@@ -22,6 +23,10 @@ const parseId = (value: unknown) => productIdSchema.parse(value);
 
 export const list: RequestHandler = async (request, response) => {
   response.status(200).json(await listProducts(productsListQuerySchema.parse(request.query)));
+};
+
+export const listOptions: RequestHandler = async (_request, response) => {
+  response.status(200).json(await listProductOptions());
 };
 
 export const getById: RequestHandler = async (request, response) => {

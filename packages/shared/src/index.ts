@@ -83,6 +83,16 @@ export type ProductOffer = z.infer<typeof productOfferSchema>;
 export type ProductsListQuery = z.infer<typeof productsListQuerySchema>;
 export type ProductsList = z.infer<typeof productsListResponseSchema>;
 
+export const productOptionSchema = z.object({
+  id: productIdSchema,
+  name: z.string(),
+  shortName: z.string().nullable(),
+});
+
+export const productOptionsResponseSchema = z.array(productOptionSchema);
+
+export type ProductOption = z.infer<typeof productOptionSchema>;
+
 export const aliExpressProductIdSchema = z
   .string()
   .trim()
@@ -90,12 +100,12 @@ export const aliExpressProductIdSchema = z
   .max(100);
 
 export const aliExpressProductVariantSchema = z.object({
-  aliexpressSkuId: z.string().optional(),
+  aliexpressSkuId: z.string(),
   id: z.string(),
   variantName: z.string().nullable(),
   price: z.string().nullable(),
   quantityAvailable: z.number().int().nonnegative().nullable(),
-  maxPurchase: z.number().int().nonnegative().nullable().optional(),
+  maxPurchase: z.number().int().nonnegative().nullable(),
   imageUrl: z.string().url().nullable(),
   salable: z.boolean(),
 });
@@ -118,8 +128,8 @@ export const aliExpressPublicationSchema = z.object({
 });
 
 export const aliExpressProductLookupResponseSchema = z.object({
-  store: aliExpressStoreSchema.optional(),
-  publication: aliExpressPublicationSchema.optional(),
+  store: aliExpressStoreSchema,
+  publication: aliExpressPublicationSchema,
   productId: aliExpressProductIdSchema,
   productName: z.string().nullable(),
   products: z.array(aliExpressProductVariantSchema),

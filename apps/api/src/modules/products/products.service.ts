@@ -65,6 +65,10 @@ export async function listProducts(query: ProductsListQuery) {
   };
 }
 
+export async function listProductOptions() {
+  return productsRepository.findOptions();
+}
+
 export async function getProduct(id: string) {
   const productWithOffers = await productsRepository.findByIdWithOffers(id);
 
