@@ -30,6 +30,16 @@ export const errorHandler: ErrorRequestHandler = (error, _request, response, _ne
   }
 
   if (error instanceof HttpError) {
+    if (error.code) {
+      response.status(error.statusCode).json({
+        success: false,
+        code: error.code,
+        message: error.message,
+        ...error.details,
+      });
+      return;
+    }
+
     response.status(error.statusCode).json({ error: error.message });
     return;
   }

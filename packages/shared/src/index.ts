@@ -90,8 +90,6 @@ export const aliExpressProductIdSchema = z
   .max(100);
 
 export const aliExpressProductVariantSchema = z.object({
-  // Kept optional in the shared client type until the untouched phase-1 UI is migrated.
-  // The API always includes it in its response.
   aliexpressSkuId: z.string().optional(),
   id: z.string(),
   variantName: z.string().nullable(),
@@ -120,7 +118,6 @@ export const aliExpressPublicationSchema = z.object({
 });
 
 export const aliExpressProductLookupResponseSchema = z.object({
-  // Optional only for backwards-compatible consumers during phase 1; the API emits both.
   store: aliExpressStoreSchema.optional(),
   publication: aliExpressPublicationSchema.optional(),
   productId: aliExpressProductIdSchema,
@@ -133,100 +130,49 @@ export type AliExpressProductVariant = z.infer<typeof aliExpressProductVariantSc
 export type AliExpressStore = z.infer<typeof aliExpressStoreSchema>;
 export type AliExpressPublication = z.infer<typeof aliExpressPublicationSchema>;
 
-const optionalNonNegativeNumber = z.preprocess(
-  (value) => (value === '' ? null : value),
-  z.coerce.number().finite().nonnegative().nullable().optional(),
-);
+const aliexpressDatabaseIdSchema = z
+  .string()
+  .trim()
+  .regex(/^\d+$/, 'El identificador de AliExpress debe contener solo números.')
+  .max(19)
+  .refine(
+    (value) => /^\d+$/.test(value) && BigInt(value) <= 9_223_372_036_854_775_807n,
+    'El identificador es demasiado grande.',
+  );
 
-const optionalNonNegativeCount = z.preprocess(
-  (value) => (value === '' ? null : value),
-  z
-    .union([
-      z.number().int().safe().nonnegative().transform(String),
-      z
-        .string()
-        .regex(/^\d+$/, 'Debe ser un entero no negativo.')
-        .refine((value) => Number.isSafeInteger(Number(value)), 'El valor es demasiado grande.')
-        .transform((value) => String(Number(value))),
-    ])
-    .nullable()
-    .optional(),
-);
+const nullableImportText = (maximumLength: number) =>
+  z.string().trim().max(maximumLength).nullable();
 
-export const sellerCreateSchema = z.object({
-  name: optionalText(160),
-  location: optionalText(100),
-  reviewScore: optionalNonNegativeNumber,
-  salesCount: optionalNonNegativeCount,
+export const aliExpressPublicationImportSchema = z.object({
+  store: z.object({
+    aliexpressStoreId: aliexpressDatabaseIdSchema,
+    name: nullableImportText(160),
+    location: nullableImportText(100),
+    reviewScore: z.number().finite().nonnegative().nullable(),
+    sales180d: nullableImportText(32),
+  }),
+  publication: z.object({
+    aliexpressProductId: aliexpressDatabaseIdSchema,
+    name: nullableImportText(500),
+    url: z.string().trim().url('La URL de la publicación debe ser válida.').nullable(),
+    salesCount: nullableImportText(32),
+    reviewScore: z.number().finite().nonnegative().nullable(),
+    reviewCount: z.number().int().nonnegative().nullable(),
+  }),
+  products: z
+    .array(
+      z.object({
+        aliexpressSkuId: z
+          .string()
+          .trim()
+          .regex(/^\d+$/, 'El SKU de AliExpress debe contener solo números.')
+          .max(32),
+        productId: productIdSchema,
+        quantityAvailable: z.number().int().nonnegative().nullable(),
+        maxPurchase: z.number().int().nonnegative().nullable(),
+      }),
+    )
+    .min(1, 'Debe asociarse al menos un SKU a un producto interno.'),
 });
 
-export const sellerUpdateSchema = sellerCreateSchema
-  .partial()
-  .refine((values) => Object.keys(values).length > 0, 'Debe enviarse al menos un campo.');
-
-export const sellerIdSchema = z.string().uuid();
-
-export const sellersListQuerySchema = productsListQuerySchema;
-
-export const sellerResponseSchema = z.object({
-  id: sellerIdSchema,
-  name: z.string().nullable(),
-  location: z.string().nullable(),
-  reviewScore: z.string().nullable(),
-  salesCount: z.number().int().nullable(),
-  createdAt: z.string().datetime({ offset: true }),
-  updatedAt: z.string().datetime({ offset: true }),
-});
-
-export const sellersListResponseSchema = z.object({
-  sellers: z.array(sellerResponseSchema),
-  pagination: productsListResponseSchema.shape.pagination,
-});
-
-export const sellerProductCreateSchema = z.object({
-  sellerId: sellerIdSchema,
-  productId: productIdSchema,
-  quantityAvailable: z.coerce.number().int().nonnegative(),
-  maxPurchase: z.coerce.number().int().positive(),
-  url: z.string().trim().url('Debe ser una URL válida.'),
-  aliexpressItemId: z.string().trim().min(1).max(100),
-});
-
-export const sellerProductUpdateSchema = sellerProductCreateSchema
-  .partial()
-  .refine((values) => Object.keys(values).length > 0, 'Debe enviarse al menos un campo.');
-
-export const sellerProductIdSchema = z.string().uuid();
-
-export const sellerProductsListQuerySchema = productsListQuerySchema.extend({
-  sellerId: sellerIdSchema.optional(),
-  productId: productIdSchema.optional(),
-});
-
-export const sellerProductResponseSchema = z.object({
-  id: sellerProductIdSchema,
-  sellerId: sellerIdSchema,
-  productId: productIdSchema,
-  quantityAvailable: z.number().int(),
-  maxPurchase: z.number().int(),
-  url: z.string().url(),
-  aliexpressItemId: z.string(),
-  createdAt: z.string().datetime({ offset: true }),
-  updatedAt: z.string().datetime({ offset: true }),
-});
-
-export const sellerProductsListResponseSchema = z.object({
-  sellerProducts: z.array(sellerProductResponseSchema),
-  pagination: productsListResponseSchema.shape.pagination,
-});
-
-export type SellerCreateInput = z.infer<typeof sellerCreateSchema>;
-export type SellerUpdateInput = z.infer<typeof sellerUpdateSchema>;
-export type Seller = z.infer<typeof sellerResponseSchema>;
-export type SellersListQuery = z.infer<typeof sellersListQuerySchema>;
-export type SellersList = z.infer<typeof sellersListResponseSchema>;
-export type SellerProductCreateInput = z.infer<typeof sellerProductCreateSchema>;
-export type SellerProductUpdateInput = z.infer<typeof sellerProductUpdateSchema>;
-export type SellerProduct = z.infer<typeof sellerProductResponseSchema>;
-export type SellerProductsListQuery = z.infer<typeof sellerProductsListQuerySchema>;
-export type SellerProductsList = z.infer<typeof sellerProductsListResponseSchema>;
+export type AliExpressPublicationImportInput = z.infer<typeof aliExpressPublicationImportSchema>;

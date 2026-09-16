@@ -3,8 +3,8 @@ import { asc, count, eq, getTableColumns, sql } from 'drizzle-orm';
 import type { ProductCreateInput, ProductsListQuery, ProductUpdateInput } from '@alitracker/shared';
 
 import { getDatabase } from '../../db/client';
+import { publicationProducts, publications, stores } from '../../db/schema/aliexpress-publications';
 import { products } from '../../db/schema/products';
-import { sellerProducts, sellers } from '../../db/schema/sellers';
 
 export class ProductsRepository {
   async findPage({ page, pageSize }: ProductsListQuery) {
@@ -12,8 +12,8 @@ export class ProductsRepository {
     const database = getDatabase();
     const offersCount = sql<number>`(
       SELECT count(*)::int
-      FROM ${sellerProducts}
-      WHERE ${sellerProducts.productId} = ${products.id}
+      FROM ${publicationProducts}
+      WHERE ${publicationProducts.productId} = ${products.id}
     )`.as('offers_count');
     const [items, countResult] = await Promise.all([
       database
@@ -42,19 +42,20 @@ export class ProductsRepository {
 
     const offers = await getDatabase()
       .select({
-        id: sellerProducts.id,
-        sellerName: sellers.name,
-        sellerLocation: sellers.location,
-        sellerReviewScore: sellers.reviewScore,
-        sellerSalesCount: sellers.salesCount,
-        quantityAvailable: sellerProducts.quantityAvailable,
-        maxPurchase: sellerProducts.maxPurchase,
-        url: sellerProducts.url,
+        id: publicationProducts.id,
+        sellerName: stores.name,
+        sellerLocation: stores.location,
+        sellerReviewScore: stores.reviewScore,
+        sellerSalesCount: sql<number | null>`null`,
+        quantityAvailable: publicationProducts.quantityAvailable,
+        maxPurchase: publicationProducts.maxPurchase,
+        url: publications.url,
       })
-      .from(sellerProducts)
-      .innerJoin(sellers, eq(sellerProducts.sellerId, sellers.id))
-      .where(eq(sellerProducts.productId, id))
-      .orderBy(asc(sellers.name), asc(sellerProducts.createdAt));
+      .from(publicationProducts)
+      .innerJoin(publications, eq(publicationProducts.publicationId, publications.id))
+      .innerJoin(stores, eq(publications.storeId, stores.id))
+      .where(eq(publicationProducts.productId, id))
+      .orderBy(asc(stores.name), asc(publicationProducts.createdAt));
 
     return { product, offers };
   }

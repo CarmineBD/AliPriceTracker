@@ -7,11 +7,11 @@ import type {
 
 import { deleteFile, getPublicUrl, uploadFile } from '../../services/storage.service';
 import { HttpError } from '../../utils/http-error';
-import { SellerProductsRepository } from '../sellers/sellers.repository';
+import { AliExpressPublicationImportRepository } from '../aliexpress-publication-import/aliexpress-publication-import.repository';
 import { ProductsRepository } from './products.repository';
 
 const productsRepository = new ProductsRepository();
-const sellerProductsRepository = new SellerProductsRepository();
+const publicationImportRepository = new AliExpressPublicationImportRepository();
 
 const imageExtensions: Record<ProductImageContentType, string> = {
   'image/jpeg': 'jpg',
@@ -141,8 +141,8 @@ export async function uploadProductImage(
 }
 
 export async function deleteProduct(id: string) {
-  if ((await sellerProductsRepository.countByProductId(id)) > 0) {
-    throw new HttpError('Cannot delete a product with existing seller offers.', 409);
+  if ((await publicationImportRepository.countByProductId(id)) > 0) {
+    throw new HttpError('Cannot delete a product with imported AliExpress publications.', 409);
   }
 
   const product = await productsRepository.delete(id);
