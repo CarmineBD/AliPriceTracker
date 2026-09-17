@@ -68,14 +68,32 @@ export class ProductsRepository {
   }
 
   async create(input: ProductCreateInput) {
-    const [product] = await getDatabase().insert(products).values(input).returning();
+    const [product] = await getDatabase()
+      .insert(products)
+      .values({
+        ...input,
+        averageSellingPrice:
+          input.averageSellingPrice == null
+            ? input.averageSellingPrice
+            : input.averageSellingPrice.toFixed(2),
+      })
+      .returning();
     return product;
   }
 
   async update(id: string, input: ProductUpdateInput) {
     const [product] = await getDatabase()
       .update(products)
-      .set({ ...input, updatedAt: new Date() })
+      .set({
+        ...input,
+        averageSellingPrice:
+          input.averageSellingPrice === undefined
+            ? undefined
+            : input.averageSellingPrice === null
+              ? null
+              : input.averageSellingPrice.toFixed(2),
+        updatedAt: new Date(),
+      })
       .where(eq(products.id, id))
       .returning();
     return product;

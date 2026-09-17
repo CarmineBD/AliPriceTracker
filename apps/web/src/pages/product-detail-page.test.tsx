@@ -27,6 +27,7 @@ const product = {
     },
   ],
   description: 'Descripción de prueba.',
+  averageSellingPrice: 12.5,
   createdAt: '2026-09-14T10:00:00.000Z',
   updatedAt: '2026-09-14T11:00:00.000Z',
 };

@@ -7,10 +7,26 @@ const optionalDescription = z.preprocess(
 
 const requiredShortName = z.string().trim().min(1, 'El nombre corto es obligatorio.').max(80);
 
+const optionalMoneyAmount = z.preprocess(
+  (value) => (value === '' ? null : value),
+  z
+    .number()
+    .finite()
+    .nonnegative()
+    .max(9_999_999_999.99)
+    .refine(
+      (value) => Math.abs(value * 100 - Math.round(value * 100)) < 0.000_001,
+      'El precio puede tener como máximo dos decimales.',
+    )
+    .nullable()
+    .optional(),
+);
+
 export const productCreateSchema = z.object({
   name: z.string().trim().min(1, 'El nombre es obligatorio.').max(160),
   shortName: requiredShortName,
   description: optionalDescription,
+  averageSellingPrice: optionalMoneyAmount,
 });
 
 export const productUpdateSchema = productCreateSchema
@@ -62,6 +78,7 @@ export const productResponseSchema = z.object({
   imageKey: z.string().nullable(),
   imageUrl: z.string().url().nullable(),
   description: z.string().nullable(),
+  averageSellingPrice: z.number().finite().nonnegative().nullable(),
   offersCount: z.number().int().nonnegative(),
   offers: z.array(productOfferSchema),
   createdAt: z.string().datetime({ offset: true }),

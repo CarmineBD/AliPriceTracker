@@ -44,12 +44,14 @@ type ProductFormValues = {
   name: string;
   shortName: string;
   description: string;
+  averageSellingPrice: string;
 };
 
 const emptyValues: ProductFormValues = {
   name: '',
   shortName: '',
   description: '',
+  averageSellingPrice: '',
 };
 
 function toFormValues(product?: Product): ProductFormValues {
@@ -61,6 +63,7 @@ function toFormValues(product?: Product): ProductFormValues {
     name: product.name,
     shortName: product.shortName ?? '',
     description: product.description ?? '',
+    averageSellingPrice: product.averageSellingPrice?.toString() ?? '',
   };
 }
 
@@ -89,6 +92,7 @@ export function ProductFormDialog({
   const [values, setValues] = useState<ProductFormValues>(() => toFormValues(product));
   const [nameError, setNameError] = useState<string>();
   const [shortNameError, setShortNameError] = useState<string>();
+  const [averageSellingPriceError, setAverageSellingPriceError] = useState<string>();
   const [imageError, setImageError] = useState<string>();
   const [imageFile, setImageFile] = useState<File>();
   const [imagePreviewUrl, setImagePreviewUrl] = useState<string>();
@@ -99,6 +103,7 @@ export function ProductFormDialog({
       setValues(toFormValues(product));
       setNameError(undefined);
       setShortNameError(undefined);
+      setAverageSellingPriceError(undefined);
       setImageError(undefined);
       setImageFile(undefined);
     }
@@ -154,11 +159,27 @@ export function ProductFormDialog({
       return;
     }
 
+    const averageSellingPrice = values.averageSellingPrice.trim();
+    const parsedAverageSellingPrice =
+      averageSellingPrice === '' ? null : Number(averageSellingPrice);
+    if (
+      parsedAverageSellingPrice !== null &&
+      (!Number.isFinite(parsedAverageSellingPrice) ||
+        parsedAverageSellingPrice < 0 ||
+        parsedAverageSellingPrice > 9_999_999_999.99 ||
+        !/^\d+(\.\d{1,2})?$/.test(averageSellingPrice))
+    ) {
+      setAverageSellingPriceError('Introduce un importe válido con como máximo dos decimales.');
+      return;
+    }
+    setAverageSellingPriceError(undefined);
+
     onSubmit({
       input: {
         name,
         shortName,
         description: values.description,
+        averageSellingPrice: parsedAverageSellingPrice,
       },
       imageFile,
     });
@@ -340,6 +361,33 @@ export function ProductFormDialog({
                     {displayedImageUrl ? 'Cambiar imagen' : 'Seleccionar imagen'}
                   </Button>
                   <FieldError id="product-image-error">{imageError}</FieldError>
+                </FieldContent>
+              </Field>
+              <Field data-invalid={Boolean(averageSellingPriceError)}>
+                <FieldLabel htmlFor="product-average-selling-price">
+                  Precio medio de venta (€)
+                </FieldLabel>
+                <FieldContent>
+                  <Input
+                    id="product-average-selling-price"
+                    type="number"
+                    min="0"
+                    max="9999999999.99"
+                    step="0.01"
+                    inputMode="decimal"
+                    value={values.averageSellingPrice}
+                    onChange={(event) => {
+                      setValue('averageSellingPrice', event.target.value);
+                      if (averageSellingPriceError) setAverageSellingPriceError(undefined);
+                    }}
+                    aria-invalid={Boolean(averageSellingPriceError)}
+                    aria-describedby={
+                      averageSellingPriceError ? 'product-average-selling-price-error' : undefined
+                    }
+                  />
+                  <FieldError id="product-average-selling-price-error">
+                    {averageSellingPriceError}
+                  </FieldError>
                 </FieldContent>
               </Field>
               <Field>

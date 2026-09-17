@@ -21,6 +21,7 @@ const product: Product = {
   imageKey: 'products/8d8c883c-7e36-4af0-a8b3-152b20c41f3c/example.png',
   imageUrl: 'https://media.example.test/products/8d8c883c-7e36-4af0-a8b3-152b20c41f3c/example.png',
   description: null,
+  averageSellingPrice: null,
   offersCount: 3,
   offers: [],
   createdAt: '2026-09-14T10:00:00.000Z',

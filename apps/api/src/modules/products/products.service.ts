@@ -42,6 +42,8 @@ function toProductResponse(
     imageKey: product.imageKey,
     imageUrl: product.imageKey ? getPublicUrl(product.imageKey) : null,
     description: product.description,
+    averageSellingPrice:
+      product.averageSellingPrice === null ? null : Number(product.averageSellingPrice),
     offersCount,
     offers,
     createdAt: product.createdAt,
