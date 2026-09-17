@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -31,12 +31,26 @@ const product = {
   updatedAt: '2026-09-14T11:00:00.000Z',
 };
 
-const { getProductMock } = vi.hoisted(() => ({ getProductMock: vi.fn() }));
+const { getProductMock, getProductOptionsMock } = vi.hoisted(() => ({
+  getProductMock: vi.fn(),
+  getProductOptionsMock: vi.fn(),
+}));
 const { getBestOfferHistoryMock } = vi.hoisted(() => ({ getBestOfferHistoryMock: vi.fn() }));
+const { deletePublicationProductMock, reassignPublicationProductMock } = vi.hoisted(() => ({
+  deletePublicationProductMock: vi.fn(),
+  reassignPublicationProductMock: vi.fn(),
+}));
 
-vi.mock('@/api/products.api', () => ({ getProduct: getProductMock }));
+vi.mock('@/api/products.api', () => ({
+  getProduct: getProductMock,
+  getProductOptions: getProductOptionsMock,
+}));
 vi.mock('@/api/product-best-offer-history.api', () => ({
   getProductBestOfferHistory: getBestOfferHistoryMock,
+}));
+vi.mock('@/api/publication-products.api', () => ({
+  deletePublicationProduct: deletePublicationProductMock,
+  reassignPublicationProduct: reassignPublicationProductMock,
 }));
 
 describe('ProductDetailPage', () => {
@@ -102,5 +116,69 @@ describe('ProductDetailPage', () => {
     expect(screen.getByText(product.description)).toBeInTheDocument();
     expect(screen.getByText('Fecha de actualización')).toBeInTheDocument();
     expect(screen.getByText('Fecha de creación')).toBeInTheDocument();
+  });
+  it('confirms and deletes an offer from the table', async () => {
+    getProductMock.mockResolvedValue(product);
+    getBestOfferHistoryMock.mockResolvedValue({
+      product: { id: product.id, name: product.name },
+      current: null,
+      baseline: null,
+      history: [],
+    });
+    deletePublicationProductMock.mockResolvedValue(undefined);
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter initialEntries={[`/products/${product.id}`]}>
+          <Routes>
+            <Route path="/products/:id" element={<ProductDetailPage />} />
+          </Routes>
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Eliminar oferta Tienda de prueba' }),
+    );
+    expect(screen.getByRole('heading', { name: '¿Eliminar oferta?' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Eliminar' }));
+    await waitFor(() =>
+      expect(deletePublicationProductMock).toHaveBeenCalledWith(product.offers[0]!.id),
+    );
+  });
+
+  it('opens the edit modal and reassigns the offer', async () => {
+    getProductMock.mockResolvedValue(product);
+    getBestOfferHistoryMock.mockResolvedValue({
+      product: { id: product.id, name: product.name },
+      current: null,
+      baseline: null,
+      history: [],
+    });
+    getProductOptionsMock.mockResolvedValue([
+      { id: product.id, name: product.name, shortName: product.shortName },
+      { id: '7d8c883c-7e36-4af0-a8b3-152b20c41f3c', name: 'Otro producto', shortName: 'Otro' },
+    ]);
+    reassignPublicationProductMock.mockResolvedValue(undefined);
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter initialEntries={[`/products/${product.id}`]}>
+          <Routes>
+            <Route path="/products/:id" element={<ProductDetailPage />} />
+          </Routes>
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+    fireEvent.click(
+      (await screen.findAllByRole('button', { name: 'Editar oferta Tienda de prueba' }))[0]!,
+    );
+    expect(screen.getByRole('heading', { name: 'Editar producto asociado' })).toBeInTheDocument();
+    expect(await screen.findByRole('combobox', { name: 'Producto asociado' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Guardar cambios' }));
+    await waitFor(() =>
+      expect(reassignPublicationProductMock).toHaveBeenCalledWith(product.offers[0]!.id, {
+        productId: product.id,
+      }),
+    );
   });
 });

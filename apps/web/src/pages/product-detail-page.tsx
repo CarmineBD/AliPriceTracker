@@ -1,8 +1,16 @@
-import { useQuery } from '@tanstack/react-query';
-import { ArrowLeft, ImageOff } from 'lucide-react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { ArrowLeft, ImageOff, Pencil, Trash2 } from 'lucide-react';
+import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 
-import { getProduct } from '@/api/products.api';
+import type { ProductOffer } from '@alitracker/shared';
+
+import {
+  deletePublicationProduct,
+  reassignPublicationProduct,
+} from '@/api/publication-products.api';
+import { getProduct, getProductOptions } from '@/api/products.api';
+import { Button } from '@/components/ui/button';
 import {
   Table,
   TableBody,
@@ -13,6 +21,8 @@ import {
 } from '@/components/ui/table';
 import { AppLayout } from '@/layouts/app-layout';
 import { ProductBestOfferHistoryDialog } from '@/features/product-best-offer-history/product-best-offer-history-dialog';
+import { DeletePublicationProductDialog } from '@/features/publication-products/delete-publication-product-dialog';
+import { EditPublicationProductDialog } from '@/features/publication-products/edit-publication-product-dialog';
 
 const dateFormatter = new Intl.DateTimeFormat('es-ES', {
   dateStyle: 'long',
@@ -42,10 +52,42 @@ function formatOfferPrice(price: string | null, currency: string | null): string
 
 export function ProductDetailPage() {
   const { id } = useParams();
+  const queryClient = useQueryClient();
+  const [selectedOffer, setSelectedOffer] = useState<ProductOffer | null>(null);
+  const [activeAction, setActiveAction] = useState<'edit' | 'delete' | null>(null);
+  const [editingProductId, setEditingProductId] = useState<string | undefined>(id);
   const productQuery = useQuery({
     queryKey: ['product', id],
     queryFn: () => getProduct(id ?? ''),
     enabled: Boolean(id),
+  });
+  const productOptionsQuery = useQuery({
+    queryKey: ['product-options'],
+    queryFn: getProductOptions,
+    enabled: activeAction === 'edit' && selectedOffer !== null,
+  });
+  const refreshProduct = async () => {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ['product', id] }),
+      queryClient.invalidateQueries({ queryKey: ['product-best-offer-history', id] }),
+    ]);
+  };
+  const deleteMutation = useMutation({
+    mutationFn: () => deletePublicationProduct(selectedOffer?.id ?? ''),
+    onSuccess: async () => {
+      setSelectedOffer(null);
+      setActiveAction(null);
+      await refreshProduct();
+    },
+  });
+  const editMutation = useMutation({
+    mutationFn: () =>
+      reassignPublicationProduct(selectedOffer?.id ?? '', { productId: editingProductId ?? '' }),
+    onSuccess: async () => {
+      setSelectedOffer(null);
+      setActiveAction(null);
+      await refreshProduct();
+    },
   });
 
   return (
@@ -123,6 +165,7 @@ export function ProductDetailPage() {
                       <TableHead>Cantidad disponible</TableHead>
                       <TableHead>Máximo por compra</TableHead>
                       <TableHead>URL</TableHead>
+                      <TableHead className="text-right">Acciones</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -146,6 +189,35 @@ export function ProductDetailPage() {
                           >
                             Ver oferta
                           </a>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex justify-end gap-1">
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon-sm"
+                              aria-label={`Editar oferta ${offer.sellerName ?? offer.id}`}
+                              onClick={() => {
+                                setEditingProductId(productQuery.data.id);
+                                setSelectedOffer(offer);
+                                setActiveAction('edit');
+                              }}
+                            >
+                              <Pencil />
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon-sm"
+                              aria-label={`Eliminar oferta ${offer.sellerName ?? offer.id}`}
+                              onClick={() => {
+                                setSelectedOffer(offer);
+                                setActiveAction('delete');
+                              }}
+                            >
+                              <Trash2 className="text-destructive" />
+                            </Button>
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))}
@@ -185,6 +257,37 @@ export function ProductDetailPage() {
           </dl>
         </article>
       )}
+      <DeletePublicationProductDialog
+        open={activeAction === 'delete' && selectedOffer !== null}
+        offerLabel={selectedOffer?.sellerName ?? selectedOffer?.id ?? ''}
+        isDeleting={deleteMutation.isPending}
+        error={deleteMutation.error instanceof Error ? deleteMutation.error.message : undefined}
+        onOpenChange={(open) => {
+          if (!open) {
+            setSelectedOffer(null);
+            setActiveAction(null);
+          }
+        }}
+        onConfirm={() => deleteMutation.mutate()}
+      />
+      <EditPublicationProductDialog
+        open={activeAction === 'edit' && selectedOffer !== null}
+        productName={productQuery.data?.name ?? ''}
+        currentProductId={editingProductId ?? id ?? ''}
+        options={productOptionsQuery.data ?? []}
+        optionsLoading={productOptionsQuery.isPending}
+        isSaving={editMutation.isPending}
+        error={editMutation.error instanceof Error ? editMutation.error.message : undefined}
+        onOpenChange={(open) => {
+          if (!open) {
+            setSelectedOffer(null);
+            setActiveAction(null);
+            setEditingProductId(undefined);
+          }
+        }}
+        onProductIdChange={setEditingProductId}
+        onConfirm={() => editMutation.mutate()}
+      />
     </AppLayout>
   );
 }

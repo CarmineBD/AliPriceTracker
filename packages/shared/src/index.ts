@@ -95,6 +95,12 @@ export const productOptionsResponseSchema = z.array(productOptionSchema);
 
 export type ProductOption = z.infer<typeof productOptionSchema>;
 
+export const publicationProductReassignSchema = z.object({
+  productId: productIdSchema,
+});
+
+export type PublicationProductReassignInput = z.infer<typeof publicationProductReassignSchema>;
+
 export const aliExpressProductIdSchema = z
   .string()
   .trim()
