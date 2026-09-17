@@ -12,6 +12,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { AppLayout } from '@/layouts/app-layout';
+import { ProductBestOfferHistoryDialog } from '@/features/product-best-offer-history/product-best-offer-history-dialog';
 
 const dateFormatter = new Intl.DateTimeFormat('es-ES', {
   dateStyle: 'long',
@@ -34,7 +35,9 @@ function formatOfferPrice(price: string | null, currency: string | null): string
     decimal ? `,${decimal.padEnd(2, '0')}` : ''
   }`;
 
-  return currency === 'EUR' ? `${formattedAmount} €` : `${formattedAmount}${currency ? ` ${currency}` : ''}`;
+  return currency === 'EUR'
+    ? `${formattedAmount} €`
+    : `${formattedAmount}${currency ? ` ${currency}` : ''}`;
 }
 
 export function ProductDetailPage() {
@@ -150,6 +153,21 @@ export function ProductDetailPage() {
                 </Table>
               </div>
             )}
+          </section>
+
+          <section className="mt-10 border-t pt-6" aria-labelledby="product-best-offer-title">
+            <h2 id="product-best-offer-title" className="text-lg font-medium">
+              Mejor oferta
+            </h2>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Consulta la evolución de la oferta disponible más barata entre todas las tiendas.
+            </p>
+            <div className="mt-4">
+              <ProductBestOfferHistoryDialog
+                productId={productQuery.data.id}
+                productName={productQuery.data.name}
+              />
+            </div>
           </section>
 
           <dl className="mt-8 grid gap-6 border-t pt-6 text-sm sm:grid-cols-2">

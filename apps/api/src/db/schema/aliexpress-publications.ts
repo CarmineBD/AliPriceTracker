@@ -1,6 +1,7 @@
 import { relations } from 'drizzle-orm';
 import {
   bigint,
+  boolean,
   index,
   integer,
   numeric,
@@ -94,6 +95,31 @@ export const publicationProductHistory = pgTable(
   ],
 );
 
+export const productBestOfferHistory = pgTable(
+  'product_best_offer_history',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    productId: uuid('product_id')
+      .notNull()
+      .references(() => products.id, { onDelete: 'cascade' }),
+    publicationProductId: uuid('publication_product_id').references(() => publicationProducts.id, {
+      onDelete: 'set null',
+    }),
+    price: numeric('price', { precision: 12, scale: 2 }),
+    currency: varchar('currency', { length: 3 }),
+    quantityAvailable: integer('quantity_available'),
+    publicationUrl: text('publication_url'),
+    isAvailable: boolean('is_available').notNull(),
+    capturedAt: timestamp('captured_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    index('product_best_offer_history_product_captured_at_index').on(
+      table.productId,
+      table.capturedAt,
+    ),
+  ],
+);
+
 export const storesRelations = relations(stores, ({ many }) => ({
   publications: many(publications),
 }));
@@ -116,6 +142,7 @@ export const publicationProductsRelations = relations(publicationProducts, ({ on
     references: [products.id],
   }),
   history: many(publicationProductHistory),
+  bestOfferHistory: many(productBestOfferHistory),
 }));
 
 export const publicationProductHistoryRelations = relations(
@@ -127,3 +154,14 @@ export const publicationProductHistoryRelations = relations(
     }),
   }),
 );
+
+export const productBestOfferHistoryRelations = relations(productBestOfferHistory, ({ one }) => ({
+  product: one(products, {
+    fields: [productBestOfferHistory.productId],
+    references: [products.id],
+  }),
+  publicationProduct: one(publicationProducts, {
+    fields: [productBestOfferHistory.publicationProductId],
+    references: [publicationProducts.id],
+  }),
+}));

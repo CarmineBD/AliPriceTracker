@@ -25,6 +25,7 @@ export type AliExpressTrackerResult = {
     processed: number;
     failed: number;
   };
+  refreshedPublicationProductIds?: string[];
   products: {
     tracked: number;
     initialSnapshots: number;
@@ -71,6 +72,7 @@ function createEmptyResult(publications: number): AliExpressTrackerResult {
   return {
     publications: { total: publications, processed: 0, failed: 0 },
     products: { tracked: 0, initialSnapshots: 0, changed: 0, unchanged: 0, missing: 0 },
+    refreshedPublicationProductIds: [],
     aborted: false,
   };
 }
@@ -179,6 +181,8 @@ async function trackPublication({
       );
       continue;
     }
+
+    result.refreshedPublicationProductIds!.push(product.id);
 
     const state = {
       price: normalizePrice(upstreamProduct.priceAmount),

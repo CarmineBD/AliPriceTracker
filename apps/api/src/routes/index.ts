@@ -6,6 +6,7 @@ import { aliExpressPublicationImportRouter } from '../modules/aliexpress-publica
 import { aliExpressProductLookupRouter } from '../modules/aliexpress-product-lookup/aliexpress-product-lookup.routes';
 import { publicationProductHistoryRouter } from '../modules/publication-product-history/publication-product-history.routes';
 import { productsRouter } from '../modules/products/products.routes';
+import { productBestOfferRouter } from '../modules/product-best-offer/product-best-offer.routes';
 import { storesRouter } from '../modules/stores/stores.routes';
 
 export const apiRouter = Router();
@@ -15,5 +16,6 @@ apiRouter.use('/debug/aliexpress', aliexpressDebugRouter);
 apiRouter.use('/aliexpress/products', aliExpressProductLookupRouter);
 apiRouter.use('/aliexpress/publications', aliExpressPublicationImportRouter);
 apiRouter.use('/publication-products', publicationProductHistoryRouter);
+apiRouter.use('/products', productBestOfferRouter);
 apiRouter.use('/products', productsRouter);
 apiRouter.use('/stores', storesRouter);

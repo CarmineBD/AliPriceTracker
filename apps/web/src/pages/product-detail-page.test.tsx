@@ -32,8 +32,12 @@ const product = {
 };
 
 const { getProductMock } = vi.hoisted(() => ({ getProductMock: vi.fn() }));
+const { getBestOfferHistoryMock } = vi.hoisted(() => ({ getBestOfferHistoryMock: vi.fn() }));
 
 vi.mock('@/api/products.api', () => ({ getProduct: getProductMock }));
+vi.mock('@/api/product-best-offer-history.api', () => ({
+  getProductBestOfferHistory: getBestOfferHistoryMock,
+}));
 
 describe('ProductDetailPage', () => {
   it('shows the product data and a cropped 128 px image', async () => {
@@ -56,6 +60,10 @@ describe('ProductDetailPage', () => {
     expect(image).toHaveAttribute('src', product.imageUrl);
     expect(image).toHaveClass('size-32', 'object-cover');
     expect(screen.getByRole('heading', { name: product.name })).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Ver histórico de mejor precio' }),
+    ).toBeInTheDocument();
+    expect(getBestOfferHistoryMock).not.toHaveBeenCalled();
     expect(screen.getByRole('heading', { name: 'Ofertas disponibles (1)' })).toBeInTheDocument();
     expect(screen.getByText('Tienda de prueba')).toBeInTheDocument();
     expect(screen.getByText('591,70 €')).toBeInTheDocument();

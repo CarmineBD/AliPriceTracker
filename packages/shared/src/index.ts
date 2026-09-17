@@ -292,3 +292,24 @@ export type PublicationProductHistoryEntry = z.infer<typeof publicationProductHi
 export type PublicationProductHistoryResponse = z.infer<
   typeof publicationProductHistoryResponseSchema
 >;
+
+export const productBestOfferHistoryEntrySchema = z.object({
+  id: z.string().uuid(),
+  isAvailable: z.boolean(),
+  publicationProductId: z.string().uuid().nullable(),
+  price: publicationProductHistoryPriceSchema,
+  currency: z.string().length(3).nullable(),
+  quantityAvailable: z.number().int().nonnegative().nullable(),
+  publicationUrl: z.string().url().nullable(),
+  capturedAt: z.string().datetime({ offset: true }),
+});
+
+export const productBestOfferHistoryResponseSchema = z.object({
+  product: z.object({ id: productIdSchema, name: z.string() }),
+  current: productBestOfferHistoryEntrySchema.nullable(),
+  baseline: productBestOfferHistoryEntrySchema.nullable(),
+  history: z.array(productBestOfferHistoryEntrySchema),
+});
+
+export type ProductBestOfferHistoryEntry = z.infer<typeof productBestOfferHistoryEntrySchema>;
+export type ProductBestOfferHistoryResponse = z.infer<typeof productBestOfferHistoryResponseSchema>;

@@ -1,6 +1,7 @@
 export {
   publicationProductHistory,
   publicationProducts,
+  productBestOfferHistory,
   publications,
   stores,
 } from './aliexpress-publications';
