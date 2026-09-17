@@ -160,14 +160,13 @@ export function ProductDetailPage() {
               Mejor oferta
             </h2>
             <p className="mt-2 text-sm text-muted-foreground">
-              Consulta la evolución de la oferta disponible más barata entre todas las tiendas.
+              Evolución de la oferta disponible más barata entre todas las tiendas.
             </p>
-            <div className="mt-4">
-              <ProductBestOfferHistoryDialog
-                productId={productQuery.data.id}
-                productName={productQuery.data.name}
-              />
-            </div>
+            <ProductBestOfferHistoryDialog
+              productId={productQuery.data.id}
+              productName={productQuery.data.name}
+              embedded
+            />
           </section>
 
           <dl className="mt-8 grid gap-6 border-t pt-6 text-sm sm:grid-cols-2">

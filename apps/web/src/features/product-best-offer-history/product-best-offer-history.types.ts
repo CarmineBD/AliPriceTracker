@@ -10,6 +10,7 @@ export type BestOfferHistoryChartPoint = {
   price: number | null;
   currency: string | null;
   quantityAvailable: number | null;
+  publicationUrl: string | null;
   isAvailable: boolean;
 };
 export type BestOfferHistoryChartInput = Pick<

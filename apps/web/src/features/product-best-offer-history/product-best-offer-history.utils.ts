@@ -9,6 +9,7 @@ function toPoint(entry: {
   price: string | null;
   currency: string | null;
   quantityAvailable: number | null;
+  publicationUrl: string | null;
   isAvailable: boolean;
 }): BestOfferHistoryChartPoint | null {
   const timestamp = new Date(entry.capturedAt).getTime();
@@ -20,6 +21,7 @@ function toPoint(entry: {
     price: Number.isFinite(price) ? price : null,
     currency: entry.currency,
     quantityAvailable: entry.quantityAvailable,
+    publicationUrl: entry.publicationUrl,
     isAvailable: entry.isAvailable,
   };
 }

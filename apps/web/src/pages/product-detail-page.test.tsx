@@ -42,6 +42,33 @@ vi.mock('@/api/product-best-offer-history.api', () => ({
 describe('ProductDetailPage', () => {
   it('shows the product data and a cropped 128 px image', async () => {
     getProductMock.mockResolvedValue(product);
+    const productOffer = product.offers[0]!;
+    getBestOfferHistoryMock.mockResolvedValue({
+      product: { id: product.id, name: product.name },
+      current: {
+        id: '1f77ec40-2d60-4a7e-a0cf-d93a4728b1de',
+        isAvailable: true,
+        publicationProductId: productOffer.id,
+        price: '591.70',
+        currency: 'EUR',
+        quantityAvailable: 10,
+        publicationUrl: productOffer.url,
+        capturedAt: '2026-09-14T11:00:00.000Z',
+      },
+      baseline: null,
+      history: [
+        {
+          id: '1f77ec40-2d60-4a7e-a0cf-d93a4728b1de',
+          isAvailable: true,
+          publicationProductId: productOffer.id,
+          price: '591.70',
+          currency: 'EUR',
+          quantityAvailable: 10,
+          publicationUrl: productOffer.url,
+          capturedAt: '2026-09-14T11:00:00.000Z',
+        },
+      ],
+    });
     const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
 
     render(
@@ -61,12 +88,12 @@ describe('ProductDetailPage', () => {
     expect(image).toHaveClass('size-32', 'object-cover');
     expect(screen.getByRole('heading', { name: product.name })).toBeInTheDocument();
     expect(
-      screen.getByRole('button', { name: 'Ver histórico de mejor precio' }),
+      await screen.findByLabelText('Gráfica de histórico de mejor oferta'),
     ).toBeInTheDocument();
-    expect(getBestOfferHistoryMock).not.toHaveBeenCalled();
+    expect(getBestOfferHistoryMock).toHaveBeenCalledWith(product.id, expect.any(Object));
     expect(screen.getByRole('heading', { name: 'Ofertas disponibles (1)' })).toBeInTheDocument();
     expect(screen.getByText('Tienda de prueba')).toBeInTheDocument();
-    expect(screen.getByText('591,70 €')).toBeInTheDocument();
+    expect(screen.getAllByText(/591,70/)).not.toHaveLength(0);
     expect(screen.getByRole('link', { name: 'Ver oferta' })).toHaveAttribute(
       'href',
       'https://www.aliexpress.com/item/123.html',

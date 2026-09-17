@@ -29,9 +29,11 @@ const ranges: Array<{ value: BestOfferHistoryRange; label: string }> = [
 export function ProductBestOfferHistoryDialog({
   productId,
   productName,
+  embedded = false,
 }: {
   productId: string;
   productName: string;
+  embedded?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [range, setRange] = useState<BestOfferHistoryRange>('7d');
@@ -39,7 +41,7 @@ export function ProductBestOfferHistoryDialog({
   const historyQuery = useQuery({
     queryKey: ['product-best-offer-history', productId, range, from],
     queryFn: () => getProductBestOfferHistory(productId, { from }),
-    enabled: open,
+    enabled: open || embedded,
     placeholderData: keepPreviousData,
     staleTime: 5 * 60 * 1000,
   });
@@ -53,6 +55,84 @@ export function ProductBestOfferHistoryDialog({
     : [];
   const current = response?.current;
 
+  const historyContent = (
+    <>
+      <div className="flex flex-wrap gap-2" aria-label="Rango del histórico">
+        {ranges.map((option) => (
+          <Button
+            key={option.value}
+            type="button"
+            size="sm"
+            variant={range === option.value ? 'default' : 'outline'}
+            aria-pressed={range === option.value}
+            onClick={() => {
+              setRange(option.value);
+              setFrom(getBestOfferRangeFrom(option.value));
+            }}
+          >
+            {option.label}
+          </Button>
+        ))}
+      </div>
+      {historyQuery.isPending && (
+        <p className="py-16 text-center text-muted-foreground" role="status">
+          Cargando histórico…
+        </p>
+      )}
+      {historyQuery.isError && (
+        <p className="py-16 text-center text-destructive" role="alert">
+          No se pudo cargar el histórico de mejor oferta.
+        </p>
+      )}
+      {response && !historyQuery.isError && chartData.length === 0 && (
+        <p className="py-16 text-center text-muted-foreground">
+          Aún no hay datos históricos disponibles.
+        </p>
+      )}
+      {response && !historyQuery.isError && chartData.length > 0 && (
+        <ProductBestOfferHistoryChart
+          data={chartData}
+          range={range}
+          currency={current?.currency ?? null}
+        />
+      )}
+      {response && !historyQuery.isError && (
+        <section className="border-t pt-4" aria-label="Mejor oferta actual">
+          {current?.isAvailable ? (
+            <div className="flex flex-wrap items-center gap-3 text-sm">
+              <span>
+                <span className="text-muted-foreground">Precio actual mínimo: </span>
+                <strong>{formatBestOfferPrice(Number(current.price), current.currency)}</strong>
+              </span>
+              <span>
+                <span className="text-muted-foreground">Stock: </span>
+                <strong>{current.quantityAvailable}</strong>
+              </span>
+              {current.publicationUrl && (
+                <a
+                  className={buttonVariants({ size: 'sm' })}
+                  href={current.publicationUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Comprar en AliExpress
+                </a>
+              )}
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              Actualmente no hay ninguna oferta disponible.
+            </p>
+          )}
+        </section>
+      )}
+    </>
+  );
+
+  if (embedded) {
+    return <div className="mt-4">{historyContent}</div>;
+  }
+
   return (
     <>
       <Button type="button" variant="outline" size="sm" onClick={() => setOpen(true)}>
@@ -64,75 +144,7 @@ export function ProductBestOfferHistoryDialog({
             <DialogTitle>Histórico de mejor oferta</DialogTitle>
             <DialogDescription>{productName}</DialogDescription>
           </DialogHeader>
-          <div className="flex flex-wrap gap-2" aria-label="Rango del histórico">
-            {ranges.map((option) => (
-              <Button
-                key={option.value}
-                type="button"
-                size="sm"
-                variant={range === option.value ? 'default' : 'outline'}
-                aria-pressed={range === option.value}
-                onClick={() => {
-                  setRange(option.value);
-                  setFrom(getBestOfferRangeFrom(option.value));
-                }}
-              >
-                {option.label}
-              </Button>
-            ))}
-          </div>
-          {historyQuery.isPending && (
-            <p className="py-16 text-center text-muted-foreground" role="status">
-              Cargando histórico…
-            </p>
-          )}
-          {historyQuery.isError && (
-            <p className="py-16 text-center text-destructive" role="alert">
-              No se pudo cargar el histórico de mejor oferta.
-            </p>
-          )}
-          {response && !historyQuery.isError && chartData.length === 0 && (
-            <p className="py-16 text-center text-muted-foreground">
-              Aún no hay datos históricos disponibles.
-            </p>
-          )}
-          {response && !historyQuery.isError && chartData.length > 0 && (
-            <ProductBestOfferHistoryChart
-              data={chartData}
-              range={range}
-              currency={current?.currency ?? null}
-            />
-          )}
-          {response && !historyQuery.isError && (
-            <section className="border-t pt-4" aria-label="Mejor oferta actual">
-              {current?.isAvailable ? (
-                <div className="flex flex-wrap items-center gap-3 text-sm">
-                  <span>
-                    <span className="text-muted-foreground">Precio actual mínimo: </span>
-                    <strong>{formatBestOfferPrice(Number(current.price), current.currency)}</strong>
-                  </span>
-                  <span>
-                    <span className="text-muted-foreground">Stock: </span>
-                    <strong>{current.quantityAvailable}</strong>
-                  </span>
-                  {current.publicationUrl && (
-                    <a
-                      className={buttonVariants({ size: 'sm' })}
-                      href={current.publicationUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      Comprar en AliExpress
-                    </a>
-                  )}
-                </div>
-              ) : (
-                <p className="text-sm text-muted-foreground">
-                  Actualmente no hay ninguna oferta disponible.
-                </p>
-              )}
-            </section>
-          )}
+          {historyContent}
         </DialogContent>
       </Dialog>
     </>
