@@ -1,16 +1,22 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
 
 import { getStore } from '@/api/stores.api';
+import { getPublicationProductHistory } from '@/api/publication-product-history.api';
 import { StoreDetailPage } from '@/pages/store-detail-page';
 
 vi.mock('@/api/stores.api', () => ({
   getStore: vi.fn(),
 }));
 
+vi.mock('@/api/publication-product-history.api', () => ({
+  getPublicationProductHistory: vi.fn(),
+}));
+
 const mockedGetStore = vi.mocked(getStore);
+const mockedGetPublicationProductHistory = vi.mocked(getPublicationProductHistory);
 
 const store = {
   id: '9f98dbb8-99f6-4058-96f0-9577322cffdb',
@@ -68,9 +74,47 @@ describe('StoreDetailPage', () => {
     expect(screen.getByRole('heading', { name: 'Productos disponibles (1)' })).toBeInTheDocument();
     expect(screen.getByText('12000058446755029')).toBeInTheDocument();
     expect(screen.getByText('591.70 EUR')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Ver histórico' })).toBeInTheDocument();
+    expect(mockedGetPublicationProductHistory).not.toHaveBeenCalled();
     expect(screen.getByRole('link', { name: 'Ver en AliExpress' })).toHaveAttribute(
       'href',
       'https://www.aliexpress.com/item/1005012470064491.html',
     );
+  });
+
+  it('loads only the selected publication product history when its button is pressed', async () => {
+    mockedGetStore.mockResolvedValue(store);
+    mockedGetPublicationProductHistory.mockResolvedValue({
+      publicationProduct: {
+        id: store.publications[0]!.products[0]!.id,
+        publicationId: store.publications[0]!.id,
+        productId: store.publications[0]!.products[0]!.productId,
+        aliexpressSkuId: store.publications[0]!.products[0]!.aliexpressSkuId,
+        current: { price: '591.70', currency: 'EUR', quantityAvailable: 17 },
+        lastCheckedAt: '2026-09-17T09:00:00.000Z',
+      },
+      baseline: null,
+      history: [],
+    });
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter initialEntries={[`/stores/${store.id}`]}>
+          <Routes>
+            <Route path="/stores/:id" element={<StoreDetailPage />} />
+          </Routes>
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Ver histórico' }));
+
+    await waitFor(() => {
+      expect(mockedGetPublicationProductHistory).toHaveBeenCalledWith(
+        store.publications[0]!.products[0]!.id,
+        expect.objectContaining({ from: expect.any(String) }),
+      );
+    });
   });
 });

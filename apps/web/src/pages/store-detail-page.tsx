@@ -3,6 +3,7 @@ import { ArrowLeft } from 'lucide-react';
 import { Link, useParams } from 'react-router-dom';
 
 import { getStore } from '@/api/stores.api';
+import { PublicationProductHistoryDialog } from '@/features/publication-product-history/publication-product-history-dialog';
 import {
   Table,
   TableBody,
@@ -35,7 +36,10 @@ export function StoreDetailPage() {
 
   return (
     <AppLayout>
-      <Link to="/stores" className="inline-flex items-center gap-1 text-sm font-medium hover:underline">
+      <Link
+        to="/stores"
+        className="inline-flex items-center gap-1 text-sm font-medium hover:underline"
+      >
         <ArrowLeft className="size-4" />
         Volver a tiendas
       </Link>
@@ -82,9 +86,7 @@ export function StoreDetailPage() {
               </div>
               <div>
                 <dt className="font-medium text-foreground">Publicaciones</dt>
-                <dd className="mt-1 text-muted-foreground">
-                  {storeQuery.data.publicationsCount}
-                </dd>
+                <dd className="mt-1 text-muted-foreground">{storeQuery.data.publicationsCount}</dd>
               </div>
             </dl>
           </header>
@@ -142,8 +144,14 @@ export function StoreDetailPage() {
                       </div>
                     </dl>
 
-                    <section className="mt-6" aria-labelledby={`publication-products-${publication.id}`}>
-                      <h4 id={`publication-products-${publication.id}`} className="text-base font-medium">
+                    <section
+                      className="mt-6"
+                      aria-labelledby={`publication-products-${publication.id}`}
+                    >
+                      <h4
+                        id={`publication-products-${publication.id}`}
+                        className="text-base font-medium"
+                      >
                         Productos disponibles ({publication.products.length})
                       </h4>
                       {publication.products.length === 0 ? (
@@ -160,6 +168,7 @@ export function StoreDetailPage() {
                                 <TableHead className="text-right">Precio</TableHead>
                                 <TableHead>Disponible</TableHead>
                                 <TableHead>Máximo por compra</TableHead>
+                                <TableHead>Histórico</TableHead>
                               </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -179,6 +188,13 @@ export function StoreDetailPage() {
                                   </TableCell>
                                   <TableCell>{displayValue(product.quantityAvailable)}</TableCell>
                                   <TableCell>{displayValue(product.maxPurchase)}</TableCell>
+                                  <TableCell>
+                                    <PublicationProductHistoryDialog
+                                      publicationProductId={product.id}
+                                      productName={product.productShortName}
+                                      aliexpressSkuId={product.aliexpressSkuId}
+                                    />
+                                  </TableCell>
                                 </TableRow>
                               ))}
                             </TableBody>

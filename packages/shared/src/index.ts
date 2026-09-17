@@ -257,3 +257,38 @@ export const storeDetailResponseSchema = storeResponseSchema.extend({
 });
 
 export type StoreDetail = z.infer<typeof storeDetailResponseSchema>;
+
+const publicationProductHistoryPriceSchema = z
+  .string()
+  .regex(/^\d+(\.\d{1,2})?$/)
+  .nullable();
+
+export const publicationProductHistoryEntrySchema = z.object({
+  id: z.string().uuid(),
+  price: publicationProductHistoryPriceSchema,
+  currency: z.string().length(3).nullable(),
+  quantityAvailable: z.number().int().nonnegative().nullable(),
+  capturedAt: z.string().datetime({ offset: true }),
+});
+
+export const publicationProductHistoryResponseSchema = z.object({
+  publicationProduct: z.object({
+    id: z.string().uuid(),
+    publicationId: z.string().uuid(),
+    productId: productIdSchema,
+    aliexpressSkuId: z.string(),
+    current: z.object({
+      price: publicationProductHistoryPriceSchema,
+      currency: z.string().length(3).nullable(),
+      quantityAvailable: z.number().int().nonnegative().nullable(),
+    }),
+    lastCheckedAt: z.string().datetime({ offset: true }).nullable(),
+  }),
+  baseline: publicationProductHistoryEntrySchema.nullable(),
+  history: z.array(publicationProductHistoryEntrySchema),
+});
+
+export type PublicationProductHistoryEntry = z.infer<typeof publicationProductHistoryEntrySchema>;
+export type PublicationProductHistoryResponse = z.infer<
+  typeof publicationProductHistoryResponseSchema
+>;
