@@ -1,0 +1,78 @@
+import type { CouponResponse } from '@alitracker/shared';
+import { Pencil, Trash2 } from 'lucide-react';
+
+import { Button } from '@/components/ui/button';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+
+type CouponTableProps = {
+  coupons: CouponResponse[];
+  onEdit: (coupon: CouponResponse) => void;
+  onDelete: (coupon: CouponResponse) => void;
+};
+
+const currencyFormatter = new Intl.NumberFormat('es-ES', {
+  style: 'currency',
+  currency: 'EUR',
+  minimumFractionDigits: 2,
+});
+
+export function formatCouponAmount(amount: number): string {
+  return currencyFormatter.format(amount);
+}
+
+export function CouponTable({ coupons, onEdit, onDelete }: CouponTableProps) {
+  if (coupons.length === 0) {
+    return <p className="py-8 text-center text-sm text-muted-foreground">Aún no hay cupones.</p>;
+  }
+
+  return (
+    <Table>
+      <TableHeader>
+        <TableRow>
+          <TableHead className="text-right">Mínimo de compra</TableHead>
+          <TableHead className="text-right">Descuento</TableHead>
+          <TableHead className="text-right">Acciones</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {coupons.map((coupon) => (
+          <TableRow key={coupon.id}>
+            <TableCell className="text-right">{formatCouponAmount(coupon.minPurchase)}</TableCell>
+            <TableCell className="text-right">
+              {formatCouponAmount(coupon.discountAmount)}
+            </TableCell>
+            <TableCell>
+              <div className="flex justify-end gap-1">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-sm"
+                  aria-label={`Editar cupón de ${formatCouponAmount(coupon.discountAmount)}`}
+                  onClick={() => onEdit(coupon)}
+                >
+                  <Pencil />
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-sm"
+                  aria-label={`Eliminar cupón de ${formatCouponAmount(coupon.discountAmount)}`}
+                  onClick={() => onDelete(coupon)}
+                >
+                  <Trash2 className="text-destructive" />
+                </Button>
+              </div>
+            </TableCell>
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
+  );
+}

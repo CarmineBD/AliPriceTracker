@@ -373,3 +373,110 @@ export const productBestOfferHistoryResponseSchema = z.object({
 
 export type ProductBestOfferHistoryEntry = z.infer<typeof productBestOfferHistoryEntrySchema>;
 export type ProductBestOfferHistoryResponse = z.infer<typeof productBestOfferHistoryResponseSchema>;
+
+export const couponSchema = z.object({
+  id: z.string().uuid(),
+  minPurchase: z.number().finite().nonnegative(),
+  discountAmount: z.number().finite().nonnegative(),
+});
+
+const couponAmountSchema = z
+  .number()
+  .finite()
+  .nonnegative()
+  .max(9_999_999_999.99)
+  .refine(
+    (value) => Math.abs(value * 100 - Math.round(value * 100)) < 0.000_001,
+    'El importe puede tener como máximo dos decimales.',
+  );
+
+export const couponCreateSchema = z
+  .object({
+    minPurchase: couponAmountSchema,
+    discountAmount: couponAmountSchema,
+  })
+  .strict();
+
+export const couponUpdateSchema = couponCreateSchema
+  .partial()
+  .refine((values) => Object.keys(values).length > 0, 'Debe enviarse al menos un campo.');
+
+export const couponsListQuerySchema = z
+  .object({
+    page: z.coerce.number().int().positive().default(1),
+    pageSize: z.coerce.number().int().positive().max(100).default(20),
+  })
+  .strict();
+
+export const couponResponseSchema = couponSchema.extend({
+  createdAt: z.string().datetime({ offset: true }),
+  updatedAt: z.string().datetime({ offset: true }),
+});
+
+export const couponsListResponseSchema = z.object({
+  coupons: z.array(couponResponseSchema),
+  pagination: z.object({
+    page: z.number().int().positive(),
+    pageSize: z.number().int().positive(),
+    total: z.number().int().nonnegative(),
+    totalPages: z.number().int().nonnegative(),
+  }),
+});
+
+export const activeEventSchema = z.object({
+  id: z.string().uuid(),
+  name: z.string(),
+  startsAt: z.string().datetime({ offset: true }),
+  endsAt: z.string().datetime({ offset: true }),
+  coupons: z.array(couponSchema),
+});
+
+export const activeEventsResponseSchema = z.array(activeEventSchema);
+
+export const eventSaveSchema = z
+  .object({
+    name: z.string().trim().min(1, 'El nombre es obligatorio.').max(160),
+    startsAt: z.string().datetime({ offset: true }),
+    endsAt: z.string().datetime({ offset: true }),
+    couponIds: z.array(couponSchema.shape.id).max(100),
+  })
+  .strict()
+  .superRefine((value, context) => {
+    if (new Date(value.endsAt) <= new Date(value.startsAt)) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['endsAt'],
+        message: 'La fecha de fin debe ser posterior a la fecha de inicio.',
+      });
+    }
+    if (new Set(value.couponIds).size !== value.couponIds.length) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['couponIds'],
+        message: 'Un cupón solo puede asociarse una vez al evento.',
+      });
+    }
+  });
+
+export const eventsListQuerySchema = couponsListQuerySchema;
+
+export const eventsListResponseSchema = z.object({
+  events: z.array(activeEventSchema),
+  pagination: z.object({
+    page: z.number().int().positive(),
+    pageSize: z.number().int().positive(),
+    total: z.number().int().nonnegative(),
+    totalPages: z.number().int().nonnegative(),
+  }),
+});
+
+export type Coupon = z.infer<typeof couponSchema>;
+export type ActiveEvent = z.infer<typeof activeEventSchema>;
+export type CouponCreateInput = z.infer<typeof couponCreateSchema>;
+export type CouponUpdateInput = z.infer<typeof couponUpdateSchema>;
+export type CouponResponse = z.infer<typeof couponResponseSchema>;
+export type CouponsListQuery = z.infer<typeof couponsListQuerySchema>;
+export type CouponsList = z.infer<typeof couponsListResponseSchema>;
+export type EventSaveInput = z.infer<typeof eventSaveSchema>;
+export type EventsListQuery = z.infer<typeof eventsListQuerySchema>;
+export type EventsList = z.infer<typeof eventsListResponseSchema>;
