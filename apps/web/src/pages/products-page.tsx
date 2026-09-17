@@ -7,7 +7,10 @@ import { Plus } from 'lucide-react';
 import {
   createProduct,
   deleteProduct,
+  getProductComponents,
+  getProductOptions,
   getProducts,
+  replaceProductComponents,
   updateProduct,
   uploadProductImage,
 } from '@/api/products.api';
@@ -64,26 +67,41 @@ export function ProductsPage() {
     queryKey: ['products', { page, pageSize }],
     queryFn: () => getProducts({ page, pageSize }),
   });
+  const productOptionsQuery = useQuery({
+    queryKey: ['product-options'],
+    queryFn: getProductOptions,
+    enabled: formProduct !== undefined,
+  });
+  const productComponentsQuery = useQuery({
+    queryKey: ['product-components', formProduct?.id],
+    queryFn: () => getProductComponents(formProduct?.id ?? ''),
+    enabled: Boolean(formProduct),
+  });
 
   const refreshProducts = async () => {
     await queryClient.invalidateQueries({ queryKey: ['products'] });
   };
 
   const saveMutation = useMutation({
-    mutationFn: async ({ input, imageFile }: ProductFormSubmission) => {
-      const product = formProduct
-        ? await updateProduct(formProduct.id, input)
-        : await createProduct(input);
+    mutationFn: async ({ input, imageFile, components }: ProductFormSubmission) => {
+      const product = formProduct ?? (await createProduct(input));
+
+      await replaceProductComponents(product.id, components);
+
+      const savedProduct = formProduct ? await updateProduct(product.id, input) : product;
 
       if (imageFile) {
-        return uploadProductImage(product.id, imageFile);
+        await uploadProductImage(savedProduct.id, imageFile);
       }
 
-      return product;
+      return savedProduct;
     },
     onSuccess: async () => {
       setFormProduct(undefined);
-      await refreshProducts();
+      await Promise.all([
+        refreshProducts(),
+        queryClient.invalidateQueries({ queryKey: ['product-components'] }),
+      ]);
     },
   });
 
@@ -225,6 +243,10 @@ export function ProductsPage() {
         open={isFormOpen}
         product={formProduct ?? undefined}
         isSaving={saveMutation.isPending}
+        components={productComponentsQuery.data}
+        componentsLoading={Boolean(formProduct) && productComponentsQuery.isPending}
+        productOptions={productOptionsQuery.data}
+        productOptionsLoading={productOptionsQuery.isPending}
         error={formError}
         onOpenChange={(open) => {
           if (!open && !saveMutation.isPending) {

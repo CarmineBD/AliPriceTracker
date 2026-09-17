@@ -28,13 +28,25 @@ const product = {
   ],
   description: 'Descripción de prueba.',
   averageSellingPrice: 12.5,
+  effectiveSellingPrice: 12.5,
   createdAt: '2026-09-14T10:00:00.000Z',
   updatedAt: '2026-09-14T11:00:00.000Z',
 };
 
-const { getProductMock, getProductOptionsMock } = vi.hoisted(() => ({
+const {
+  getProductMock,
+  getProductComponentsMock,
+  getProductOptionsMock,
+  replaceProductComponentsMock,
+  updateProductMock,
+  uploadProductImageMock,
+} = vi.hoisted(() => ({
   getProductMock: vi.fn(),
-  getProductOptionsMock: vi.fn(),
+  getProductComponentsMock: vi.fn().mockResolvedValue([]),
+  getProductOptionsMock: vi.fn().mockResolvedValue([]),
+  replaceProductComponentsMock: vi.fn(),
+  updateProductMock: vi.fn(),
+  uploadProductImageMock: vi.fn(),
 }));
 const { getBestOfferHistoryMock } = vi.hoisted(() => ({ getBestOfferHistoryMock: vi.fn() }));
 const { deletePublicationProductMock, reassignPublicationProductMock } = vi.hoisted(() => ({
@@ -44,7 +56,11 @@ const { deletePublicationProductMock, reassignPublicationProductMock } = vi.hois
 
 vi.mock('@/api/products.api', () => ({
   getProduct: getProductMock,
+  getProductComponents: getProductComponentsMock,
   getProductOptions: getProductOptionsMock,
+  replaceProductComponents: replaceProductComponentsMock,
+  updateProduct: updateProductMock,
+  uploadProductImage: uploadProductImageMock,
 }));
 vi.mock('@/api/product-best-offer-history.api', () => ({
   getProductBestOfferHistory: getBestOfferHistoryMock,
@@ -117,6 +133,8 @@ describe('ProductDetailPage', () => {
     expect(screen.getByText(product.description)).toBeInTheDocument();
     expect(screen.getByText('Fecha de actualización')).toBeInTheDocument();
     expect(screen.getByText('Fecha de creación')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Productos que contiene (0)' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Editar producto' })).toBeInTheDocument();
   });
   it('confirms and deletes an offer from the table', async () => {
     getProductMock.mockResolvedValue(product);

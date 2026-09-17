@@ -2,6 +2,8 @@ import type { RequestHandler } from 'express';
 
 import {
   productCreateSchema,
+  productComboCreateSchema,
+  productComboUpdateSchema,
   productIdSchema,
   productImageContentTypeSchema,
   productUpdateSchema,
@@ -18,6 +20,12 @@ import {
   uploadProductImage,
   updateProduct,
 } from './products.service';
+import {
+  addProductComponent,
+  listProductComponents,
+  removeProductComponent,
+  updateProductComponent,
+} from './product-combos.service';
 
 const parseId = (value: unknown) => productIdSchema.parse(value);
 
@@ -40,6 +48,36 @@ export const create: RequestHandler = async (request, response) => {
 export const update: RequestHandler = async (request, response) => {
   const id = parseId(request.params.id);
   response.status(200).json(await updateProduct(id, productUpdateSchema.parse(request.body)));
+};
+
+export const listComponents: RequestHandler = async (request, response) => {
+  response.status(200).json(await listProductComponents(parseId(request.params.id)));
+};
+
+export const addComponent: RequestHandler = async (request, response) => {
+  response
+    .status(201)
+    .json(await addProductComponent(parseId(request.params.id), productComboCreateSchema.parse(request.body)));
+};
+
+export const updateComponent: RequestHandler = async (request, response) => {
+  response
+    .status(200)
+    .json(
+      await updateProductComponent(
+        parseId(request.params.id),
+        parseId(request.params.containsProductId),
+        productComboUpdateSchema.parse(request.body),
+      ),
+    );
+};
+
+export const removeComponent: RequestHandler = async (request, response) => {
+  await removeProductComponent(
+    parseId(request.params.id),
+    parseId(request.params.containsProductId),
+  );
+  response.status(204).send();
 };
 
 export const uploadImage: RequestHandler = async (request, response) => {

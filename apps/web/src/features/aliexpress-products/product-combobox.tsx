@@ -14,6 +14,9 @@ type ProductComboboxProps = {
   productId?: string;
   onProductIdChange: (productId: string | undefined) => void;
   invalid?: boolean;
+  disabled?: boolean;
+  ariaLabel?: string;
+  placeholder?: string;
 };
 
 function getProductLabel(product: ProductOption): string {
@@ -25,6 +28,9 @@ export function ProductCombobox({
   productId,
   onProductIdChange,
   invalid = false,
+  disabled = false,
+  ariaLabel = 'Producto asociado',
+  placeholder = 'Seleccionar producto...',
 }: ProductComboboxProps) {
   const selectedProduct = options.find((option) => option.id === productId) ?? null;
 
@@ -37,9 +43,10 @@ export function ProductCombobox({
       itemToStringValue={(product) => product.id}
     >
       <ComboboxInput
-        placeholder="Seleccionar producto..."
-        aria-label="Producto asociado"
+        placeholder={placeholder}
+        aria-label={ariaLabel}
         aria-invalid={invalid || undefined}
+        disabled={disabled}
       />
       <ComboboxContent>
         <ComboboxList>

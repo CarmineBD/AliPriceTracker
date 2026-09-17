@@ -79,6 +79,7 @@ export const productResponseSchema = z.object({
   imageUrl: z.string().url().nullable(),
   description: z.string().nullable(),
   averageSellingPrice: z.number().finite().nonnegative().nullable(),
+  effectiveSellingPrice: z.number().finite().nonnegative().nullable(),
   offersCount: z.number().int().nonnegative(),
   offers: z.array(productOfferSchema),
   createdAt: z.string().datetime({ offset: true }),
@@ -102,10 +103,46 @@ export type ProductOffer = z.infer<typeof productOfferSchema>;
 export type ProductsListQuery = z.infer<typeof productsListQuerySchema>;
 export type ProductsList = z.infer<typeof productsListResponseSchema>;
 
+export const productComboCreateSchema = z
+  .object({
+    containsProductId: productIdSchema,
+    quantity: z.number().int().positive().max(1_000_000).default(1),
+  })
+  .strict();
+
+export const productComboUpdateSchema = z
+  .object({
+    quantity: z.number().int().positive().max(1_000_000),
+  })
+  .strict();
+
+export const productComboResponseSchema = z.object({
+  productId: productIdSchema,
+  containsProductId: productIdSchema,
+  quantity: z.number().int().positive(),
+  product: z.object({
+    id: productIdSchema,
+    name: z.string(),
+    shortName: z.string(),
+    imageKey: z.string().nullable(),
+    imageUrl: z.string().url().nullable(),
+    averageSellingPrice: z.number().finite().nonnegative().nullable(),
+    effectiveSellingPrice: z.number().finite().nonnegative().nullable(),
+  }),
+});
+
+export const productComboListResponseSchema = z.array(productComboResponseSchema);
+
+export type ProductComboCreateInput = z.infer<typeof productComboCreateSchema>;
+export type ProductComboUpdateInput = z.infer<typeof productComboUpdateSchema>;
+export type ProductCombo = z.infer<typeof productComboResponseSchema>;
+
 export const productOptionSchema = z.object({
   id: productIdSchema,
   name: z.string(),
   shortName: z.string(),
+  imageKey: z.string().nullable().optional(),
+  imageUrl: z.string().url().nullable().optional(),
 });
 
 export const productOptionsResponseSchema = z.array(productOptionSchema);

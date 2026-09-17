@@ -1,9 +1,16 @@
 import {
   productCreateSchema,
+  productComboCreateSchema,
+  productComboListResponseSchema,
+  productComboResponseSchema,
+  productComboUpdateSchema,
   productImageContentTypeSchema,
   productResponseSchema,
   productUpdateSchema,
   type Product,
+  type ProductCombo,
+  type ProductComboCreateInput,
+  type ProductComboUpdateInput,
   type ProductCreateInput,
   type ProductsList,
   type ProductsListQuery,
@@ -34,6 +41,86 @@ export async function getProductOptions(): Promise<ProductOption[]> {
 
 export async function getProduct(id: string): Promise<Product> {
   return productResponseSchema.parse(await request<unknown>(`/api/products/${id}`));
+}
+
+export async function getProductComponents(id: string): Promise<ProductCombo[]> {
+  return productComboListResponseSchema.parse(
+    await request<unknown>(`/api/products/${id}/components`),
+  );
+}
+
+export async function addProductComponent(
+  productId: string,
+  input: ProductComboCreateInput,
+): Promise<ProductCombo> {
+  const body = productComboCreateSchema.parse(input);
+  return productComboResponseSchema.parse(
+    await request<unknown>(`/api/products/${productId}/components`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    }),
+  );
+}
+
+export async function updateProductComponent(
+  productId: string,
+  containsProductId: string,
+  input: ProductComboUpdateInput,
+): Promise<ProductCombo> {
+  const body = productComboUpdateSchema.parse(input);
+  return productComboResponseSchema.parse(
+    await request<unknown>(`/api/products/${productId}/components/${containsProductId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    }),
+  );
+}
+
+export async function deleteProductComponent(
+  productId: string,
+  containsProductId: string,
+): Promise<void> {
+  await request<void>(`/api/products/${productId}/components/${containsProductId}`, {
+    method: 'DELETE',
+  });
+}
+
+export async function replaceProductComponents(
+  productId: string,
+  desiredComponents: ProductCombo[],
+): Promise<void> {
+  const existingComponents = await getProductComponents(productId);
+  const desiredById = new Map(
+    desiredComponents.map((component) => [component.containsProductId, component]),
+  );
+
+  await Promise.all(
+    existingComponents
+      .filter((component) => !desiredById.has(component.containsProductId))
+      .map((component) => deleteProductComponent(productId, component.containsProductId)),
+  );
+
+  await Promise.all(
+    desiredComponents.map(async (component) => {
+      const existing = existingComponents.find(
+        (current) => current.containsProductId === component.containsProductId,
+      );
+      if (!existing) {
+        await addProductComponent(productId, {
+          containsProductId: component.containsProductId,
+          quantity: component.quantity,
+        });
+        return;
+      }
+      if (existing.quantity !== component.quantity) {
+        await updateProductComponent(productId, component.containsProductId, {
+          quantity: component.quantity,
+        });
+      }
+    }),
+  );
 }
 
 export async function createProduct(input: ProductCreateInput): Promise<Product> {

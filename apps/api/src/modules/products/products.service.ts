@@ -8,6 +8,7 @@ import type {
 import { deleteFile, getPublicUrl, uploadFile } from '../../services/storage.service';
 import { HttpError } from '../../utils/http-error';
 import { AliExpressPublicationImportRepository } from '../aliexpress-publication-import/aliexpress-publication-import.repository';
+import { assertProductPriceCanBeUpdated } from './product-combos.service';
 import { ProductsRepository } from './products.repository';
 
 const productsRepository = new ProductsRepository();
@@ -44,6 +45,8 @@ function toProductResponse(
     description: product.description,
     averageSellingPrice:
       product.averageSellingPrice === null ? null : Number(product.averageSellingPrice),
+    effectiveSellingPrice:
+      product.effectiveSellingPrice === null ? null : Number(product.effectiveSellingPrice),
     offersCount,
     offers,
     createdAt: product.createdAt,
@@ -68,7 +71,11 @@ export async function listProducts(query: ProductsListQuery) {
 }
 
 export async function listProductOptions() {
-  return productsRepository.findOptions();
+  const products = await productsRepository.findOptions();
+  return products.map((product) => ({
+    ...product,
+    imageUrl: product.imageKey ? getPublicUrl(product.imageKey) : null,
+  }));
 }
 
 export async function getProduct(id: string) {
@@ -95,6 +102,10 @@ export async function createProduct(input: ProductCreateInput) {
 }
 
 export async function updateProduct(id: string, input: ProductUpdateInput) {
+  if (input.averageSellingPrice !== undefined && input.averageSellingPrice !== null) {
+    await assertProductPriceCanBeUpdated(id);
+  }
+
   const product = await productsRepository.update(id, input);
 
   if (!product) {

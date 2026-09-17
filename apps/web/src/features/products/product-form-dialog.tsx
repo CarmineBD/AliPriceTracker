@@ -4,7 +4,9 @@ import {
   productImageContentTypeSchema,
   productImageMaxBytes,
   type Product,
+  type ProductCombo,
   type ProductCreateInput,
+  type ProductOption,
 } from '@alitracker/shared';
 import { ImagePlus, Upload, X } from 'lucide-react';
 
@@ -39,6 +41,7 @@ import {
 } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { ProductComponentsEditor } from './product-components-editor';
 
 type ProductFormValues = {
   name: string;
@@ -53,6 +56,8 @@ const emptyValues: ProductFormValues = {
   description: '',
   averageSellingPrice: '',
 };
+
+const emptyComponents: ProductCombo[] = [];
 
 function toFormValues(product?: Product): ProductFormValues {
   if (!product) {
@@ -70,12 +75,17 @@ function toFormValues(product?: Product): ProductFormValues {
 export type ProductFormSubmission = {
   input: ProductCreateInput;
   imageFile?: File;
+  components: ProductCombo[];
 };
 
 type ProductFormDialogProps = {
   open: boolean;
   product?: Product;
   isSaving: boolean;
+  components?: ProductCombo[];
+  productOptions?: ProductOption[];
+  productOptionsLoading?: boolean;
+  componentsLoading?: boolean;
   error?: string;
   onOpenChange: (open: boolean) => void;
   onSubmit: (submission: ProductFormSubmission) => void;
@@ -85,6 +95,10 @@ export function ProductFormDialog({
   open,
   product,
   isSaving,
+  components = emptyComponents,
+  productOptions = [],
+  productOptionsLoading = false,
+  componentsLoading = false,
   error,
   onOpenChange,
   onSubmit,
@@ -96,6 +110,7 @@ export function ProductFormDialog({
   const [imageError, setImageError] = useState<string>();
   const [imageFile, setImageFile] = useState<File>();
   const [imagePreviewUrl, setImagePreviewUrl] = useState<string>();
+  const [containedProducts, setContainedProducts] = useState<ProductCombo[]>(components);
   const imageInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -106,8 +121,9 @@ export function ProductFormDialog({
       setAverageSellingPriceError(undefined);
       setImageError(undefined);
       setImageFile(undefined);
+      setContainedProducts(components);
     }
-  }, [open, product]);
+  }, [components, open, product]);
 
   useEffect(() => {
     if (!imageFile) {
@@ -179,9 +195,10 @@ export function ProductFormDialog({
         name,
         shortName,
         description: values.description,
-        averageSellingPrice: parsedAverageSellingPrice,
+        averageSellingPrice: containedProducts.length > 0 ? null : parsedAverageSellingPrice,
       },
       imageFile,
+      components: containedProducts,
     });
   };
 
@@ -211,7 +228,7 @@ export function ProductFormDialog({
             </DialogDescription>
           </DialogHeader>
 
-          <FieldSet disabled={isSaving} className="mt-6">
+          <FieldSet disabled={isSaving || componentsLoading} className="mt-6">
             <FieldLegend className="sr-only">Datos del producto</FieldLegend>
             <FieldGroup className="gap-4">
               {product && (
@@ -376,6 +393,7 @@ export function ProductFormDialog({
                     step="0.01"
                     inputMode="decimal"
                     value={values.averageSellingPrice}
+                    disabled={containedProducts.length > 0}
                     onChange={(event) => {
                       setValue('averageSellingPrice', event.target.value);
                       if (averageSellingPriceError) setAverageSellingPriceError(undefined);
@@ -388,8 +406,21 @@ export function ProductFormDialog({
                   <FieldError id="product-average-selling-price-error">
                     {averageSellingPriceError}
                   </FieldError>
+                  {containedProducts.length > 0 && (
+                    <FieldDescription>
+                      El precio de un combo se calcula automáticamente a partir de sus componentes.
+                    </FieldDescription>
+                  )}
                 </FieldContent>
               </Field>
+              <ProductComponentsEditor
+                productId={product?.id}
+                components={containedProducts}
+                options={productOptions}
+                optionsLoading={productOptionsLoading}
+                disabled={isSaving}
+                onChange={setContainedProducts}
+              />
               <Field>
                 <FieldLabel htmlFor="product-description">Descripción</FieldLabel>
                 <FieldContent>
@@ -421,7 +452,7 @@ export function ProductFormDialog({
             <DialogClose render={<Button type="button" variant="outline" disabled={isSaving} />}>
               Cancelar
             </DialogClose>
-            <Button type="submit" disabled={isSaving}>
+            <Button type="submit" disabled={isSaving || componentsLoading}>
               {isSaving ? 'Guardando…' : 'Guardar'}
             </Button>
           </DialogFooter>

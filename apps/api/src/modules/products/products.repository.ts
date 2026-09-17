@@ -4,12 +4,46 @@ import type { ProductCreateInput, ProductsListQuery, ProductUpdateInput } from '
 
 import { getDatabase } from '../../db/client';
 import { publicationProducts, publications, stores } from '../../db/schema/aliexpress-publications';
+import { productCombos } from '../../db/schema/product-combos';
 import { products } from '../../db/schema/products';
+
+const containedProducts = sql.identifier('contained_products');
+const containedProductId = sql.raw('"contained_products"."id"');
+const containedProductAverageSellingPrice = sql.raw(
+  '"contained_products"."average_selling_price"',
+);
+const comboPrice = sql.identifier('combo_price');
+const comboComponentCount = sql.raw('"combo_price"."component_count"');
+const comboPricedComponentCount = sql.raw('"combo_price"."priced_component_count"');
+const comboTotal = sql.raw('"combo_price"."total"');
+
+const effectiveSellingPrice = sql<string | null>`(
+  SELECT CASE
+    WHEN ${comboComponentCount} = 0 THEN ${products.averageSellingPrice}
+    WHEN ${comboPricedComponentCount} = ${comboComponentCount} THEN ${comboTotal}
+    ELSE NULL
+  END
+  FROM (
+    SELECT
+      count(${productCombos.productId}) AS "component_count",
+      count(${containedProductAverageSellingPrice}) AS "priced_component_count",
+      sum(${containedProductAverageSellingPrice} * ${productCombos.quantity}) AS "total"
+    FROM ${productCombos}
+    INNER JOIN ${products} AS ${containedProducts}
+      ON ${containedProductId} = ${productCombos.containsProductId}
+    WHERE ${productCombos.productId} = ${products.id}
+  ) AS ${comboPrice}
+)`.as('effective_selling_price');
 
 export class ProductsRepository {
   async findOptions() {
     return getDatabase()
-      .select({ id: products.id, name: products.name, shortName: products.shortName })
+      .select({
+        id: products.id,
+        name: products.name,
+        shortName: products.shortName,
+        imageKey: products.imageKey,
+      })
       .from(products)
       .orderBy(asc(products.name), asc(products.createdAt));
   }
@@ -20,10 +54,10 @@ export class ProductsRepository {
     const offersCount = sql<number>`count(${publicationProducts.id})::int`.as('offers_count');
     const [items, countResult] = await Promise.all([
       database
-        .select({ ...getTableColumns(products), offersCount })
+        .select({ ...getTableColumns(products), offersCount, effectiveSellingPrice })
         .from(products)
         .leftJoin(publicationProducts, eq(publicationProducts.productId, products.id))
-        .groupBy(products.id)
+        .groupBy(products.id, products.averageSellingPrice)
         .orderBy(asc(products.name), asc(products.createdAt))
         .limit(pageSize)
         .offset(offset),
@@ -34,7 +68,10 @@ export class ProductsRepository {
   }
 
   async findById(id: string) {
-    const [product] = await getDatabase().select().from(products).where(eq(products.id, id));
+    const [product] = await getDatabase()
+      .select({ ...getTableColumns(products), effectiveSellingPrice })
+      .from(products)
+      .where(eq(products.id, id));
     return product;
   }
 
@@ -78,7 +115,7 @@ export class ProductsRepository {
             : input.averageSellingPrice.toFixed(2),
       })
       .returning();
-    return product;
+    return product ? this.findById(product.id) : undefined;
   }
 
   async update(id: string, input: ProductUpdateInput) {
@@ -96,7 +133,7 @@ export class ProductsRepository {
       })
       .where(eq(products.id, id))
       .returning();
-    return product;
+    return product ? this.findById(product.id) : undefined;
   }
 
   async updateImageKey(id: string, imageKey: string) {
@@ -105,7 +142,7 @@ export class ProductsRepository {
       .set({ imageKey, updatedAt: new Date() })
       .where(eq(products.id, id))
       .returning();
-    return product;
+    return product ? this.findById(product.id) : undefined;
   }
 
   async delete(id: string) {

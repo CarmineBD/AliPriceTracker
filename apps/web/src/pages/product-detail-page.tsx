@@ -9,7 +9,14 @@ import {
   deletePublicationProduct,
   reassignPublicationProduct,
 } from '@/api/publication-products.api';
-import { getProduct, getProductOptions } from '@/api/products.api';
+import {
+  getProduct,
+  getProductComponents,
+  getProductOptions,
+  replaceProductComponents,
+  updateProduct,
+  uploadProductImage,
+} from '@/api/products.api';
 import { Button } from '@/components/ui/button';
 import {
   Table,
@@ -23,6 +30,10 @@ import { AppLayout } from '@/layouts/app-layout';
 import { ProductBestOfferHistoryDialog } from '@/features/product-best-offer-history/product-best-offer-history-dialog';
 import { DeletePublicationProductDialog } from '@/features/publication-products/delete-publication-product-dialog';
 import { EditPublicationProductDialog } from '@/features/publication-products/edit-publication-product-dialog';
+import {
+  ProductFormDialog,
+  type ProductFormSubmission,
+} from '@/features/products/product-form-dialog';
 
 const dateFormatter = new Intl.DateTimeFormat('es-ES', {
   dateStyle: 'long',
@@ -56,6 +67,7 @@ export function ProductDetailPage() {
   const [selectedOffer, setSelectedOffer] = useState<ProductOffer | null>(null);
   const [activeAction, setActiveAction] = useState<'edit' | 'delete' | null>(null);
   const [editingProductId, setEditingProductId] = useState<string | undefined>(id);
+  const [isProductEditOpen, setIsProductEditOpen] = useState(false);
   const productQuery = useQuery({
     queryKey: ['product', id],
     queryFn: () => getProduct(id ?? ''),
@@ -64,11 +76,17 @@ export function ProductDetailPage() {
   const productOptionsQuery = useQuery({
     queryKey: ['product-options'],
     queryFn: getProductOptions,
-    enabled: activeAction === 'edit' && selectedOffer !== null,
+    enabled: isProductEditOpen || (activeAction === 'edit' && selectedOffer !== null),
+  });
+  const productComponentsQuery = useQuery({
+    queryKey: ['product-components', id],
+    queryFn: () => getProductComponents(id ?? ''),
+    enabled: Boolean(id),
   });
   const refreshProduct = async () => {
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: ['product', id] }),
+      queryClient.invalidateQueries({ queryKey: ['product-components', id] }),
       queryClient.invalidateQueries({ queryKey: ['product-best-offer-history', id] }),
     ]);
   };
@@ -86,6 +104,20 @@ export function ProductDetailPage() {
     onSuccess: async () => {
       setSelectedOffer(null);
       setActiveAction(null);
+      await refreshProduct();
+    },
+  });
+  const updateProductMutation = useMutation({
+    mutationFn: async ({ input, imageFile, components }: ProductFormSubmission) => {
+      const product = productQuery.data;
+      if (!product) throw new Error('Product not found.');
+
+      await replaceProductComponents(product.id, components);
+      await updateProduct(product.id, input);
+      if (imageFile) await uploadProductImage(product.id, imageFile);
+    },
+    onSuccess: async () => {
+      setIsProductEditOpen(false);
       await refreshProduct();
     },
   });
@@ -134,8 +166,59 @@ export function ProductDetailPage() {
               <p className="mt-2 text-lg text-muted-foreground">
                 {productQuery.data.shortName ?? 'Sin nombre corto'}
               </p>
+              <Button className="mt-4" variant="outline" onClick={() => setIsProductEditOpen(true)}>
+                <Pencil />
+                Editar producto
+              </Button>
             </div>
           </header>
+
+          <section className="mt-10 border-t pt-6" aria-labelledby="product-components-title">
+            <h2 id="product-components-title" className="text-lg font-medium">
+              Productos que contiene ({productComponentsQuery.data?.length ?? 0})
+            </h2>
+            {productComponentsQuery.isPending ? (
+              <p className="mt-2 text-sm text-muted-foreground">Cargando productos contenidos…</p>
+            ) : productComponentsQuery.data?.length ? (
+              <div className="mt-4">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Imagen</TableHead>
+                      <TableHead>Nombre corto</TableHead>
+                      <TableHead className="text-right">Cantidad</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {productComponentsQuery.data.map((component) => (
+                      <TableRow key={component.containsProductId}>
+                        <TableCell>
+                          {component.product.imageUrl ? (
+                            <img
+                              src={component.product.imageUrl}
+                              alt={`Imagen de ${component.product.shortName}`}
+                              className="size-10 rounded-md border object-cover"
+                            />
+                          ) : (
+                            <div
+                              className="flex size-10 items-center justify-center rounded-md border bg-muted text-muted-foreground"
+                              aria-label={`Sin imagen para ${component.product.shortName}`}
+                            >
+                              <ImageOff className="size-4" />
+                            </div>
+                          )}
+                        </TableCell>
+                        <TableCell>{component.product.shortName}</TableCell>
+                        <TableCell className="text-right">{component.quantity}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            ) : (
+              <p className="mt-2 text-slate-700">Este producto no contiene otros productos.</p>
+            )}
+          </section>
 
           <section className="mt-10 border-t pt-6" aria-labelledby="product-description-title">
             <h2 id="product-description-title" className="text-lg font-medium">
@@ -287,6 +370,22 @@ export function ProductDetailPage() {
         }}
         onProductIdChange={setEditingProductId}
         onConfirm={() => editMutation.mutate()}
+      />
+      <ProductFormDialog
+        open={isProductEditOpen}
+        product={productQuery.data}
+        components={productComponentsQuery.data}
+        componentsLoading={productComponentsQuery.isPending}
+        productOptions={productOptionsQuery.data}
+        productOptionsLoading={productOptionsQuery.isPending}
+        isSaving={updateProductMutation.isPending}
+        error={
+          updateProductMutation.error instanceof Error ? updateProductMutation.error.message : undefined
+        }
+        onOpenChange={(open) => {
+          if (!open && !updateProductMutation.isPending) setIsProductEditOpen(false);
+        }}
+        onSubmit={(submission) => updateProductMutation.mutate(submission)}
       />
     </AppLayout>
   );
