@@ -1,5 +1,6 @@
 import type { Coupon } from '@alitracker/shared';
 
+import { CouponDiscountBadge, formatCouponDiscount } from '@/components/coupon-discount-badge';
 import {
   Combobox,
   ComboboxContent,
@@ -17,7 +18,7 @@ type CouponComboboxProps = {
 };
 
 function couponLabel(coupon: Coupon): string {
-  return `${formatCouponAmount(coupon.discountAmount)} desde ${formatCouponAmount(coupon.minPurchase)}`;
+  return `${formatCouponDiscount(coupon.discountAmount)} desde ${formatCouponAmount(coupon.minPurchase)}`;
 }
 
 export function CouponCombobox({ coupons, disabled, onCouponIdChange }: CouponComboboxProps) {
@@ -38,7 +39,8 @@ export function CouponCombobox({ coupons, disabled, onCouponIdChange }: CouponCo
         <ComboboxList>
           {(coupon: Coupon) => (
             <ComboboxItem key={coupon.id} value={coupon}>
-              {couponLabel(coupon)}
+              <CouponDiscountBadge amount={coupon.discountAmount} />
+              <span>Desde {formatCouponAmount(coupon.minPurchase)}</span>
             </ComboboxItem>
           )}
         </ComboboxList>

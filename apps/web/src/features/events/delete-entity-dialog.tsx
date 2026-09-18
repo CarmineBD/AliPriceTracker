@@ -1,3 +1,5 @@
+import type { ReactNode } from 'react';
+
 import {
   AlertDialog,
   AlertDialogAction,
@@ -10,7 +12,7 @@ import {
 } from '@/components/ui/alert-dialog';
 
 type DeleteEntityDialogProps = {
-  entity?: { label: string; type: 'cupón' | 'evento' };
+  entity?: { label: ReactNode; type: 'cupón' | 'evento' };
   isDeleting: boolean;
   error?: string;
   onOpenChange: (open: boolean) => void;
@@ -30,9 +32,11 @@ export function DeleteEntityDialog({
         <AlertDialogHeader>
           <AlertDialogTitle>¿Eliminar {entity?.type ?? 'registro'}?</AlertDialogTitle>
           <AlertDialogDescription>
-            {entity
-              ? `Se eliminará “${entity.label}”. Esta acción no se puede deshacer.`
-              : 'Esta acción no se puede deshacer.'}
+            {entity ? (
+              <>Se eliminará {entity.label}. Esta acción no se puede deshacer.</>
+            ) : (
+              'Esta acción no se puede deshacer.'
+            )}
           </AlertDialogDescription>
         </AlertDialogHeader>
         {error && <p className="text-sm text-destructive">{error}</p>}

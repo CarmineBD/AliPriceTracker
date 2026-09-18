@@ -2,6 +2,7 @@ import type { CouponResponse } from '@alitracker/shared';
 import { Pencil, Trash2 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
+import { CouponDiscountBadge, formatCouponDiscount } from '@/components/coupon-discount-badge';
 import {
   Table,
   TableBody,
@@ -46,7 +47,7 @@ export function CouponTable({ coupons, onEdit, onDelete }: CouponTableProps) {
           <TableRow key={coupon.id}>
             <TableCell className="text-right">{formatCouponAmount(coupon.minPurchase)}</TableCell>
             <TableCell className="text-right">
-              {formatCouponAmount(coupon.discountAmount)}
+              <CouponDiscountBadge amount={coupon.discountAmount} />
             </TableCell>
             <TableCell>
               <div className="flex justify-end gap-1">
@@ -54,7 +55,7 @@ export function CouponTable({ coupons, onEdit, onDelete }: CouponTableProps) {
                   type="button"
                   variant="ghost"
                   size="icon-sm"
-                  aria-label={`Editar cupón de ${formatCouponAmount(coupon.discountAmount)}`}
+                  aria-label={`Editar cupón de ${formatCouponDiscount(coupon.discountAmount)}`}
                   onClick={() => onEdit(coupon)}
                 >
                   <Pencil />
@@ -63,7 +64,7 @@ export function CouponTable({ coupons, onEdit, onDelete }: CouponTableProps) {
                   type="button"
                   variant="ghost"
                   size="icon-sm"
-                  aria-label={`Eliminar cupón de ${formatCouponAmount(coupon.discountAmount)}`}
+                  aria-label={`Eliminar cupón de ${formatCouponDiscount(coupon.discountAmount)}`}
                   onClick={() => onDelete(coupon)}
                 >
                   <Trash2 className="text-destructive" />

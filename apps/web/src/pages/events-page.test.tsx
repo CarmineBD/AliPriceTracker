@@ -64,6 +64,7 @@ describe('EventsPage', () => {
     expect(screen.getByRole('heading', { name: 'Cupones' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Eventos' })).toBeInTheDocument();
     expect(await screen.findByText('11.11 2026')).toBeInTheDocument();
+    expect(screen.getByText('-10€')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Agregar cupón' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Agregar evento' })).toBeInTheDocument();
   });

@@ -2,6 +2,7 @@ import type { Coupon } from '@alitracker/shared';
 import { Trash2 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
+import { CouponDiscountBadge, formatCouponDiscount } from '@/components/coupon-discount-badge';
 import { FieldLabel } from '@/components/ui/field';
 import {
   Table,
@@ -72,7 +73,7 @@ export function EventCouponsEditor({
                   {formatCouponAmount(coupon.minPurchase)}
                 </TableCell>
                 <TableCell className="text-right">
-                  {formatCouponAmount(coupon.discountAmount)}
+                  <CouponDiscountBadge amount={coupon.discountAmount} />
                 </TableCell>
                 <TableCell className="text-right">
                   <Button
@@ -80,7 +81,7 @@ export function EventCouponsEditor({
                     variant="ghost"
                     size="icon-sm"
                     disabled={disabled}
-                    aria-label={`Eliminar cupón de ${formatCouponAmount(coupon.discountAmount)} del evento`}
+                    aria-label={`Eliminar cupón de ${formatCouponDiscount(coupon.discountAmount)} del evento`}
                     onClick={() => onChange(coupons.filter((current) => current.id !== coupon.id))}
                   >
                     <Trash2 className="text-destructive" />

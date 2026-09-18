@@ -16,6 +16,7 @@ import {
   updateEvent,
 } from '@/api/events.api';
 import { Button } from '@/components/ui/button';
+import { CouponDiscountBadge } from '@/components/coupon-discount-badge';
 import {
   Pagination,
   PaginationContent,
@@ -331,7 +332,10 @@ export function EventsPage() {
       <DeleteEntityDialog
         entity={
           couponToDelete
-            ? { type: 'cupón', label: `${couponToDelete.discountAmount} € de descuento` }
+            ? {
+                type: 'cupón',
+                label: <CouponDiscountBadge amount={couponToDelete.discountAmount} />,
+              }
             : undefined
         }
         isDeleting={deleteCouponMutation.isPending}

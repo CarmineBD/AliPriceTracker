@@ -380,6 +380,43 @@ export const couponSchema = z.object({
   discountAmount: z.number().finite().nonnegative(),
 });
 
+export const opportunitiesListQuerySchema = z
+  .object({
+    sort: z.literal('roi-desc'),
+    page: z.coerce.number().int().positive().default(1),
+    pageSize: z.coerce.number().int().positive().max(100).default(20),
+  })
+  .strict();
+
+export const opportunitySchema = z.object({
+  productId: productIdSchema,
+  imageUrl: z.string().url().nullable(),
+  name: z.string(),
+  shortName: z.string(),
+  basePurchasePrice: z.number().finite().nonnegative(),
+  currency: z.string().length(3).nullable(),
+  coupon: couponSchema.nullable(),
+  effectivePurchasePrice: z.number().finite(),
+  estimatedSellingPrice: z.number().finite().nonnegative(),
+  estimatedProfit: z.number().finite(),
+  roi: z.number().finite().nullable(),
+  nextCoupon: couponSchema.nullable(),
+  amountToNextCoupon: z.number().finite().nonnegative().nullable(),
+  stock: z.number().int().nonnegative().nullable(),
+  offerUrl: z.string().url().nullable(),
+  offerObservedAt: z.string().datetime({ offset: true }),
+});
+
+export const opportunitiesListResponseSchema = z.object({
+  opportunities: z.array(opportunitySchema),
+  pagination: z.object({
+    page: z.number().int().positive(),
+    pageSize: z.number().int().positive(),
+    total: z.number().int().nonnegative(),
+    totalPages: z.number().int().nonnegative(),
+  }),
+});
+
 const couponAmountSchema = z
   .number()
   .finite()
@@ -471,6 +508,9 @@ export const eventsListResponseSchema = z.object({
 });
 
 export type Coupon = z.infer<typeof couponSchema>;
+export type Opportunity = z.infer<typeof opportunitySchema>;
+export type OpportunitiesListQuery = z.infer<typeof opportunitiesListQuerySchema>;
+export type OpportunitiesList = z.infer<typeof opportunitiesListResponseSchema>;
 export type ActiveEvent = z.infer<typeof activeEventSchema>;
 export type CouponCreateInput = z.infer<typeof couponCreateSchema>;
 export type CouponUpdateInput = z.infer<typeof couponUpdateSchema>;
