@@ -4,6 +4,7 @@ import { AliExpressProductSearchPage } from '@/pages/aliexpress-product-search-p
 import { EventsPage } from '@/pages/events-page';
 import { OpportunitiesPage } from '@/pages/opportunities-page';
 import { ProductDetailPage } from '@/pages/product-detail-page';
+import { PublicationProductChangesPage } from '@/pages/publication-product-changes-page';
 import { ProductsPage } from '@/pages/products-page';
 import { StoresPage } from '@/pages/stores-page';
 import { StoreDetailPage } from '@/pages/store-detail-page';
@@ -28,6 +29,10 @@ export const router = createBrowserRouter([
   {
     path: '/opportunities',
     element: <OpportunitiesPage />,
+  },
+  {
+    path: '/publication-product-changes',
+    element: <PublicationProductChangesPage />,
   },
   {
     path: '/stores',

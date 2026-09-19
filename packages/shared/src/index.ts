@@ -353,6 +353,60 @@ export type PublicationProductHistoryResponse = z.infer<
   typeof publicationProductHistoryResponseSchema
 >;
 
+export const publicationProductChangesListQuerySchema = z
+  .object({
+    page: z.coerce.number().int().positive().default(1),
+    pageSize: z.coerce.number().int().positive().max(100).default(20),
+  })
+  .strict();
+
+const publicationProductChangeBaseSchema = z.object({
+  historyId: z.string().uuid(),
+  publicationProductId: z.string().uuid(),
+  product: z.object({
+    id: productIdSchema,
+    name: z.string(),
+    shortName: z.string(),
+    imageUrl: z.string().url().nullable(),
+  }),
+  storeName: z.string().nullable(),
+  publicationUrl: z.string().url().nullable(),
+  changedAt: z.string().datetime({ offset: true }),
+});
+
+export const publicationProductChangeSchema = z.discriminatedUnion('changeType', [
+  publicationProductChangeBaseSchema.extend({
+    changeType: z.literal('price'),
+    previousValue: publicationProductHistoryPriceSchema,
+    currentValue: publicationProductHistoryPriceSchema,
+    previousCurrency: z.string().length(3).nullable(),
+    currentCurrency: z.string().length(3).nullable(),
+  }),
+  publicationProductChangeBaseSchema.extend({
+    changeType: z.literal('stock'),
+    previousValue: z.number().int().nonnegative().nullable(),
+    currentValue: z.number().int().nonnegative().nullable(),
+  }),
+]);
+
+export const publicationProductChangesListResponseSchema = z.object({
+  changes: z.array(publicationProductChangeSchema),
+  pagination: z.object({
+    page: z.number().int().positive(),
+    pageSize: z.number().int().positive(),
+    total: z.number().int().nonnegative(),
+    totalPages: z.number().int().nonnegative(),
+  }),
+});
+
+export type PublicationProductChangesListQuery = z.infer<
+  typeof publicationProductChangesListQuerySchema
+>;
+export type PublicationProductChange = z.infer<typeof publicationProductChangeSchema>;
+export type PublicationProductChangesList = z.infer<
+  typeof publicationProductChangesListResponseSchema
+>;
+
 export const productBestOfferHistoryEntrySchema = z.object({
   id: z.string().uuid(),
   isAvailable: z.boolean(),

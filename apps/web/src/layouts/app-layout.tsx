@@ -22,6 +22,9 @@ export function AppLayout({ children }: PropsWithChildren) {
           <Link to="/opportunities" className={navigationLinkClass}>
             Oportunidades
           </Link>
+          <Link to="/publication-product-changes" className={navigationLinkClass}>
+            Últimos cambios
+          </Link>
           <Link to="/aliexpress" className={navigationLinkClass}>
             Buscar en AliExpress
           </Link>

@@ -7,6 +7,7 @@ import { aliExpressProductLookupRouter } from '../modules/aliexpress-product-loo
 import { eventsRouter } from '../modules/events/events.routes';
 import { opportunitiesRouter } from '../modules/opportunities/opportunities.routes';
 import { publicationProductHistoryRouter } from '../modules/publication-product-history/publication-product-history.routes';
+import { publicationProductChangesRouter } from '../modules/publication-product-changes/publication-product-changes.routes';
 import { publicationProductsRouter } from '../modules/publication-products/publication-products.routes';
 import { productsRouter } from '../modules/products/products.routes';
 import { productBestOfferRouter } from '../modules/product-best-offer/product-best-offer.routes';
@@ -22,6 +23,7 @@ apiRouter.use('/aliexpress/products', aliExpressProductLookupRouter);
 apiRouter.use('/aliexpress/publications', aliExpressPublicationImportRouter);
 apiRouter.use('/publication-products', publicationProductHistoryRouter);
 apiRouter.use('/publication-products', publicationProductsRouter);
+apiRouter.use('/publication-product-changes', publicationProductChangesRouter);
 apiRouter.use('/products', productBestOfferRouter);
 apiRouter.use('/products', productsRouter);
 apiRouter.use('/stores', storesRouter);
