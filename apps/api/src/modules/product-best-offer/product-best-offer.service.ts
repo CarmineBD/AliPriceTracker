@@ -93,7 +93,12 @@ export async function refreshProductBestOffers(
     if (!offers.every((offer) => refreshed.has(offer.publicationProductId))) {
       result.skippedIncompleteRefresh += 1;
       logger.warn(
-        JSON.stringify({ event: 'product_best_offer_skipped_incomplete_refresh', productId }),
+        JSON.stringify({
+          event: 'product_best_offer_skipped_incomplete_refresh',
+          productId,
+          description:
+            'No se ha recalculado la mejor oferta porque falta actualizar al menos una publicación de este producto. No debes cambiar nada: se conserva la oferta anterior y se recalculará cuando todas se actualicen.',
+        }),
       );
       continue;
     }
@@ -102,7 +107,12 @@ export async function refreshProductBestOffers(
     if (state === 'currency-mismatch') {
       result.skippedCurrencyMismatch += 1;
       logger.warn(
-        JSON.stringify({ event: 'product_best_offer_skipped_currency_mismatch', productId }),
+        JSON.stringify({
+          event: 'product_best_offer_skipped_currency_mismatch',
+          productId,
+          description:
+            'Las ofertas disponibles usan monedas distintas y no se pueden comparar de forma segura. Revisa las publicaciones de este producto y unifica la moneda antes de usar la mejor oferta.',
+        }),
       );
       continue;
     }

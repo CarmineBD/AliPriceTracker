@@ -89,6 +89,30 @@ function isUserValidationError(result: AliExpressProductResult): boolean {
   );
 }
 
+function hasMtopCode(result: AliExpressProductResult, code: string): boolean {
+  return result.body.mtopRet?.some((entry) => entry.toUpperCase().includes(code)) ?? false;
+}
+
+function getFailureDescription(result: AliExpressProductResult): string {
+  if (isUserValidationError(result)) {
+    return 'AliExpress ha limitado temporalmente las consultas para esta sesión; la cookie no tiene por qué haber caducado. No ejecutes el cron manualmente varias veces: el tracker reintenta con pausas y, si falla, espera al siguiente cron.';
+  }
+
+  if (hasMtopCode(result, 'FAIL_SYS_SESSION_EXPIRED')) {
+    return 'La sesión guardada de AliExpress ha caducado. Actualiza ALIEXPRESS_COOKIE en la API y llama a POST /api/debug/aliexpress/session/reseed; no cambies ALIEXPRESS_SESSION_ENCRYPTION_KEY.';
+  }
+
+  if (hasMtopCode(result, 'FAIL_SYS_ILLEGAL_ACCESS')) {
+    return 'AliExpress ha rechazado la sesión guardada. Obtén una cookie nueva, actualiza ALIEXPRESS_COOKIE en la API y llama a POST /api/debug/aliexpress/session/reseed.';
+  }
+
+  if (result.body.errorCode === 'ALIEXPRESS_SESSION_REAUTH_REQUIRED') {
+    return 'AliExpress no ha aceptado la sesión, pero no ha detallado el motivo. Comprueba mtopRet y, si se repite, renueva ALIEXPRESS_COOKIE en la API y ejecuta el reseed de sesión.';
+  }
+
+  return 'AliExpress no ha devuelto una respuesta válida para esta publicación. No cambies cookies ni variables todavía: espera al siguiente cron y revisa la conexión o AliExpress solo si se repite.';
+}
+
 async function getProductWithUserValidationRetries({
   client,
   productId,
@@ -123,6 +147,8 @@ async function getProductWithUserValidationRetries({
         retryDelayMilliseconds: retryDelayWithJitterMilliseconds,
         mtopRet: result.body.mtopRet,
         upstreamStatus: result.body.upstreamStatus,
+        description:
+          'AliExpress ha pedido validar o ralentizar esta sesión. El tracker esperará antes de reintentarlo; no ejecutes otro cron manualmente.',
       }),
     );
     await delay(retryDelayWithJitterMilliseconds);
@@ -180,18 +206,7 @@ export async function trackAllAliExpressPublications({
       });
       if (upstreamResult.status !== 200 || !upstreamResult.body.success) {
         result.publications.failed += 1;
-        const userValidationError = isUserValidationError(upstreamResult);
-        if (userValidationError) {
-          logger.error(
-            JSON.stringify({
-              event: 'aliexpress_tracker_user_validation_blocked',
-              publicationId: publication.id,
-              aliexpressProductId: publication.aliexpressProductId,
-              mtopRet: upstreamResult.body.mtopRet,
-              upstreamStatus: upstreamResult.body.upstreamStatus,
-            }),
-          );
-        }
+        const description = getFailureDescription(upstreamResult);
         logger.error(
           JSON.stringify({
             event: 'aliexpress_tracker_publication_failed',
@@ -201,6 +216,7 @@ export async function trackAllAliExpressPublications({
             errorCode: upstreamResult.body.errorCode,
             mtopRet: upstreamResult.body.mtopRet,
             upstreamStatus: upstreamResult.body.upstreamStatus,
+            description,
           }),
         );
 
@@ -220,6 +236,8 @@ export async function trackAllAliExpressPublications({
           publicationId: publication.id,
           aliexpressProductId: publication.aliexpressProductId,
           error: error instanceof Error ? error.message : 'Unknown error',
+          description:
+            'El tracker ha encontrado un error inesperado antes de terminar esta publicación. Revisa el campo error; si menciona la base de datos, revisa DATABASE_URL y los logs de la API.',
         }),
       );
     }
@@ -265,6 +283,8 @@ async function trackPublication({
           event: 'aliexpress_tracker_sku_missing',
           publicationId: publication.id,
           aliexpressSkuId: product.aliexpressSkuId,
+          description:
+            'El SKU guardado ya no aparece en la publicación de AliExpress, por lo que no se ha modificado su precio ni su stock. Comprueba si la variante cambió o fue eliminada y, si corresponde, vuelve a importar la publicación.',
         }),
       );
       continue;

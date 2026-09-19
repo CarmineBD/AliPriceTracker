@@ -265,6 +265,7 @@ describe('trackAllAliExpressPublications', () => {
     ]);
     const requestedProductIds: string[] = [];
     const delay = vi.fn().mockResolvedValue(undefined);
+    const logger = createLogger();
 
     const result = await trackAllAliExpressPublications({
       repository,
@@ -276,13 +277,16 @@ describe('trackAllAliExpressPublications', () => {
       },
       delay,
       delayMilliseconds: 0,
-      logger: createLogger(),
+      logger,
     });
 
     expect(requestedProductIds).toEqual(['1001', '1002', '1003']);
     expect(result.publications).toEqual({ total: 3, processed: 2, failed: 1 });
     expect(saved).toHaveLength(2);
     expect(delay).toHaveBeenCalledTimes(2);
+    expect(JSON.parse(logger.error.mock.calls[0]?.[0] as string)).toMatchObject({
+      description: expect.stringContaining('no ha devuelto una respuesta válida'),
+    });
   });
 
   it('uses a three-second interval between successful publication requests by default', async () => {
@@ -350,7 +354,7 @@ describe('trackAllAliExpressPublications', () => {
     });
   });
 
-  it('logs an explicit anti-bot block and aborts after exhausting retries', async () => {
+  it('logs Spanish guidance and aborts after exhausting anti-bot retries', async () => {
     const { repository } = createRepository([publication('publication-1', '1001')]);
     const delay = vi.fn().mockResolvedValue(undefined);
     const logger = createLogger();
@@ -368,9 +372,65 @@ describe('trackAllAliExpressPublications', () => {
     expect(delay).toHaveBeenNthCalledWith(1, 15_000);
     expect(delay).toHaveBeenNthCalledWith(2, 30_000);
     expect(JSON.parse(logger.error.mock.calls[0]?.[0] as string)).toMatchObject({
-      event: 'aliexpress_tracker_user_validation_blocked',
+      event: 'aliexpress_tracker_publication_failed',
+      description: expect.stringContaining('AliExpress ha limitado temporalmente'),
       upstreamStatus: 200,
       mtopRet: ['FAIL_SYS_USER_VALIDATE', 'RGV587_ERROR::SM::Retry later'],
+    });
+  });
+
+  it('explains how to recover an expired AliExpress session', async () => {
+    const { repository } = createRepository([publication('publication-1', '1001')]);
+    const logger = createLogger();
+    const expiredSessionResult = userValidationResult();
+    expiredSessionResult.body.mtopRet = ['FAIL_SYS_SESSION_EXPIRED::expired'];
+
+    await trackAllAliExpressPublications({
+      repository,
+      aliexpressClient: { getProduct: async () => expiredSessionResult },
+      userValidationRetryDelaysMilliseconds: [],
+      logger,
+    });
+
+    expect(JSON.parse(logger.error.mock.calls[0]?.[0] as string)).toMatchObject({
+      description: expect.stringContaining('POST /api/debug/aliexpress/session/reseed'),
+    });
+  });
+
+  it('explains how to recover an invalid AliExpress session', async () => {
+    const { repository } = createRepository([publication('publication-1', '1001')]);
+    const logger = createLogger();
+    const invalidSessionResult = userValidationResult();
+    invalidSessionResult.body.mtopRet = ['FAIL_SYS_ILLEGAL_ACCESS::invalid session'];
+
+    await trackAllAliExpressPublications({
+      repository,
+      aliexpressClient: { getProduct: async () => invalidSessionResult },
+      userValidationRetryDelaysMilliseconds: [],
+      logger,
+    });
+
+    expect(JSON.parse(logger.error.mock.calls[0]?.[0] as string)).toMatchObject({
+      description: expect.stringContaining('cookie nueva'),
+    });
+  });
+
+  it('explains unexpected tracker errors in Spanish', async () => {
+    const { repository } = createRepository([publication('publication-1', '1001')]);
+    const logger = createLogger();
+
+    await trackAllAliExpressPublications({
+      repository,
+      aliexpressClient: {
+        getProduct: async () => {
+          throw new Error('Database connection lost');
+        },
+      },
+      logger,
+    });
+
+    expect(JSON.parse(logger.error.mock.calls[0]?.[0] as string)).toMatchObject({
+      description: expect.stringContaining('campo error'),
     });
   });
 });

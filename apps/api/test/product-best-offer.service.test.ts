@@ -72,6 +72,10 @@ describe('refreshProductBestOffers', () => {
       skippedIncompleteRefresh: 1,
     });
     expect(logger.warn).toHaveBeenCalledOnce();
+    expect(JSON.parse(logger.warn.mock.calls[0]?.[0] as string)).toMatchObject({
+      event: 'product_best_offer_skipped_incomplete_refresh',
+      description: expect.stringContaining('No debes cambiar nada'),
+    });
   });
 
   it('counts stock-only and winner-only changes through repository results without duplicating unchanged states', async () => {
