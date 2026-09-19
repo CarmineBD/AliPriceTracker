@@ -215,6 +215,7 @@ export async function listOpportunities(
       toCents(basePurchasePrice) - toCents(coupon?.discountAmount ?? 0),
     );
     const estimatedProfit = calculateProfit(estimatedSellingPrice, effectivePurchasePrice);
+    if (estimatedProfit <= 0) return [];
 
     return [
       {

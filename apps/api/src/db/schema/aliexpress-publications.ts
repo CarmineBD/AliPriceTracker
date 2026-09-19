@@ -72,6 +72,7 @@ export const publicationProducts = pgTable(
   },
   (table) => [
     uniqueIndex('publication_products_aliexpress_sku_id_unique').on(table.aliexpressSkuId),
+    index('publication_products_product_id_index').on(table.productId),
   ],
 );
 
@@ -116,6 +117,11 @@ export const productBestOfferHistory = pgTable(
     index('product_best_offer_history_product_captured_at_index').on(
       table.productId,
       table.capturedAt,
+    ),
+    index('product_best_offer_history_current_lookup_index').on(
+      table.productId,
+      table.capturedAt.desc(),
+      table.id.desc(),
     ),
   ],
 );

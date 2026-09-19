@@ -1,7 +1,10 @@
-import { desc, eq } from 'drizzle-orm';
+import { desc, eq, exists } from 'drizzle-orm';
 
 import { getDatabase } from '../../db/client.js';
-import { productBestOfferHistory } from '../../db/schema/aliexpress-publications.js';
+import {
+  productBestOfferHistory,
+  publicationProducts,
+} from '../../db/schema/aliexpress-publications.js';
 import { productCombos } from '../../db/schema/product-combos.js';
 import { products } from '../../db/schema/products.js';
 
@@ -58,6 +61,14 @@ export class OpportunitiesRepository {
       })
       .from(productBestOfferHistory)
       .innerJoin(products, eq(products.id, productBestOfferHistory.productId))
+      .where(
+        exists(
+          this.client
+            .select({ id: publicationProducts.id })
+            .from(publicationProducts)
+            .where(eq(publicationProducts.productId, products.id)),
+        ),
+      )
       .orderBy(
         productBestOfferHistory.productId,
         desc(productBestOfferHistory.capturedAt),

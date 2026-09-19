@@ -210,6 +210,43 @@ describe('listOpportunities', () => {
     expect(result.opportunities[0]).toMatchObject({ productId, coupon: null, nextCoupon: null });
   });
 
+  it('excludes zero and negative profit opportunities before pagination', async () => {
+    const result = await listOpportunities(
+      { sort: 'roi-desc', page: 1, pageSize: 20 },
+      new Date(),
+      {
+        opportunities: {
+          findProductsWithCurrentOffers: async () => [
+            offer({
+              productId: '00000000-0000-4000-8000-000000000041',
+              name: 'Sin beneficio',
+              averageSellingPrice: '100.00',
+              price: '100.00',
+            }),
+            offer({
+              productId: '00000000-0000-4000-8000-000000000042',
+              name: 'Con pérdidas',
+              averageSellingPrice: '99.00',
+              price: '100.00',
+            }),
+            offer({
+              productId: '00000000-0000-4000-8000-000000000043',
+              name: 'Rentable',
+              averageSellingPrice: '101.00',
+              price: '100.00',
+            }),
+          ],
+          findComboComponents: async () => [],
+        },
+        events: { findActiveWithCoupons: async () => [], findCouponOptions: async () => [] },
+      },
+    );
+
+    expect(result.opportunities).toHaveLength(1);
+    expect(result.opportunities[0]).toMatchObject({ name: 'Rentable', estimatedProfit: 1 });
+    expect(result.pagination).toEqual({ page: 1, pageSize: 20, total: 1, totalPages: 1 });
+  });
+
   it('applies the best coupon and reports the next threshold for one unit', async () => {
     const result = await listOpportunities(
       { sort: 'roi-desc', page: 1, pageSize: 20 },
