@@ -77,7 +77,7 @@ vi.mock('@/api/publication-products.api', () => ({
 afterEach(cleanup);
 
 describe('ProductDetailPage', () => {
-  it('shows the product data and a cropped 128 px image', async () => {
+  it('shows the product data, description, lowest price, and a larger image', async () => {
     getProductMock.mockResolvedValue(product);
     const productOffer = product.offers[0]!;
     getBestOfferHistoryMock.mockResolvedValue({
@@ -122,8 +122,9 @@ describe('ProductDetailPage', () => {
 
     expect(getProductMock).toHaveBeenCalledWith(product.id);
     expect(image).toHaveAttribute('src', product.imageUrl);
-    expect(image).toHaveClass('size-32', 'object-cover');
+    expect(image).toHaveClass('size-40', 'object-cover');
     expect(screen.getByRole('heading', { name: product.name })).toBeInTheDocument();
+    expect(screen.getByText('Precio más bajo disponible')).toBeInTheDocument();
     expect(
       await screen.findByLabelText('Gráfica de histórico de mejor oferta'),
     ).toBeInTheDocument();
@@ -135,12 +136,72 @@ describe('ProductDetailPage', () => {
       'href',
       'https://www.aliexpress.com/item/123.html',
     );
-    expect(screen.getByText(product.shortName)).toBeInTheDocument();
     expect(screen.getByText(product.description)).toBeInTheDocument();
     expect(screen.getByText('Fecha de actualización')).toBeInTheDocument();
     expect(screen.getByText('Fecha de creación')).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Productos que contiene (0)' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Editar producto' })).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Productos que contiene (0)' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'editar' })).toBeInTheDocument();
+  });
+
+  it('shows contained products as compact cards and orders offers from cheapest to most expensive', async () => {
+    const cheaperOffer = {
+      ...product.offers[0]!,
+      id: '7d8c883c-7e36-4af0-a8b3-152b20c41f3d',
+      sellerName: 'Tienda barata',
+      price: '25.50',
+    };
+    getProductMock.mockResolvedValue({
+      ...product,
+      offersCount: 2,
+      offers: [product.offers[0], cheaperOffer],
+    });
+    getProductComponentsMock.mockResolvedValue([
+      {
+        productId: product.id,
+        containsProductId: '9d8c883c-7e36-4af0-a8b3-152b20c41f3c',
+        quantity: 3,
+        product: {
+          id: '9d8c883c-7e36-4af0-a8b3-152b20c41f3c',
+          name: 'Producto contenido',
+          shortName: 'Contenido',
+          imageKey: null,
+          imageUrl: null,
+          averageSellingPrice: null,
+          effectiveSellingPrice: null,
+        },
+      },
+    ]);
+    getBestOfferHistoryMock.mockResolvedValue({
+      product: { id: product.id, name: product.name },
+      current: null,
+      baseline: null,
+      history: [],
+    });
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter initialEntries={[`/products/${product.id}`]}>
+          <Routes>
+            <Route path="/products/:id" element={<ProductDetailPage />} />
+          </Routes>
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+
+    expect(await screen.findByText('Contenido')).toBeInTheDocument();
+    expect(screen.getByText('x3')).toBeInTheDocument();
+    expect(screen.getByLabelText('Sin imagen para Contenido')).toBeInTheDocument();
+
+    const offerRows = screen
+      .getAllByRole('row')
+      .filter(
+        (row) =>
+          row.textContent?.includes('Tienda de prueba') ||
+          row.textContent?.includes('Tienda barata'),
+      );
+    expect(offerRows[0]).toHaveTextContent('Tienda barata');
+    expect(offerRows[1]).toHaveTextContent('Tienda de prueba');
   });
   it('confirms and deletes an offer from the table', async () => {
     getProductMock.mockResolvedValue(product);
@@ -229,7 +290,7 @@ describe('ProductDetailPage', () => {
       </QueryClientProvider>,
     );
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Editar producto' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'editar' }));
     fireEvent.click(await screen.findByRole('button', { name: 'Eliminar producto' }));
 
     expect(screen.getByRole('heading', { name: '¿Eliminar producto?' })).toBeInTheDocument();

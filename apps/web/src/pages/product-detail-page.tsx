@@ -19,6 +19,7 @@ import {
   uploadProductImage,
 } from '@/api/products.api';
 import { Button } from '@/components/ui/button';
+import { Card, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Table,
   TableBody,
@@ -43,6 +44,12 @@ const dateFormatter = new Intl.DateTimeFormat('es-ES', {
 });
 
 const wholeNumberFormatter = new Intl.NumberFormat('es-ES', { maximumFractionDigits: 0 });
+const euroFormatter = new Intl.NumberFormat('es-ES', {
+  style: 'currency',
+  currency: 'EUR',
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+});
 
 function formatDate(date: string) {
   return dateFormatter.format(new Date(date));
@@ -61,6 +68,21 @@ function formatOfferPrice(price: string | null, currency: string | null): string
   return currency === 'EUR'
     ? `${formattedAmount} €`
     : `${formattedAmount}${currency ? ` ${currency}` : ''}`;
+}
+
+function priceInCents(price: string): bigint {
+  const [whole, decimal = ''] = price.split('.');
+  return BigInt(whole ?? '0') * 100n + BigInt(decimal.padEnd(2, '0'));
+}
+
+function sortOffersByPrice(offers: ProductOffer[]): ProductOffer[] {
+  return [...offers].sort((first, second) => {
+    if (first.price === null) return second.price === null ? 0 : 1;
+    if (second.price === null) return -1;
+
+    const difference = priceInCents(first.price) - priceInCents(second.price);
+    return difference < 0n ? -1 : difference > 0n ? 1 : 0;
+  });
 }
 
 export function ProductDetailPage() {
@@ -133,6 +155,7 @@ export function ProductDetailPage() {
       navigate('/');
     },
   });
+  const sortedOffers = productQuery.data ? sortOffersByPrice(productQuery.data.offers) : [];
 
   return (
     <AppLayout>
@@ -157,89 +180,83 @@ export function ProductDetailPage() {
       )}
 
       {productQuery.data && (
-        <article className="mt-8 max-w-3xl">
-          <header className="flex flex-col gap-6 sm:flex-row sm:items-start">
+        <article className="mt-8 w-full">
+          <header className="relative flex flex-col gap-6 pr-12 sm:flex-row sm:items-start">
             {productQuery.data.imageUrl ? (
               <img
                 src={productQuery.data.imageUrl}
                 alt={`Imagen de ${productQuery.data.name}`}
-                className="size-32 shrink-0 rounded-md border object-cover"
+                className="size-40 shrink-0 rounded-md border object-cover"
               />
             ) : (
               <div
-                className="flex size-32 shrink-0 items-center justify-center rounded-md border bg-muted text-muted-foreground"
+                className="flex size-40 shrink-0 items-center justify-center rounded-md border bg-muted text-muted-foreground"
                 aria-label={`Sin imagen para ${productQuery.data.name}`}
               >
                 <ImageOff className="size-8" />
               </div>
             )}
-            <div>
+            <div className="min-w-0">
               <h1 className="text-3xl font-semibold text-slate-900">{productQuery.data.name}</h1>
-              <p className="mt-2 text-lg text-muted-foreground">
-                {productQuery.data.shortName ?? 'Sin nombre corto'}
+              <p className="mt-2 whitespace-pre-wrap text-muted-foreground">
+                {productQuery.data.description ?? 'Sin descripción.'}
               </p>
-              <Button className="mt-4" variant="outline" onClick={() => setIsProductEditOpen(true)}>
-                <Pencil />
-                Editar producto
-              </Button>
+              <div className="mt-6">
+                <p className="text-sm font-medium text-muted-foreground">
+                  Precio más bajo disponible
+                </p>
+                <p className="mt-1 text-4xl font-semibold tracking-tight text-slate-900">
+                  {productQuery.data.lowestAvailablePriceEuro === null
+                    ? '—'
+                    : euroFormatter.format(productQuery.data.lowestAvailablePriceEuro)}
+                </p>
+              </div>
             </div>
+            <Button
+              type="button"
+              className="absolute top-0 right-0 cursor-pointer bg-black text-white hover:bg-black/90"
+              onClick={() => setIsProductEditOpen(true)}
+            >
+              <Pencil />
+              Editar
+            </Button>
           </header>
 
-          <section className="mt-10 border-t pt-6" aria-labelledby="product-components-title">
-            <h2 id="product-components-title" className="text-lg font-medium">
-              Productos que contiene ({productComponentsQuery.data?.length ?? 0})
-            </h2>
-            {productComponentsQuery.isPending ? (
-              <p className="mt-2 text-sm text-muted-foreground">Cargando productos contenidos…</p>
-            ) : productComponentsQuery.data?.length ? (
-              <div className="mt-4">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Imagen</TableHead>
-                      <TableHead>Nombre corto</TableHead>
-                      <TableHead className="text-right">Cantidad</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {productComponentsQuery.data.map((component) => (
-                      <TableRow key={component.containsProductId}>
-                        <TableCell>
-                          {component.product.imageUrl ? (
-                            <img
-                              src={component.product.imageUrl}
-                              alt={`Imagen de ${component.product.shortName}`}
-                              className="size-10 rounded-md border object-cover"
-                            />
-                          ) : (
-                            <div
-                              className="flex size-10 items-center justify-center rounded-md border bg-muted text-muted-foreground"
-                              aria-label={`Sin imagen para ${component.product.shortName}`}
-                            >
-                              <ImageOff className="size-4" />
-                            </div>
-                          )}
-                        </TableCell>
-                        <TableCell>{component.product.shortName}</TableCell>
-                        <TableCell className="text-right">{component.quantity}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+          {productComponentsQuery.data?.length ? (
+            <section className="mt-10 border-t pt-6" aria-labelledby="product-components-title">
+              <h2 id="product-components-title" className="text-lg font-medium">
+                Productos que contiene ({productComponentsQuery.data.length})
+              </h2>
+              <div className="mt-4 flex flex-wrap gap-3">
+                {productComponentsQuery.data.map((component) => (
+                  <Card key={component.containsProductId} size="sm" className="w-24 gap-2">
+                    {component.product.imageUrl ? (
+                      <img
+                        src={component.product.imageUrl}
+                        alt={`Imagen de ${component.product.shortName}`}
+                        className="aspect-square w-full object-cover"
+                      />
+                    ) : (
+                      <div
+                        className="flex aspect-square w-full items-center justify-center bg-muted text-muted-foreground"
+                        aria-label={`Sin imagen para ${component.product.shortName}`}
+                      >
+                        <ImageOff className="size-5" />
+                      </div>
+                    )}
+                    <CardHeader className="px-3">
+                      <CardTitle className="truncate text-xs" title={component.product.shortName}>
+                        {component.product.shortName}
+                      </CardTitle>
+                    </CardHeader>
+                    <CardFooter className="mt-auto justify-end px-3 py-2 text-xs text-muted-foreground">
+                      x{component.quantity}
+                    </CardFooter>
+                  </Card>
+                ))}
               </div>
-            ) : (
-              <p className="mt-2 text-slate-700">Este producto no contiene otros productos.</p>
-            )}
-          </section>
-
-          <section className="mt-10 border-t pt-6" aria-labelledby="product-description-title">
-            <h2 id="product-description-title" className="text-lg font-medium">
-              Descripción
-            </h2>
-            <p className="mt-2 whitespace-pre-wrap text-slate-700">
-              {productQuery.data.description ?? 'Sin descripción.'}
-            </p>
-          </section>
+            </section>
+          ) : null}
 
           <section className="mt-10 border-t pt-6" aria-labelledby="product-offers-title">
             <h2 id="product-offers-title" className="text-lg font-medium">
@@ -264,7 +281,7 @@ export function ProductDetailPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {productQuery.data.offers.map((offer) => (
+                    {sortedOffers.map((offer) => (
                       <TableRow key={offer.id}>
                         <TableCell>{offer.sellerName ?? '—'}</TableCell>
                         <TableCell>{offer.sellerLocation ?? '—'}</TableCell>
