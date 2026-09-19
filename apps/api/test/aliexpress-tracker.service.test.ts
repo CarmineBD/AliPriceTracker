@@ -87,6 +87,27 @@ function failedResult(): AliExpressProductResult {
   };
 }
 
+function userValidationResult(): AliExpressProductResult {
+  return {
+    status: 502,
+    body: {
+      success: false,
+      mtopRet: ['FAIL_SYS_USER_VALIDATE', 'RGV587_ERROR::SM::Retry later'],
+      productId: '1001',
+      productName: null,
+      skuCount: 0,
+      skuPrices: [],
+      store: null,
+      publication: null,
+      products: [],
+      errorType: 'reauth',
+      errorCode: 'ALIEXPRESS_SESSION_REAUTH_REQUIRED',
+      upstreamStatus: 200,
+      session: null,
+    },
+  };
+}
+
 function createRepository(publications: TrackedPublication[], historyProductIds: string[] = []) {
   const historyIds = new Set(historyProductIds);
   const saved: Array<{
@@ -262,5 +283,94 @@ describe('trackAllAliExpressPublications', () => {
     expect(result.publications).toEqual({ total: 3, processed: 2, failed: 1 });
     expect(saved).toHaveLength(2);
     expect(delay).toHaveBeenCalledTimes(2);
+  });
+
+  it('uses a three-second interval between successful publication requests by default', async () => {
+    const { repository } = createRepository([
+      publication('publication-1', '1001', []),
+      publication('publication-2', '1002', []),
+    ]);
+    const delay = vi.fn().mockResolvedValue(undefined);
+
+    await trackAllAliExpressPublications({
+      repository,
+      aliexpressClient: { getProduct: async () => successfulResult([]) },
+      delay,
+      logger: createLogger(),
+      random: () => 0,
+    });
+
+    expect(delay).toHaveBeenCalledExactlyOnceWith(3_000);
+  });
+
+  it('adds positive jitter without reducing the three-second request interval', async () => {
+    const { repository } = createRepository([
+      publication('publication-1', '1001', []),
+      publication('publication-2', '1002', []),
+    ]);
+    const delay = vi.fn().mockResolvedValue(undefined);
+
+    await trackAllAliExpressPublications({
+      repository,
+      aliexpressClient: { getProduct: async () => successfulResult([]) },
+      delay,
+      random: () => 0.5,
+      logger: createLogger(),
+    });
+
+    expect(delay).toHaveBeenCalledExactlyOnceWith(3_500);
+  });
+
+  it('retries a user-validation response with progressive delays before succeeding', async () => {
+    const { repository, saved } = createRepository([publication('publication-1', '1001')]);
+    const delay = vi.fn().mockResolvedValue(undefined);
+    const logger = createLogger();
+    const getProduct = vi
+      .fn()
+      .mockResolvedValueOnce(userValidationResult())
+      .mockResolvedValueOnce(successfulResult());
+
+    const result = await trackAllAliExpressPublications({
+      repository,
+      aliexpressClient: { getProduct },
+      delay,
+      userValidationRetryDelaysMilliseconds: [15_000, 30_000],
+      random: () => 0,
+      logger,
+    });
+
+    expect(result).toMatchObject({ aborted: false, publications: { processed: 1, failed: 0 } });
+    expect(saved).toHaveLength(1);
+    expect(delay).toHaveBeenCalledExactlyOnceWith(15_000);
+    expect(getProduct).toHaveBeenCalledTimes(2);
+    expect(JSON.parse(logger.warn.mock.calls[0]?.[0] as string)).toMatchObject({
+      event: 'aliexpress_tracker_user_validation_retry',
+      retryAttempt: 1,
+      retryDelayMilliseconds: 15_000,
+    });
+  });
+
+  it('logs an explicit anti-bot block and aborts after exhausting retries', async () => {
+    const { repository } = createRepository([publication('publication-1', '1001')]);
+    const delay = vi.fn().mockResolvedValue(undefined);
+    const logger = createLogger();
+
+    const result = await trackAllAliExpressPublications({
+      repository,
+      aliexpressClient: { getProduct: async () => userValidationResult() },
+      delay,
+      userValidationRetryDelaysMilliseconds: [15_000, 30_000],
+      random: () => 0,
+      logger,
+    });
+
+    expect(result).toMatchObject({ aborted: true, publications: { processed: 0, failed: 1 } });
+    expect(delay).toHaveBeenNthCalledWith(1, 15_000);
+    expect(delay).toHaveBeenNthCalledWith(2, 30_000);
+    expect(JSON.parse(logger.error.mock.calls[0]?.[0] as string)).toMatchObject({
+      event: 'aliexpress_tracker_user_validation_blocked',
+      upstreamStatus: 200,
+      mtopRet: ['FAIL_SYS_USER_VALIDATE', 'RGV587_ERROR::SM::Retry later'],
+    });
   });
 });

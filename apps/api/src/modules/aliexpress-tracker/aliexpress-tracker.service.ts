@@ -9,7 +9,11 @@ import {
   type TrackedPublication,
 } from './aliexpress-tracker.repository.js';
 
-const defaultDelayMilliseconds = 1_000;
+// Keep requests deliberately sparse. AliExpress can challenge sessions that make rapid,
+// repeated MTop requests even when their authentication token has not expired.
+const defaultDelayMilliseconds = 3_000;
+const defaultUserValidationRetryDelaysMilliseconds = [15_000, 30_000] as const;
+const defaultJitterMilliseconds = 1_000;
 
 type ProductRequester = Pick<AliExpressClient, 'getProduct'>;
 type TrackerRepository = Pick<
@@ -17,6 +21,7 @@ type TrackerRepository = Pick<
   'findPublications' | 'findProductIdsWithHistory' | 'savePublicationCheck'
 >;
 type Delay = (milliseconds: number) => Promise<void>;
+type Random = () => number;
 type TrackerLogger = Pick<Console, 'error' | 'info' | 'warn'>;
 
 export type AliExpressTrackerResult = {
@@ -41,6 +46,8 @@ export type AliExpressTrackerDependencies = {
   aliexpressClient?: ProductRequester;
   delay?: Delay;
   delayMilliseconds?: number;
+  userValidationRetryDelaysMilliseconds?: readonly number[];
+  random?: Random;
   logger?: TrackerLogger;
 };
 
@@ -48,6 +55,13 @@ const wait: Delay = (milliseconds) =>
   new Promise((resolve) => {
     setTimeout(resolve, milliseconds);
   });
+
+function addJitter(milliseconds: number, random: Random): number {
+  return (
+    milliseconds +
+    Math.floor(Math.max(0, Math.min(random(), 0.999_999)) * defaultJitterMilliseconds)
+  );
+}
 
 function normalizePrice(price: number | null): string | null {
   return price === null ? null : price.toFixed(2);
@@ -66,6 +80,56 @@ function hasCurrentStateChanged(
 
 function isGlobalAliExpressError(result: AliExpressProductResult): boolean {
   return result.body.errorCode === 'ALIEXPRESS_SESSION_REAUTH_REQUIRED';
+}
+
+function isUserValidationError(result: AliExpressProductResult): boolean {
+  return (
+    result.body.mtopRet?.some((entry) => entry.toUpperCase().includes('FAIL_SYS_USER_VALIDATE')) ??
+    false
+  );
+}
+
+async function getProductWithUserValidationRetries({
+  client,
+  productId,
+  publicationId,
+  delay,
+  retryDelaysMilliseconds,
+  random,
+  logger,
+}: {
+  client: ProductRequester;
+  productId: string;
+  publicationId: string;
+  delay: Delay;
+  retryDelaysMilliseconds: readonly number[];
+  random: Random;
+  logger: TrackerLogger;
+}): Promise<AliExpressProductResult> {
+  let result = await client.getProduct(productId);
+
+  for (const [index, retryDelayMilliseconds] of retryDelaysMilliseconds.entries()) {
+    if (!isUserValidationError(result)) {
+      break;
+    }
+
+    const retryDelayWithJitterMilliseconds = addJitter(retryDelayMilliseconds, random);
+    logger.warn(
+      JSON.stringify({
+        event: 'aliexpress_tracker_user_validation_retry',
+        publicationId,
+        aliexpressProductId: productId,
+        retryAttempt: index + 1,
+        retryDelayMilliseconds: retryDelayWithJitterMilliseconds,
+        mtopRet: result.body.mtopRet,
+        upstreamStatus: result.body.upstreamStatus,
+      }),
+    );
+    await delay(retryDelayWithJitterMilliseconds);
+    result = await client.getProduct(productId);
+  }
+
+  return result;
 }
 
 function createEmptyResult(publications: number): AliExpressTrackerResult {
@@ -93,6 +157,8 @@ export async function trackAllAliExpressPublications({
   aliexpressClient: client = aliexpressClient,
   delay = wait,
   delayMilliseconds = defaultDelayMilliseconds,
+  userValidationRetryDelaysMilliseconds = defaultUserValidationRetryDelaysMilliseconds,
+  random = Math.random,
   logger = console,
 }: AliExpressTrackerDependencies = {}): Promise<AliExpressTrackerResult> {
   const publications = await repository.findPublications();
@@ -103,9 +169,29 @@ export async function trackAllAliExpressPublications({
 
   for (const [index, publication] of publications.entries()) {
     try {
-      const upstreamResult = await client.getProduct(publication.aliexpressProductId);
+      const upstreamResult = await getProductWithUserValidationRetries({
+        client,
+        productId: publication.aliexpressProductId,
+        publicationId: publication.id,
+        delay,
+        retryDelaysMilliseconds: userValidationRetryDelaysMilliseconds,
+        random,
+        logger,
+      });
       if (upstreamResult.status !== 200 || !upstreamResult.body.success) {
         result.publications.failed += 1;
+        const userValidationError = isUserValidationError(upstreamResult);
+        if (userValidationError) {
+          logger.error(
+            JSON.stringify({
+              event: 'aliexpress_tracker_user_validation_blocked',
+              publicationId: publication.id,
+              aliexpressProductId: publication.aliexpressProductId,
+              mtopRet: upstreamResult.body.mtopRet,
+              upstreamStatus: upstreamResult.body.upstreamStatus,
+            }),
+          );
+        }
         logger.error(
           JSON.stringify({
             event: 'aliexpress_tracker_publication_failed',
@@ -113,6 +199,8 @@ export async function trackAllAliExpressPublications({
             aliexpressProductId: publication.aliexpressProductId,
             status: upstreamResult.status,
             errorCode: upstreamResult.body.errorCode,
+            mtopRet: upstreamResult.body.mtopRet,
+            upstreamStatus: upstreamResult.body.upstreamStatus,
           }),
         );
 
@@ -137,7 +225,7 @@ export async function trackAllAliExpressPublications({
     }
 
     if (!result.aborted && index < publications.length - 1) {
-      await delay(delayMilliseconds);
+      await delay(addJitter(delayMilliseconds, random));
     }
   }
 
