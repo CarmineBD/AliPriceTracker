@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import request from 'supertest';
 
-import { opportunitiesListQuerySchema } from '@alitracker/shared';
+import { opportunitiesListQuerySchema, type Coupon } from '@alitracker/shared';
 
 import { app } from '../src/app';
 import type {
@@ -20,11 +20,31 @@ import {
 const productId = '00000000-0000-4000-8000-000000000001';
 const componentId = '00000000-0000-4000-8000-000000000002';
 
-const coupons = [
-  { id: '00000000-0000-4000-8000-000000000011', minPurchase: 59, discountAmount: 5 },
-  { id: '00000000-0000-4000-8000-000000000012', minPurchase: 89, discountAmount: 8 },
-  { id: '00000000-0000-4000-8000-000000000013', minPurchase: 129, discountAmount: 15 },
-  { id: '00000000-0000-4000-8000-000000000014', minPurchase: 169, discountAmount: 25 },
+const coupons: Coupon[] = [
+  {
+    id: '00000000-0000-4000-8000-000000000011',
+    minPurchase: 59,
+    discountAmount: 5,
+    category: 'event',
+  },
+  {
+    id: '00000000-0000-4000-8000-000000000012',
+    minPurchase: 89,
+    discountAmount: 8,
+    category: 'event',
+  },
+  {
+    id: '00000000-0000-4000-8000-000000000013',
+    minPurchase: 129,
+    discountAmount: 15,
+    category: 'event',
+  },
+  {
+    id: '00000000-0000-4000-8000-000000000014',
+    minPurchase: 169,
+    discountAmount: 25,
+    category: 'event',
+  },
 ];
 
 const offer = (overrides: Partial<CurrentProductOffer> = {}): CurrentProductOffer => ({
@@ -232,10 +252,11 @@ describe('listOpportunities', () => {
   });
 
   it('uses selected coupons from the application, including those outside the active event', async () => {
-    const inactiveCoupon = {
+    const inactiveCoupon: Coupon = {
       id: '00000000-0000-4000-8000-000000000015',
       minPurchase: 129,
       discountAmount: 20,
+      category: 'special',
     };
     const result = await listOpportunities(
       {

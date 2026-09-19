@@ -374,10 +374,22 @@ export const productBestOfferHistoryResponseSchema = z.object({
 export type ProductBestOfferHistoryEntry = z.infer<typeof productBestOfferHistoryEntrySchema>;
 export type ProductBestOfferHistoryResponse = z.infer<typeof productBestOfferHistoryResponseSchema>;
 
+export const couponCategoryValues = ['event', 'special'] as const;
+
+const couponCategorySchema = z.enum(couponCategoryValues);
+
+export type CouponCategory = z.infer<typeof couponCategorySchema>;
+
+const couponCategoryInputSchema = z.preprocess(
+  (value) => (value === '' ? null : value),
+  couponCategorySchema.nullable().optional(),
+);
+
 export const couponSchema = z.object({
   id: z.string().uuid(),
   minPurchase: z.number().finite().nonnegative(),
   discountAmount: z.number().finite().nonnegative(),
+  category: couponCategorySchema.nullable(),
 });
 
 export const opportunitiesListQuerySchema = z
@@ -437,6 +449,7 @@ export const couponCreateSchema = z
   .object({
     minPurchase: couponAmountSchema,
     discountAmount: couponAmountSchema,
+    category: couponCategoryInputSchema,
   })
   .strict();
 

@@ -1,4 +1,4 @@
-import type { Coupon, OpportunitiesListQuery } from '@alitracker/shared';
+import type { Coupon, CouponCategory, OpportunitiesListQuery } from '@alitracker/shared';
 
 import { getPublicUrl } from '../../services/storage.service.js';
 import { EventsRepository } from '../events/events.repository.js';
@@ -8,7 +8,7 @@ import {
   type ProductComboComponent,
 } from './opportunities.repository.js';
 
-type MoneyCoupon = Pick<Coupon, 'id' | 'minPurchase' | 'discountAmount'>;
+type MoneyCoupon = Pick<Coupon, 'id' | 'minPurchase' | 'discountAmount' | 'category'>;
 
 export type Opportunity = {
   productId: string;
@@ -57,11 +57,13 @@ function toCoupon(coupon: {
   id: string;
   minPurchase: string;
   discountAmount: string;
+  category: CouponCategory | null;
 }): MoneyCoupon {
   return {
     id: coupon.id,
     minPurchase: Number(coupon.minPurchase),
     discountAmount: Number(coupon.discountAmount),
+    category: coupon.category,
   };
 }
 

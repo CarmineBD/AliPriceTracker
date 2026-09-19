@@ -30,6 +30,7 @@ describe('OpportunitiesPage', () => {
             id: '00000000-0000-4000-8000-000000000002',
             minPurchase: 279,
             discountAmount: 30,
+            category: 'event',
           },
         ],
       },
@@ -39,11 +40,13 @@ describe('OpportunitiesPage', () => {
         id: '00000000-0000-4000-8000-000000000002',
         minPurchase: 279,
         discountAmount: 30,
+        category: 'event',
       },
       {
         id: '00000000-0000-4000-8000-000000000003',
         minPurchase: 369,
         discountAmount: 45,
+        category: 'event',
       },
     ]);
     getOpportunitiesMock.mockResolvedValue({
@@ -59,6 +62,7 @@ describe('OpportunitiesPage', () => {
             id: '00000000-0000-4000-8000-000000000002',
             minPurchase: 279,
             discountAmount: 30,
+            category: 'event',
           },
           effectivePurchasePrice: 259,
           estimatedSellingPrice: 355,
@@ -68,6 +72,7 @@ describe('OpportunitiesPage', () => {
             id: '00000000-0000-4000-8000-000000000003',
             minPurchase: 369,
             discountAmount: 45,
+            category: 'event',
           },
           amountToNextCoupon: 80,
           stock: 5,

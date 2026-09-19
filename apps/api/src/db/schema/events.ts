@@ -1,4 +1,5 @@
 import { sql } from 'drizzle-orm';
+import type { CouponCategory } from '@alitracker/shared';
 import {
   check,
   index,
@@ -10,13 +11,23 @@ import {
   varchar,
 } from 'drizzle-orm/pg-core';
 
-export const coupons = pgTable('coupons', {
-  id: uuid('id').defaultRandom().primaryKey(),
-  minPurchase: numeric('min_purchase', { precision: 12, scale: 2 }).notNull(),
-  discountAmount: numeric('discount_amount', { precision: 12, scale: 2 }).notNull(),
-  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
-  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
-});
+export const coupons = pgTable(
+  'coupons',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    minPurchase: numeric('min_purchase', { precision: 12, scale: 2 }).notNull(),
+    discountAmount: numeric('discount_amount', { precision: 12, scale: 2 }).notNull(),
+    category: varchar('category', { length: 50 }).$type<CouponCategory | null>(),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    check(
+      'coupons_category_allowed_values',
+      sql`${table.category} IS NULL OR ${table.category} IN ('event', 'special')`,
+    ),
+  ],
+);
 
 export const events = pgTable(
   'events',

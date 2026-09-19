@@ -1,6 +1,7 @@
 import { and, asc, count, eq, gte, inArray, lte } from 'drizzle-orm';
 
 import type {
+  CouponCategory,
   CouponCreateInput,
   CouponUpdateInput,
   CouponsListQuery,
@@ -15,6 +16,7 @@ export type ActiveEventCoupon = {
   id: string;
   minPurchase: string;
   discountAmount: string;
+  category: CouponCategory | null;
 };
 
 export type ActiveEvent = {
@@ -45,6 +47,7 @@ export class EventsRepository {
         id: coupons.id,
         minPurchase: coupons.minPurchase,
         discountAmount: coupons.discountAmount,
+        category: coupons.category,
       })
       .from(eventCoupons)
       .innerJoin(coupons, eq(coupons.id, eventCoupons.couponId))
@@ -58,6 +61,7 @@ export class EventsRepository {
         id: row.id,
         minPurchase: row.minPurchase,
         discountAmount: row.discountAmount,
+        category: row.category,
       });
       couponsByEventId.set(row.eventId, eventCoupons);
     }
@@ -99,6 +103,7 @@ export class EventsRepository {
         id: coupons.id,
         minPurchase: coupons.minPurchase,
         discountAmount: coupons.discountAmount,
+        category: coupons.category,
       })
       .from(coupons)
       .orderBy(asc(coupons.minPurchase), asc(coupons.discountAmount), asc(coupons.id));
@@ -119,6 +124,7 @@ export class EventsRepository {
       .values({
         minPurchase: input.minPurchase.toFixed(2),
         discountAmount: input.discountAmount.toFixed(2),
+        category: input.category ?? null,
       })
       .returning();
     return coupon;
@@ -130,6 +136,7 @@ export class EventsRepository {
       .set({
         minPurchase: input.minPurchase?.toFixed(2),
         discountAmount: input.discountAmount?.toFixed(2),
+        category: input.category,
         updatedAt: new Date(),
       })
       .where(eq(coupons.id, id))

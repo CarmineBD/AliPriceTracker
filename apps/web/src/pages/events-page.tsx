@@ -1,6 +1,6 @@
 import { useState } from 'react';
 
-import type { ActiveEvent, CouponResponse, EventSaveInput } from '@alitracker/shared';
+import type { ActiveEvent, CouponCreateInput, CouponResponse, EventSaveInput } from '@alitracker/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Plus } from 'lucide-react';
 
@@ -157,7 +157,7 @@ export function EventsPage() {
   };
 
   const saveCouponMutation = useMutation({
-    mutationFn: (input: { minPurchase: number; discountAmount: number }) =>
+    mutationFn: (input: CouponCreateInput) =>
       couponForm ? updateCoupon(couponForm.id, input) : createCoupon(input),
     onSuccess: async () => {
       setCouponForm(undefined);

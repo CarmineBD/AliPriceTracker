@@ -31,6 +31,7 @@ describe('EventsPage', () => {
           id: '00000000-0000-4000-8000-000000000001',
           minPurchase: 79,
           discountAmount: 10,
+          category: 'event',
           createdAt: '2026-11-01T00:00:00.000Z',
           updatedAt: '2026-11-01T00:00:00.000Z',
         },

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 
-import type { CouponCreateInput, CouponResponse } from '@alitracker/shared';
+import type { CouponCategory, CouponCreateInput, CouponResponse } from '@alitracker/shared';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -21,6 +21,13 @@ import {
   FieldSet,
 } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
+import {
+  Combobox,
+  ComboboxContent,
+  ComboboxInput,
+  ComboboxItem,
+  ComboboxList,
+} from '@/components/ui/combobox';
 
 type CouponFormDialogProps = {
   open: boolean;
@@ -31,12 +38,24 @@ type CouponFormDialogProps = {
   onSubmit: (input: CouponCreateInput) => void;
 };
 
-type CouponFormValues = { minPurchase: string; discountAmount: string };
+type CouponFormValues = {
+  minPurchase: string;
+  discountAmount: string;
+  category: CouponCategory | '';
+};
+
+type CouponCategoryOption = { value: CouponCategory; label: string };
+
+const couponCategoryOptions: CouponCategoryOption[] = [
+  { value: 'event', label: 'Evento' },
+  { value: 'special', label: 'Especial' },
+];
 
 function toValues(coupon?: CouponResponse): CouponFormValues {
   return {
     minPurchase: coupon?.minPurchase.toFixed(2) ?? '',
     discountAmount: coupon?.discountAmount.toFixed(2) ?? '',
+    category: coupon?.category ?? '',
   };
 }
 
@@ -73,7 +92,7 @@ export function CouponFormDialog({
       return;
     }
     setAmountError(undefined);
-    onSubmit({ minPurchase, discountAmount });
+    onSubmit({ minPurchase, discountAmount, category: values.category || null });
   };
 
   const title = coupon ? 'Editar cupón' : 'Agregar cupón';
@@ -126,6 +145,39 @@ export function CouponFormDialog({
                     }}
                   />
                   <FieldError>{amountError}</FieldError>
+                </FieldContent>
+              </Field>
+              <Field>
+                <FieldLabel htmlFor="coupon-category">Categor&#237;a</FieldLabel>
+                <FieldContent>
+                  <Combobox
+                    items={couponCategoryOptions}
+                    value={
+                      couponCategoryOptions.find((option) => option.value === values.category) ??
+                      null
+                    }
+                    onValueChange={(option) =>
+                      setValues((current) => ({ ...current, category: option?.value ?? '' }))
+                    }
+                    itemToStringLabel={(option) => option.label}
+                    itemToStringValue={(option) => option.value}
+                  >
+                    <ComboboxInput
+                    id="coupon-category"
+                      placeholder="Seleccionar categor&#237;a..."
+                      readOnly
+                      showClear
+                    />
+                    <ComboboxContent>
+                      <ComboboxList>
+                        {(option: CouponCategoryOption) => (
+                          <ComboboxItem key={option.value} value={option}>
+                            {option.label}
+                          </ComboboxItem>
+                        )}
+                      </ComboboxList>
+                    </ComboboxContent>
+                  </Combobox>
                 </FieldContent>
               </Field>
             </FieldGroup>

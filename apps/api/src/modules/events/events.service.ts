@@ -1,5 +1,6 @@
 import type {
   Coupon,
+  CouponCategory,
   CouponCreateInput,
   CouponUpdateInput,
   CouponsListQuery,
@@ -68,6 +69,7 @@ function toActiveEvent(event: ActiveEvent) {
       id: coupon.id,
       minPurchase: Number(coupon.minPurchase),
       discountAmount: Number(coupon.discountAmount),
+      category: coupon.category,
     })),
   };
 }
@@ -76,6 +78,7 @@ function toCouponResponse(coupon: {
   id: string;
   minPurchase: string;
   discountAmount: string;
+  category: CouponCategory | null;
   createdAt: Date;
   updatedAt: Date;
 }) {
@@ -83,6 +86,7 @@ function toCouponResponse(coupon: {
     id: coupon.id,
     minPurchase: Number(coupon.minPurchase),
     discountAmount: Number(coupon.discountAmount),
+    category: coupon.category,
     createdAt: coupon.createdAt.toISOString(),
     updatedAt: coupon.updatedAt.toISOString(),
   };
@@ -127,6 +131,7 @@ export async function listCouponOptions(
     id: coupon.id,
     minPurchase: Number(coupon.minPurchase),
     discountAmount: Number(coupon.discountAmount),
+    category: coupon.category,
   }));
 }
 

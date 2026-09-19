@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
+import type { Coupon } from '@alitracker/shared';
+
 import {
   createEvent,
   getActiveEvents,
@@ -7,10 +9,25 @@ import {
   selectBestCoupon,
 } from '../src/modules/events/events.service';
 
-const coupons = [
-  { id: '00000000-0000-4000-8000-000000000001', minPurchase: 39, discountAmount: 5 },
-  { id: '00000000-0000-4000-8000-000000000002', minPurchase: 79, discountAmount: 10 },
-  { id: '00000000-0000-4000-8000-000000000003', minPurchase: 159, discountAmount: 20 },
+const coupons: Coupon[] = [
+  {
+    id: '00000000-0000-4000-8000-000000000001',
+    minPurchase: 39,
+    discountAmount: 5,
+    category: 'event',
+  },
+  {
+    id: '00000000-0000-4000-8000-000000000002',
+    minPurchase: 79,
+    discountAmount: 10,
+    category: 'event',
+  },
+  {
+    id: '00000000-0000-4000-8000-000000000003',
+    minPurchase: 159,
+    discountAmount: 20,
+    category: 'event',
+  },
 ];
 
 describe('selectBestCoupon', () => {
@@ -41,15 +58,17 @@ describe('selectBestCoupon', () => {
   });
 
   it('breaks equal final prices using the lexicographically smaller coupon id', () => {
-    const laterId = {
+    const laterId: Coupon = {
       id: '00000000-0000-4000-8000-000000000020',
       minPurchase: 39,
       discountAmount: 10,
+      category: 'event',
     };
-    const earlierId = {
+    const earlierId: Coupon = {
       id: '00000000-0000-4000-8000-000000000010',
       minPurchase: 79,
       discountAmount: 10,
+      category: 'event',
     };
 
     expect(selectBestCoupon(100, [laterId, earlierId]).coupon).toEqual(earlierId);
@@ -71,6 +90,7 @@ describe('getActiveEvents', () => {
               id: '00000000-0000-4000-8000-000000000002',
               minPurchase: '79.00',
               discountAmount: '10.00',
+              category: 'event',
             },
           ],
         },
@@ -88,6 +108,7 @@ describe('getActiveEvents', () => {
             id: '00000000-0000-4000-8000-000000000002',
             minPurchase: 79,
             discountAmount: 10,
+            category: 'event',
           },
         ],
       },
@@ -106,6 +127,7 @@ describe('events management', () => {
               id: coupons[0]!.id,
               minPurchase: '39.00',
               discountAmount: '5.00',
+              category: 'event',
               createdAt: new Date('2026-11-01T00:00:00.000Z'),
               updatedAt: new Date('2026-11-02T00:00:00.000Z'),
             },
@@ -116,7 +138,7 @@ describe('events management', () => {
     );
 
     expect(result).toMatchObject({
-      coupons: [{ minPurchase: 39, discountAmount: 5 }],
+      coupons: [{ minPurchase: 39, discountAmount: 5, category: 'event' }],
       pagination: { page: 2, pageSize: 20, total: 21, totalPages: 2 },
     });
   });
