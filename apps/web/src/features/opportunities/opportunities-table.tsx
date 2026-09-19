@@ -87,7 +87,10 @@ export function OpportunitiesTable({ opportunities }: OpportunitiesTableProps) {
               </TableCell>
               <TableCell>
                 {opportunity.coupon ? (
-                  <CouponDiscountBadge amount={opportunity.coupon.discountAmount} />
+                  <CouponDiscountBadge
+                    amount={opportunity.coupon.discountAmount}
+                    category={opportunity.coupon.category}
+                  />
                 ) : (
                   '—'
                 )}

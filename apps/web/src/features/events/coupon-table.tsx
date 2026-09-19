@@ -4,7 +4,6 @@ import { Pencil, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   CouponDiscountBadge,
-  formatCouponAmount,
   formatCouponDiscount,
 } from '@/components/coupon-discount-badge';
 import {
@@ -22,6 +21,12 @@ type CouponTableProps = {
   onDelete: (coupon: CouponResponse) => void;
 };
 
+const minimumPurchaseFormatter = new Intl.NumberFormat('es-ES', {
+  style: 'currency',
+  currency: 'EUR',
+  maximumFractionDigits: 0,
+});
+
 export function CouponTable({ coupons, onEdit, onDelete }: CouponTableProps) {
   if (coupons.length === 0) {
     return <p className="py-8 text-center text-sm text-muted-foreground">Aún no hay cupones.</p>;
@@ -31,19 +36,19 @@ export function CouponTable({ coupons, onEdit, onDelete }: CouponTableProps) {
     <Table>
       <TableHeader>
         <TableRow>
-          <TableHead className="text-right">Mínimo de compra</TableHead>
-          <TableHead className="text-right">Descuento</TableHead>
+          <TableHead>Mínimo de compra</TableHead>
+          <TableHead>Descuento</TableHead>
           <TableHead className="text-right">Acciones</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
         {coupons.map((coupon) => (
           <TableRow key={coupon.id}>
-            <TableCell className="text-right">{formatCouponAmount(coupon.minPurchase)}</TableCell>
-            <TableCell className="text-right">
-              <CouponDiscountBadge amount={coupon.discountAmount} />
-            </TableCell>
+            <TableCell>{minimumPurchaseFormatter.format(coupon.minPurchase)}</TableCell>
             <TableCell>
+              <CouponDiscountBadge amount={coupon.discountAmount} category={coupon.category} />
+            </TableCell>
+            <TableCell className="text-right">
               <div className="flex justify-end gap-1">
                 <Button
                   type="button"

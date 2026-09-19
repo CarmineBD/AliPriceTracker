@@ -76,7 +76,7 @@ export function EventCouponsEditor({
                   {formatCouponAmount(coupon.minPurchase)}
                 </TableCell>
                 <TableCell className="text-right">
-                  <CouponDiscountBadge amount={coupon.discountAmount} />
+                  <CouponDiscountBadge amount={coupon.discountAmount} category={coupon.category} />
                 </TableCell>
                 <TableCell className="text-right">
                   <Button

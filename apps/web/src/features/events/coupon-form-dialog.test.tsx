@@ -39,7 +39,7 @@ describe('CouponFormDialog', () => {
       <CouponFormDialog open isSaving={false} onOpenChange={vi.fn()} onSubmit={onSubmit} />,
     );
 
-    fireEvent.change(screen.getByRole('spinbutton', { name: /m.nimo de compra/i }), {
+    fireEvent.change(screen.getByRole('spinbutton', { name: /compra/i }), {
       target: { value: '79' },
     });
     fireEvent.change(screen.getByRole('spinbutton', { name: /descuento/i }), {

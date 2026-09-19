@@ -2,6 +2,13 @@ import { useEffect, useState } from 'react';
 
 import type { CouponCategory, CouponCreateInput, CouponResponse } from '@alitracker/shared';
 
+import {
+  Combobox,
+  ComboboxContent,
+  ComboboxInput,
+  ComboboxItem,
+  ComboboxList,
+} from '@/components/ui/combobox';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -21,13 +28,6 @@ import {
   FieldSet,
 } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
-import {
-  Combobox,
-  ComboboxContent,
-  ComboboxInput,
-  ComboboxItem,
-  ComboboxList,
-} from '@/components/ui/combobox';
 
 type CouponFormDialogProps = {
   open: boolean;
@@ -110,25 +110,6 @@ export function CouponFormDialog({
           <FieldSet disabled={isSaving} className="mt-6">
             <FieldGroup className="gap-4">
               <Field data-invalid={Boolean(amountError)}>
-                <FieldLabel htmlFor="coupon-min-purchase">Mínimo de compra (€)</FieldLabel>
-                <FieldContent>
-                  <Input
-                    id="coupon-min-purchase"
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    inputMode="decimal"
-                    value={values.minPurchase}
-                    required
-                    autoFocus
-                    onChange={(event) => {
-                      setValues((current) => ({ ...current, minPurchase: event.target.value }));
-                      if (amountError) setAmountError(undefined);
-                    }}
-                  />
-                </FieldContent>
-              </Field>
-              <Field data-invalid={Boolean(amountError)}>
                 <FieldLabel htmlFor="coupon-discount-amount">Descuento (€)</FieldLabel>
                 <FieldContent>
                   <Input
@@ -139,12 +120,31 @@ export function CouponFormDialog({
                     inputMode="decimal"
                     value={values.discountAmount}
                     required
+                    autoFocus
                     onChange={(event) => {
                       setValues((current) => ({ ...current, discountAmount: event.target.value }));
                       if (amountError) setAmountError(undefined);
                     }}
                   />
                   <FieldError>{amountError}</FieldError>
+                </FieldContent>
+              </Field>
+              <Field data-invalid={Boolean(amountError)}>
+                <FieldLabel htmlFor="coupon-min-purchase">Mínimo de compra (€)</FieldLabel>
+                <FieldContent>
+                  <Input
+                    id="coupon-min-purchase"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    inputMode="decimal"
+                    value={values.minPurchase}
+                    required
+                    onChange={(event) => {
+                      setValues((current) => ({ ...current, minPurchase: event.target.value }));
+                      if (amountError) setAmountError(undefined);
+                    }}
+                  />
                 </FieldContent>
               </Field>
               <Field>
@@ -163,7 +163,7 @@ export function CouponFormDialog({
                     itemToStringValue={(option) => option.value}
                   >
                     <ComboboxInput
-                    id="coupon-category"
+                      id="coupon-category"
                       placeholder="Seleccionar categor&#237;a..."
                       readOnly
                       showClear

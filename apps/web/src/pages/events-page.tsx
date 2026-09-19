@@ -334,7 +334,12 @@ export function EventsPage() {
           couponToDelete
             ? {
                 type: 'cupón',
-                label: <CouponDiscountBadge amount={couponToDelete.discountAmount} />,
+                label: (
+                  <CouponDiscountBadge
+                    amount={couponToDelete.discountAmount}
+                    category={couponToDelete.category}
+                  />
+                ),
               }
             : undefined
         }
