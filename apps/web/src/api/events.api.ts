@@ -1,5 +1,6 @@
 import {
   activeEventSchema,
+  activeEventsResponseSchema,
   couponCreateSchema,
   couponResponseSchema,
   couponSchema,
@@ -44,6 +45,10 @@ export async function getCoupons(query: CouponsListQuery): Promise<CouponsList> 
 
 export async function getCouponOptions(): Promise<Coupon[]> {
   return couponSchema.array().parse(await request<unknown>('/api/events/coupons/options'));
+}
+
+export async function getActiveEvents(): Promise<ActiveEvent[]> {
+  return activeEventsResponseSchema.parse(await request<unknown>('/api/events/active'));
 }
 
 export async function createCoupon(input: CouponCreateInput): Promise<CouponResponse> {

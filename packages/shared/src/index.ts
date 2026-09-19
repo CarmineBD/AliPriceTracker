@@ -385,6 +385,12 @@ export const opportunitiesListQuerySchema = z
     sort: z.literal('roi-desc'),
     page: z.coerce.number().int().positive().default(1),
     pageSize: z.coerce.number().int().positive().max(100).default(20),
+    couponIds: z
+      .preprocess(
+        (value) => (value === undefined || Array.isArray(value) ? value : [value]),
+        z.array(couponSchema.shape.id).max(100).optional(),
+      )
+      .transform((couponIds) => (couponIds ? [...new Set(couponIds)] : undefined)),
   })
   .strict();
 

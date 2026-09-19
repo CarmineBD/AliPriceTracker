@@ -2,7 +2,11 @@ import type { Coupon } from '@alitracker/shared';
 import { Trash2 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
-import { CouponDiscountBadge, formatCouponDiscount } from '@/components/coupon-discount-badge';
+import {
+  CouponDiscountBadge,
+  formatCouponAmount,
+  formatCouponDiscount,
+} from '@/components/coupon-discount-badge';
 import { FieldLabel } from '@/components/ui/field';
 import {
   Table,
@@ -13,7 +17,6 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { CouponCombobox } from './coupon-combobox';
-import { formatCouponAmount } from './coupon-table';
 
 type EventCouponsEditorProps = {
   coupons: Coupon[];

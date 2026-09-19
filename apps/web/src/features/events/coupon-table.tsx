@@ -2,7 +2,11 @@ import type { CouponResponse } from '@alitracker/shared';
 import { Pencil, Trash2 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
-import { CouponDiscountBadge, formatCouponDiscount } from '@/components/coupon-discount-badge';
+import {
+  CouponDiscountBadge,
+  formatCouponAmount,
+  formatCouponDiscount,
+} from '@/components/coupon-discount-badge';
 import {
   Table,
   TableBody,
@@ -17,16 +21,6 @@ type CouponTableProps = {
   onEdit: (coupon: CouponResponse) => void;
   onDelete: (coupon: CouponResponse) => void;
 };
-
-const currencyFormatter = new Intl.NumberFormat('es-ES', {
-  style: 'currency',
-  currency: 'EUR',
-  minimumFractionDigits: 2,
-});
-
-export function formatCouponAmount(amount: number): string {
-  return currencyFormatter.format(amount);
-}
 
 export function CouponTable({ coupons, onEdit, onDelete }: CouponTableProps) {
   if (coupons.length === 0) {

@@ -1,6 +1,10 @@
 import type { Coupon } from '@alitracker/shared';
 
-import { CouponDiscountBadge, formatCouponDiscount } from '@/components/coupon-discount-badge';
+import {
+  CouponDiscountBadge,
+  formatCouponAmount,
+  formatCouponDiscount,
+} from '@/components/coupon-discount-badge';
 import {
   Combobox,
   ComboboxContent,
@@ -9,7 +13,6 @@ import {
   ComboboxItem,
   ComboboxList,
 } from '@/components/ui/combobox';
-import { formatCouponAmount } from './coupon-table';
 
 type CouponComboboxProps = {
   coupons: Coupon[];

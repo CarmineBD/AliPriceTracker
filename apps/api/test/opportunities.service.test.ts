@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import request from 'supertest';
 
+import { opportunitiesListQuerySchema } from '@alitracker/shared';
+
 import { app } from '../src/app';
 import type {
   CurrentProductOffer,
@@ -141,7 +143,7 @@ describe('listOpportunities', () => {
           findProductsWithCurrentOffers: async () => [offer()],
           findComboComponents: async () => [],
         },
-        events: { findActiveWithCoupons: async () => [] },
+        events: { findActiveWithCoupons: async () => [], findCouponOptions: async () => [] },
       },
     );
 
@@ -179,6 +181,7 @@ describe('listOpportunities', () => {
               coupons: [],
             },
           ],
+          findCouponOptions: async () => [],
         },
       },
     );
@@ -210,6 +213,12 @@ describe('listOpportunities', () => {
               })),
             },
           ],
+          findCouponOptions: async () =>
+            coupons.map((coupon) => ({
+              ...coupon,
+              minPurchase: coupon.minPurchase.toFixed(2),
+              discountAmount: coupon.discountAmount.toFixed(2),
+            })),
         },
       },
     );
@@ -219,6 +228,57 @@ describe('listOpportunities', () => {
       effectivePurchasePrice: 135,
       nextCoupon: coupons[3],
       amountToNextCoupon: 19,
+    });
+  });
+
+  it('uses selected coupons from the application, including those outside the active event', async () => {
+    const inactiveCoupon = {
+      id: '00000000-0000-4000-8000-000000000015',
+      minPurchase: 129,
+      discountAmount: 20,
+    };
+    const result = await listOpportunities(
+      {
+        sort: 'roi-desc',
+        page: 1,
+        pageSize: 20,
+        couponIds: [coupons[1]!.id, inactiveCoupon.id],
+      },
+      new Date(),
+      {
+        opportunities: {
+          findProductsWithCurrentOffers: async () => [offer({ price: '150.00' })],
+          findComboComponents: async () => [],
+        },
+        events: {
+          findActiveWithCoupons: async () => [
+            {
+              id: '00000000-0000-4000-8000-000000000021',
+              name: 'Sale',
+              startsAt: new Date('2026-09-17T00:00:00.000Z'),
+              endsAt: new Date('2026-09-18T00:00:00.000Z'),
+              coupons: coupons.map((coupon) => ({
+                ...coupon,
+                minPurchase: coupon.minPurchase.toFixed(2),
+                discountAmount: coupon.discountAmount.toFixed(2),
+              })),
+            },
+          ],
+          findCouponOptions: async () =>
+            [...coupons, inactiveCoupon].map((coupon) => ({
+              ...coupon,
+              minPurchase: coupon.minPurchase.toFixed(2),
+              discountAmount: coupon.discountAmount.toFixed(2),
+            })),
+        },
+      },
+    );
+
+    expect(result.opportunities[0]).toMatchObject({
+      coupon: inactiveCoupon,
+      effectivePurchasePrice: 130,
+      nextCoupon: null,
+      amountToNextCoupon: null,
     });
   });
 
@@ -241,7 +301,7 @@ describe('listOpportunities', () => {
         ],
         findComboComponents: async () => [],
       },
-      events: { findActiveWithCoupons: async () => [] },
+      events: { findActiveWithCoupons: async () => [], findCouponOptions: async () => [] },
     });
 
     expect(result.opportunities).toHaveLength(1);
@@ -251,9 +311,28 @@ describe('listOpportunities', () => {
 });
 
 describe('opportunities request validation', () => {
+  it('accepts one or more repeated coupon IDs and leaves the filter undefined when omitted', () => {
+    expect(
+      opportunitiesListQuerySchema.parse({
+        sort: 'roi-desc',
+        couponIds: coupons[0]!.id,
+      }).couponIds,
+    ).toEqual([coupons[0]!.id]);
+    expect(
+      opportunitiesListQuerySchema.parse({
+        sort: 'roi-desc',
+        couponIds: [coupons[0]!.id, coupons[1]!.id],
+      }).couponIds,
+    ).toEqual([coupons[0]!.id, coupons[1]!.id]);
+    expect(opportunitiesListQuerySchema.parse({ sort: 'roi-desc' }).couponIds).toBeUndefined();
+  });
+
   it('requires the ROI descending sort and validates pagination before accessing the database', async () => {
     expect((await request(app).get('/api/opportunities')).status).toBe(400);
     expect((await request(app).get('/api/opportunities?sort=profit-desc')).status).toBe(400);
     expect((await request(app).get('/api/opportunities?sort=roi-desc&page=0')).status).toBe(400);
+    expect(
+      (await request(app).get('/api/opportunities?sort=roi-desc&couponIds=invalid')).status,
+    ).toBe(400);
   });
 });

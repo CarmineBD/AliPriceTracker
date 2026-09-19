@@ -2,6 +2,7 @@ import { useState } from 'react';
 
 import { useQuery } from '@tanstack/react-query';
 
+import { getActiveEvents, getCouponOptions } from '@/api/events.api';
 import { getOpportunities } from '@/api/opportunities.api';
 import {
   Pagination,
@@ -13,6 +14,7 @@ import {
   PaginationPrevious,
 } from '@/components/ui/pagination';
 import { OpportunitiesTable } from '@/features/opportunities/opportunities-table';
+import { OpportunityCouponFilters } from '@/features/opportunities/opportunity-coupon-filters';
 import { AppLayout } from '@/layouts/app-layout';
 
 const pageSize = 20;
@@ -36,9 +38,31 @@ function getPageItems(currentPage: number, totalPages: number): Array<number | '
 
 export function OpportunitiesPage() {
   const [page, setPage] = useState(1);
+  const [selectedCouponIds, setSelectedCouponIds] = useState<string[] | null>(null);
+  const activeEventsQuery = useQuery({
+    queryKey: ['active-events'],
+    queryFn: getActiveEvents,
+  });
+  const couponOptionsQuery = useQuery({
+    queryKey: ['coupon-options'],
+    queryFn: getCouponOptions,
+  });
+  const coupons = couponOptionsQuery.data ?? [];
+  const activeCouponIds = new Set(activeEventsQuery.data?.[0]?.coupons.map((coupon) => coupon.id));
+  const couponIds =
+    selectedCouponIds ??
+    coupons.filter((coupon) => activeCouponIds.has(coupon.id)).map((coupon) => coupon.id);
+  const selectedCoupons = coupons.filter((coupon) => couponIds.includes(coupon.id));
+  const couponDefaultsReady = activeEventsQuery.isSuccess && couponOptionsQuery.isSuccess;
   const opportunitiesQuery = useQuery({
-    queryKey: ['opportunities', { sort: 'roi-desc', page, pageSize }],
-    queryFn: () => getOpportunities({ sort: 'roi-desc', page, pageSize }),
+    queryKey: ['opportunities', { sort: 'roi-desc', page, pageSize, couponIds }],
+    enabled: couponDefaultsReady,
+    queryFn: () =>
+      getOpportunities(
+        couponIds.length > 0
+          ? { sort: 'roi-desc', page, pageSize, couponIds }
+          : { sort: 'roi-desc', page, pageSize },
+      ),
   });
   const pagination = opportunitiesQuery.data?.pagination;
 
@@ -52,6 +76,15 @@ export function OpportunitiesPage() {
       </div>
 
       <section aria-labelledby="opportunities-list-title">
+        <OpportunityCouponFilters
+          coupons={coupons}
+          selectedCoupons={selectedCoupons}
+          disabled={couponOptionsQuery.isPending || couponOptionsQuery.isError}
+          onSelectedCouponsChange={(coupons) => {
+            setSelectedCouponIds(coupons.map((coupon) => coupon.id));
+            setPage(1);
+          }}
+        />
         <h2 id="opportunities-list-title" className="sr-only">
           Listado de oportunidades
         </h2>

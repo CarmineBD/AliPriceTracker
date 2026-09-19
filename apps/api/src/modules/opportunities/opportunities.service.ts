@@ -34,7 +34,7 @@ export type OpportunityServiceRepositories = {
     OpportunitiesRepository,
     'findProductsWithCurrentOffers' | 'findComboComponents'
   >;
-  events: Pick<EventsRepository, 'findActiveWithCoupons'>;
+  events: Pick<EventsRepository, 'findActiveWithCoupons' | 'findCouponOptions'>;
 };
 
 const opportunitiesRepository = new OpportunitiesRepository();
@@ -157,6 +157,13 @@ function groupComponentsByProductId(components: ProductComboComponent[]) {
   return componentsByProductId;
 }
 
+function filterAvailableCoupons(coupons: MoneyCoupon[], couponIds: string[] | undefined) {
+  if (!couponIds) return coupons;
+
+  const availableCouponIds = new Set(couponIds);
+  return coupons.filter((coupon) => availableCouponIds.has(coupon.id));
+}
+
 function sortByRoiDescending(left: Opportunity, right: Opportunity): number {
   if (left.roi === null && right.roi !== null) return 1;
   if (left.roi !== null && right.roi === null) return -1;
@@ -174,13 +181,23 @@ export async function listOpportunities(
   opportunities: Opportunity[];
   pagination: { page: number; pageSize: number; total: number; totalPages: number };
 }> {
-  const [offers, components, activeEvents] = await Promise.all([
+  const [offers, components, activeEvents, couponOptions] = await Promise.all([
     repositories.opportunities.findProductsWithCurrentOffers(),
     repositories.opportunities.findComboComponents(),
     repositories.events.findActiveWithCoupons(currentTime),
+    query.couponIds === undefined
+      ? Promise.resolve(undefined)
+      : repositories.events.findCouponOptions(),
   ]);
   const activeEvent = activeEvents[0];
-  const coupons = activeEvent ? activeEvent.coupons.map(toCoupon) : [];
+  const coupons = filterAvailableCoupons(
+    couponOptions
+      ? couponOptions.map(toCoupon)
+      : activeEvent
+        ? activeEvent.coupons.map(toCoupon)
+        : [],
+    query.couponIds,
+  );
   const componentsByProductId = groupComponentsByProductId(components);
 
   const opportunities = offers.flatMap((offer) => {
