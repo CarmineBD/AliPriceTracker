@@ -80,6 +80,15 @@ export const productResponseSchema = z.object({
   description: z.string().nullable(),
   averageSellingPrice: z.number().finite().nonnegative().nullable(),
   effectiveSellingPrice: z.number().finite().nonnegative().nullable(),
+  lowestAvailablePriceEuro: z
+    .number()
+    .finite()
+    .nonnegative()
+    .refine(
+      (value) => Math.abs(value * 100 - Math.round(value * 100)) < 0.000_001,
+      'El precio puede tener como máximo dos decimales.',
+    )
+    .nullable(),
   offersCount: z.number().int().nonnegative(),
   offers: z.array(productOfferSchema),
   createdAt: z.string().datetime({ offset: true }),

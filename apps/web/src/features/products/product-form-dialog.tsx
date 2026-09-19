@@ -89,6 +89,7 @@ type ProductFormDialogProps = {
   error?: string;
   onOpenChange: (open: boolean) => void;
   onSubmit: (submission: ProductFormSubmission) => void;
+  onDelete?: () => void;
 };
 
 export function ProductFormDialog({
@@ -102,6 +103,7 @@ export function ProductFormDialog({
   error,
   onOpenChange,
   onSubmit,
+  onDelete,
 }: ProductFormDialogProps) {
   const [values, setValues] = useState<ProductFormValues>(() => toFormValues(product));
   const [nameError, setNameError] = useState<string>();
@@ -448,13 +450,25 @@ export function ProductFormDialog({
           )}
           {error && <FieldError className="mt-6">{error}</FieldError>}
 
-          <DialogFooter className="mt-6">
-            <DialogClose render={<Button type="button" variant="outline" disabled={isSaving} />}>
-              Cancelar
-            </DialogClose>
-            <Button type="submit" disabled={isSaving || componentsLoading}>
-              {isSaving ? 'Guardando…' : 'Guardar'}
-            </Button>
+          <DialogFooter className="mt-6 sm:justify-between">
+            {isEditing && onDelete && (
+              <Button
+                type="button"
+                variant="destructive"
+                disabled={isSaving || componentsLoading}
+                onClick={onDelete}
+              >
+                Eliminar producto
+              </Button>
+            )}
+            <div className="flex flex-col-reverse gap-2 sm:ml-auto sm:flex-row">
+              <DialogClose render={<Button type="button" variant="outline" disabled={isSaving} />}>
+                Cancelar
+              </DialogClose>
+              <Button type="submit" disabled={isSaving || componentsLoading}>
+                {isSaving ? 'Guardando…' : 'Guardar'}
+              </Button>
+            </div>
           </DialogFooter>
         </form>
       </DialogContent>

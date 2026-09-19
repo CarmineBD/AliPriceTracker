@@ -26,6 +26,7 @@ const product: StoredProduct = {
   description: null,
   averageSellingPrice: null,
   effectiveSellingPrice: '280.00',
+  lowestAvailablePriceEuro: null,
   createdAt: new Date('2026-09-17T10:00:00.000Z'),
   updatedAt: new Date('2026-09-17T10:00:00.000Z'),
 };

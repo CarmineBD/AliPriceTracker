@@ -47,6 +47,8 @@ function toProductResponse(
       product.averageSellingPrice === null ? null : Number(product.averageSellingPrice),
     effectiveSellingPrice:
       product.effectiveSellingPrice === null ? null : Number(product.effectiveSellingPrice),
+    lowestAvailablePriceEuro:
+      product.lowestAvailablePriceEuro === null ? null : Number(product.lowestAvailablePriceEuro),
     offersCount,
     offers,
     createdAt: product.createdAt,

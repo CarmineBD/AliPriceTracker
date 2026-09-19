@@ -29,7 +29,7 @@ import {
   ProductFormDialog,
   type ProductFormSubmission,
 } from '@/features/products/product-form-dialog';
-import { ProductsTable } from '@/features/products/products-table';
+import { ProductsCards } from '@/features/products/products-cards';
 import { AppLayout } from '@/layouts/app-layout';
 
 const pageSize = 20;
@@ -109,6 +109,7 @@ export function ProductsPage() {
     mutationFn: deleteProduct,
     onSuccess: async () => {
       setProductToDelete(undefined);
+      setFormProduct(undefined);
 
       if (productsQuery.data?.products.length === 1 && page > 1) {
         setPage((currentPage) => currentPage - 1);
@@ -130,18 +131,11 @@ export function ProductsPage() {
 
   return (
     <AppLayout>
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-semibold text-slate-900">Productos</h1>
-          <p className="mt-2 text-slate-600">Gestiona los productos base de AliTracker.</p>
-        </div>
-      </div>
-
-      <section aria-labelledby="products-list-title">
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-4">
-          <h2 id="products-list-title" className="text-xl font-medium">
-            Listado de productos
-          </h2>
+      <section aria-labelledby="products-title">
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
+          <h1 id="products-title" className="text-3xl font-semibold text-slate-900">
+            Productos
+          </h1>
           <Button
             onClick={() => {
               saveMutation.reset();
@@ -162,15 +156,11 @@ export function ProductsPage() {
           )}
           {productsQuery.isSuccess && (
             <>
-              <ProductsTable
+              <ProductsCards
                 products={productsQuery.data.products}
                 onEdit={(product) => {
                   saveMutation.reset();
                   setFormProduct(product);
-                }}
-                onDelete={(product) => {
-                  deleteMutation.reset();
-                  setProductToDelete(product);
                 }}
               />
 
@@ -254,6 +244,14 @@ export function ProductsPage() {
           }
         }}
         onSubmit={(input) => saveMutation.mutate(input)}
+        onDelete={
+          formProduct
+            ? () => {
+                deleteMutation.reset();
+                setProductToDelete(formProduct);
+              }
+            : undefined
+        }
       />
       <DeleteProductDialog
         product={productToDelete}

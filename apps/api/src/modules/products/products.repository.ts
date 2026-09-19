@@ -1,4 +1,4 @@
-import { asc, count, eq, getTableColumns, sql } from 'drizzle-orm';
+import { asc, count, eq, getTableColumns, gt, sql } from 'drizzle-orm';
 
 import type { ProductCreateInput, ProductsListQuery, ProductUpdateInput } from '@alitracker/shared';
 
@@ -9,9 +9,7 @@ import { products } from '../../db/schema/products';
 
 const containedProducts = sql.identifier('contained_products');
 const containedProductId = sql.raw('"contained_products"."id"');
-const containedProductAverageSellingPrice = sql.raw(
-  '"contained_products"."average_selling_price"',
-);
+const containedProductAverageSellingPrice = sql.raw('"contained_products"."average_selling_price"');
 const comboPrice = sql.identifier('combo_price');
 const comboComponentCount = sql.raw('"combo_price"."component_count"');
 const comboPricedComponentCount = sql.raw('"combo_price"."priced_component_count"');
@@ -35,6 +33,14 @@ const effectiveSellingPrice = sql<string | null>`(
   ) AS ${comboPrice}
 )`.as('effective_selling_price');
 
+const lowestAvailablePriceEuro = sql<string | null>`(
+  SELECT min(${publicationProducts.price})
+  FROM ${publicationProducts}
+  WHERE ${eq(publicationProducts.productId, products.id)}
+    AND ${eq(publicationProducts.currency, 'EUR')}
+    AND ${gt(publicationProducts.quantityAvailable, 0)}
+)`.as('lowest_available_price_euro');
+
 export class ProductsRepository {
   async findOptions() {
     return getDatabase()
@@ -54,7 +60,12 @@ export class ProductsRepository {
     const offersCount = sql<number>`count(${publicationProducts.id})::int`.as('offers_count');
     const [items, countResult] = await Promise.all([
       database
-        .select({ ...getTableColumns(products), offersCount, effectiveSellingPrice })
+        .select({
+          ...getTableColumns(products),
+          offersCount,
+          effectiveSellingPrice,
+          lowestAvailablePriceEuro,
+        })
         .from(products)
         .leftJoin(publicationProducts, eq(publicationProducts.productId, products.id))
         .groupBy(products.id, products.averageSellingPrice)
@@ -69,7 +80,7 @@ export class ProductsRepository {
 
   async findById(id: string) {
     const [product] = await getDatabase()
-      .select({ ...getTableColumns(products), effectiveSellingPrice })
+      .select({ ...getTableColumns(products), effectiveSellingPrice, lowestAvailablePriceEuro })
       .from(products)
       .where(eq(products.id, id));
     return product;

@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft, ImageOff, Pencil, Trash2 } from 'lucide-react';
 import { useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 
 import type { ProductOffer } from '@alitracker/shared';
 
@@ -13,6 +13,7 @@ import {
   getProduct,
   getProductComponents,
   getProductOptions,
+  deleteProduct,
   replaceProductComponents,
   updateProduct,
   uploadProductImage,
@@ -30,6 +31,7 @@ import { AppLayout } from '@/layouts/app-layout';
 import { ProductBestOfferHistoryDialog } from '@/features/product-best-offer-history/product-best-offer-history-dialog';
 import { DeletePublicationProductDialog } from '@/features/publication-products/delete-publication-product-dialog';
 import { EditPublicationProductDialog } from '@/features/publication-products/edit-publication-product-dialog';
+import { DeleteProductDialog } from '@/features/products/delete-product-dialog';
 import {
   ProductFormDialog,
   type ProductFormSubmission,
@@ -63,11 +65,13 @@ function formatOfferPrice(price: string | null, currency: string | null): string
 
 export function ProductDetailPage() {
   const { id } = useParams();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [selectedOffer, setSelectedOffer] = useState<ProductOffer | null>(null);
   const [activeAction, setActiveAction] = useState<'edit' | 'delete' | null>(null);
   const [editingProductId, setEditingProductId] = useState<string | undefined>(id);
   const [isProductEditOpen, setIsProductEditOpen] = useState(false);
+  const [isProductDeleteOpen, setIsProductDeleteOpen] = useState(false);
   const productQuery = useQuery({
     queryKey: ['product', id],
     queryFn: () => getProduct(id ?? ''),
@@ -119,6 +123,14 @@ export function ProductDetailPage() {
     onSuccess: async () => {
       setIsProductEditOpen(false);
       await refreshProduct();
+    },
+  });
+  const deleteProductMutation = useMutation({
+    mutationFn: () => deleteProduct(productQuery.data?.id ?? ''),
+    onSuccess: () => {
+      setIsProductDeleteOpen(false);
+      setIsProductEditOpen(false);
+      navigate('/');
     },
   });
 
@@ -380,12 +392,31 @@ export function ProductDetailPage() {
         productOptionsLoading={productOptionsQuery.isPending}
         isSaving={updateProductMutation.isPending}
         error={
-          updateProductMutation.error instanceof Error ? updateProductMutation.error.message : undefined
+          updateProductMutation.error instanceof Error
+            ? updateProductMutation.error.message
+            : undefined
         }
         onOpenChange={(open) => {
           if (!open && !updateProductMutation.isPending) setIsProductEditOpen(false);
         }}
         onSubmit={(submission) => updateProductMutation.mutate(submission)}
+        onDelete={() => {
+          deleteProductMutation.reset();
+          setIsProductDeleteOpen(true);
+        }}
+      />
+      <DeleteProductDialog
+        product={isProductDeleteOpen ? productQuery.data : undefined}
+        isDeleting={deleteProductMutation.isPending}
+        error={
+          deleteProductMutation.error instanceof Error
+            ? deleteProductMutation.error.message
+            : undefined
+        }
+        onOpenChange={(open) => {
+          if (!open && !deleteProductMutation.isPending) setIsProductDeleteOpen(false);
+        }}
+        onConfirm={() => deleteProductMutation.mutate()}
       />
     </AppLayout>
   );

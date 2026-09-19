@@ -1,7 +1,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { ProductDetailPage } from './product-detail-page';
 
@@ -29,6 +29,7 @@ const product = {
   description: 'Descripción de prueba.',
   averageSellingPrice: 12.5,
   effectiveSellingPrice: 12.5,
+  lowestAvailablePriceEuro: 591.7,
   createdAt: '2026-09-14T10:00:00.000Z',
   updatedAt: '2026-09-14T11:00:00.000Z',
 };
@@ -37,6 +38,7 @@ const {
   getProductMock,
   getProductComponentsMock,
   getProductOptionsMock,
+  deleteProductMock,
   replaceProductComponentsMock,
   updateProductMock,
   uploadProductImageMock,
@@ -44,6 +46,7 @@ const {
   getProductMock: vi.fn(),
   getProductComponentsMock: vi.fn().mockResolvedValue([]),
   getProductOptionsMock: vi.fn().mockResolvedValue([]),
+  deleteProductMock: vi.fn(),
   replaceProductComponentsMock: vi.fn(),
   updateProductMock: vi.fn(),
   uploadProductImageMock: vi.fn(),
@@ -58,6 +61,7 @@ vi.mock('@/api/products.api', () => ({
   getProduct: getProductMock,
   getProductComponents: getProductComponentsMock,
   getProductOptions: getProductOptionsMock,
+  deleteProduct: deleteProductMock,
   replaceProductComponents: replaceProductComponentsMock,
   updateProduct: updateProductMock,
   uploadProductImage: uploadProductImageMock,
@@ -69,6 +73,8 @@ vi.mock('@/api/publication-products.api', () => ({
   deletePublicationProduct: deletePublicationProductMock,
   reassignPublicationProduct: reassignPublicationProductMock,
 }));
+
+afterEach(cleanup);
 
 describe('ProductDetailPage', () => {
   it('shows the product data and a cropped 128 px image', async () => {
@@ -199,5 +205,37 @@ describe('ProductDetailPage', () => {
         productId: product.id,
       }),
     );
+  });
+
+  it('confirms product deletion from the edit modal', async () => {
+    getProductMock.mockResolvedValue(product);
+    getBestOfferHistoryMock.mockResolvedValue({
+      product: { id: product.id, name: product.name },
+      current: null,
+      baseline: null,
+      history: [],
+    });
+    deleteProductMock.mockResolvedValue(undefined);
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter initialEntries={[`/products/${product.id}`]}>
+          <Routes>
+            <Route path="/products/:id" element={<ProductDetailPage />} />
+            <Route path="/" element={<p>Listado de productos</p>} />
+          </Routes>
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Editar producto' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Eliminar producto' }));
+
+    expect(screen.getByRole('heading', { name: '¿Eliminar producto?' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Eliminar' }));
+
+    await waitFor(() => expect(deleteProductMock).toHaveBeenCalledWith(product.id));
+    expect(await screen.findByText('Listado de productos')).toBeInTheDocument();
   });
 });

@@ -1,9 +1,26 @@
+import type { Product } from '@alitracker/shared';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { ProductFormDialog } from './product-form-dialog';
 
 afterEach(cleanup);
+
+const product: Product = {
+  id: '8d8c883c-7e36-4af0-a8b3-152b20c41f3c',
+  name: 'Producto de prueba',
+  shortName: 'Prueba',
+  imageKey: null,
+  imageUrl: null,
+  description: null,
+  averageSellingPrice: null,
+  effectiveSellingPrice: null,
+  lowestAvailablePriceEuro: null,
+  offersCount: 0,
+  offers: [],
+  createdAt: '2026-09-14T10:00:00.000Z',
+  updatedAt: '2026-09-14T10:00:00.000Z',
+};
 
 describe('ProductFormDialog', () => {
   it('uses a dialog and groups the product controls in a fieldset', () => {
@@ -26,5 +43,24 @@ describe('ProductFormDialog', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Cancelar' }));
 
     expect(onOpenChange).toHaveBeenCalledWith(false);
+  });
+
+  it('shows the delete action only while editing and invokes its callback', () => {
+    const onDelete = vi.fn();
+
+    render(
+      <ProductFormDialog
+        open
+        product={product}
+        isSaving={false}
+        onOpenChange={vi.fn()}
+        onSubmit={vi.fn()}
+        onDelete={onDelete}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Eliminar producto' }));
+
+    expect(onDelete).toHaveBeenCalledOnce();
   });
 });
