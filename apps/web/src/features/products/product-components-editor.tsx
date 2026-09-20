@@ -3,6 +3,7 @@ import { ImageOff, Trash2 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { FieldLabel } from '@/components/ui/field';
+import { Input } from '@/components/ui/input';
 import {
   Table,
   TableBody,
@@ -31,7 +32,9 @@ export function ProductComponentsEditor({
   onChange,
 }: ProductComponentsEditorProps) {
   const availableOptions = options.filter(
-    (option) => option.id !== productId && !components.some((component) => component.containsProductId === option.id),
+    (option) =>
+      option.id !== productId &&
+      !components.some((component) => component.containsProductId === option.id),
   );
 
   const addComponent = (containsProductId: string | undefined) => {
@@ -58,14 +61,22 @@ export function ProductComponentsEditor({
     ]);
   };
 
+  const updateQuantity = (containsProductId: string, value: string) => {
+    const quantity = Number(value);
+    if (!Number.isInteger(quantity) || quantity < 1 || quantity > 1_000_000) {
+      return;
+    }
+
+    onChange(
+      components.map((component) =>
+        component.containsProductId === containsProductId ? { ...component, quantity } : component,
+      ),
+    );
+  };
+
   return (
     <section className="space-y-3" aria-labelledby="product-components-title">
-      <div>
-        <FieldLabel id="product-components-title">Productos que contiene</FieldLabel>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Añade los productos incluidos en este combo. Cada producto se añade con cantidad 1.
-        </p>
-      </div>
+      <FieldLabel id="product-components-title">Productos que contiene</FieldLabel>
       <ProductCombobox
         options={availableOptions}
         onProductIdChange={addComponent}
@@ -73,9 +84,7 @@ export function ProductComponentsEditor({
         ariaLabel="Producto contenido"
         placeholder={optionsLoading ? 'Cargando productos…' : 'Añadir producto contenido...'}
       />
-      {components.length === 0 ? (
-        <p className="text-sm text-muted-foreground">Este producto no contiene otros productos.</p>
-      ) : (
+      {components.length > 0 && (
         <Table>
           <TableHeader>
             <TableRow>
@@ -107,7 +116,22 @@ export function ProductComponentsEditor({
                   )}
                 </TableCell>
                 <TableCell>{component.product.shortName}</TableCell>
-                <TableCell className="text-right">{component.quantity}</TableCell>
+                <TableCell className="text-right">
+                  <Input
+                    type="number"
+                    min="1"
+                    max="1000000"
+                    step="1"
+                    inputMode="numeric"
+                    className="ml-auto w-20 text-right"
+                    value={component.quantity}
+                    disabled={disabled}
+                    aria-label={`Cantidad de ${component.product.shortName}`}
+                    onChange={(event) =>
+                      updateQuantity(component.containsProductId, event.target.value)
+                    }
+                  />
+                </TableCell>
                 <TableCell className="text-right">
                   <Button
                     type="button"

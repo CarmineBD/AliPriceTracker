@@ -8,7 +8,7 @@ import {
   type ProductCreateInput,
   type ProductOption,
 } from '@alitracker/shared';
-import { ImagePlus, Upload, X } from 'lucide-react';
+import { Copy, ImagePlus, Upload, X } from 'lucide-react';
 
 import {
   Attachment,
@@ -24,7 +24,6 @@ import {
   Dialog,
   DialogClose,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -205,8 +204,16 @@ export function ProductFormDialog({
   };
 
   const isEditing = Boolean(product);
-  const title = isEditing ? 'Editar producto' : 'Agregar producto';
+  const title = isEditing ? 'Edición de producto' : 'Alta de producto';
   const displayedImageUrl = imagePreviewUrl ?? product?.imageUrl;
+
+  const copyProductId = () => {
+    if (!product || !navigator.clipboard) {
+      return;
+    }
+
+    void navigator.clipboard.writeText(product.id).catch(() => undefined);
+  };
 
   return (
     <Dialog
@@ -219,28 +226,141 @@ export function ProductFormDialog({
         onOpenChange(nextOpen);
       }}
     >
-      <DialogContent showCloseButton={false} className="max-h-[90vh] max-w-lg overflow-y-auto">
-        <form noValidate onSubmit={submit}>
-          <DialogHeader>
+      <DialogContent showCloseButton={false} className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
+        <form noValidate onSubmit={submit} className="relative">
+          <DialogClose
+            render={
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-sm"
+                className="absolute top-0 right-0"
+                aria-label="Cerrar ventana"
+                disabled={isSaving}
+              />
+            }
+          >
+            <X />
+          </DialogClose>
+          <DialogHeader className="pr-9">
             <DialogTitle>{title}</DialogTitle>
-            <DialogDescription>
-              {isEditing
-                ? 'Actualiza los datos del producto y guarda los cambios.'
-                : 'Completa los datos para registrar un nuevo producto.'}
-            </DialogDescription>
           </DialogHeader>
 
           <FieldSet disabled={isSaving || componentsLoading} className="mt-6">
             <FieldLegend className="sr-only">Datos del producto</FieldLegend>
             <FieldGroup className="gap-4">
-              {product && (
-                <Field>
-                  <FieldLabel htmlFor="product-id">ID</FieldLabel>
-                  <FieldContent>
-                    <Input id="product-id" value={product.id} disabled />
-                  </FieldContent>
-                </Field>
-              )}
+              <Field data-invalid={Boolean(imageError)}>
+                <FieldLabel htmlFor="product-image">Imagen</FieldLabel>
+                <FieldContent>
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-stretch">
+                    <div
+                      className="min-w-0 flex-1 rounded-xl outline-none focus:ring-2 focus:ring-ring/50"
+                      tabIndex={isSaving ? -1 : 0}
+                      aria-label="Área para pegar o arrastrar la imagen del producto"
+                      aria-describedby="product-image-description product-image-error"
+                      aria-disabled={isSaving}
+                      onDragOver={(event) => event.preventDefault()}
+                      onDrop={(event) => {
+                        event.preventDefault();
+                        selectImage(event.dataTransfer.files.item(0) ?? undefined);
+                      }}
+                      onPaste={(event) => {
+                        const imageItem = Array.from(event.clipboardData.items).find(
+                          (item) =>
+                            item.kind === 'file' &&
+                            productImageContentTypeSchema.safeParse(item.type).success,
+                        );
+                        const image = imageItem?.getAsFile();
+
+                        if (image) {
+                          event.preventDefault();
+                          selectImage(image);
+                        }
+                      }}
+                    >
+                      <input
+                        ref={imageInputRef}
+                        id="product-image"
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp,image/gif"
+                        className="sr-only"
+                        onChange={(event) => {
+                          selectImage(event.target.files?.item(0) ?? undefined);
+                          event.target.value = '';
+                        }}
+                      />
+                      {displayedImageUrl ? (
+                        <Attachment
+                          state={isSaving && imageFile ? 'uploading' : 'done'}
+                          className="w-full"
+                        >
+                          <AttachmentMedia variant="image" className="size-28 sm:size-32">
+                            <img
+                              src={displayedImageUrl}
+                              alt="Vista previa de la imagen del producto"
+                            />
+                          </AttachmentMedia>
+                          <AttachmentContent>
+                            <AttachmentTitle>
+                              {imageFile?.name ??
+                                product?.imageKey?.split('/').at(-1) ??
+                                'Imagen del producto'}
+                            </AttachmentTitle>
+                            <AttachmentDescription>
+                              {imageFile ? (
+                                `${Math.ceil(imageFile.size / 1024)} KB · lista para subir`
+                              ) : (
+                                <span className="text-muted-foreground">
+                                  Pega, arrastra una imagen para reemplazar
+                                </span>
+                              )}
+                            </AttachmentDescription>
+                            <AttachmentDescription id="product-image-description">
+                              JPG, PNG, WebP o GIF; tamaño máximo de 5 MB.
+                            </AttachmentDescription>
+                          </AttachmentContent>
+                          {imageFile && (
+                            <AttachmentActions>
+                              <AttachmentAction
+                                type="button"
+                                aria-label="Quitar imagen seleccionada"
+                                disabled={isSaving}
+                                onClick={() => setImageFile(undefined)}
+                              >
+                                <X />
+                              </AttachmentAction>
+                            </AttachmentActions>
+                          )}
+                        </Attachment>
+                      ) : (
+                        <Attachment state="idle" className="w-full">
+                          <AttachmentMedia className="size-28 sm:size-32">
+                            <ImagePlus />
+                          </AttachmentMedia>
+                          <AttachmentContent>
+                            <AttachmentTitle>Pega, arrastra una imagen aquí</AttachmentTitle>
+                            <AttachmentDescription id="product-image-description">
+                              JPG, PNG, WebP o GIF; tamaño máximo de 5 MB.
+                            </AttachmentDescription>
+                          </AttachmentContent>
+                        </Attachment>
+                      )}
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="w-full sm:h-auto sm:w-32 sm:self-stretch sm:flex-col sm:gap-2 sm:p-2"
+                      aria-label={displayedImageUrl ? 'Cambiar imagen' : 'Seleccionar imagen'}
+                      disabled={isSaving}
+                      onClick={() => imageInputRef.current?.click()}
+                    >
+                      <Upload className="size-5" />
+                      <span>Subir imagen</span>
+                    </Button>
+                  </div>
+                  <FieldError id="product-image-error">{imageError}</FieldError>
+                </FieldContent>
+              </Field>
               <Field data-invalid={Boolean(nameError)}>
                 <FieldLabel htmlFor="product-name">Nombre</FieldLabel>
                 <FieldContent>
@@ -260,161 +380,70 @@ export function ProductFormDialog({
                   <FieldError id="product-name-error">{nameError}</FieldError>
                 </FieldContent>
               </Field>
-              <Field data-invalid={Boolean(shortNameError)}>
-                <FieldLabel htmlFor="product-short-name">Nombre corto</FieldLabel>
-                <FieldContent>
-                  <Input
-                    id="product-short-name"
-                    value={values.shortName}
-                    maxLength={80}
-                    required
-                    onChange={(event) => {
-                      setValue('shortName', event.target.value);
-                      if (shortNameError) setShortNameError(undefined);
-                    }}
-                    aria-invalid={Boolean(shortNameError)}
-                    aria-describedby={shortNameError ? 'product-short-name-error' : undefined}
-                  />
-                  <FieldError id="product-short-name-error">{shortNameError}</FieldError>
-                </FieldContent>
-              </Field>
-              <Field data-invalid={Boolean(imageError)}>
-                <FieldLabel htmlFor="product-image">Imagen</FieldLabel>
-                <FieldContent>
-                  <div
-                    className="rounded-xl outline-none focus:ring-2 focus:ring-ring/50"
-                    tabIndex={isSaving ? -1 : 0}
-                    aria-label="Área para pegar o arrastrar la imagen del producto"
-                    aria-describedby="product-image-description product-image-error"
-                    aria-disabled={isSaving}
-                    onDragOver={(event) => event.preventDefault()}
-                    onDrop={(event) => {
-                      event.preventDefault();
-                      selectImage(event.dataTransfer.files.item(0) ?? undefined);
-                    }}
-                    onPaste={(event) => {
-                      const imageItem = Array.from(event.clipboardData.items).find(
-                        (item) =>
-                          item.kind === 'file' &&
-                          productImageContentTypeSchema.safeParse(item.type).success,
-                      );
-                      const image = imageItem?.getAsFile();
-
-                      if (image) {
-                        event.preventDefault();
-                        selectImage(image);
-                      }
-                    }}
-                  >
-                    <input
-                      ref={imageInputRef}
-                      id="product-image"
-                      type="file"
-                      accept="image/jpeg,image/png,image/webp,image/gif"
-                      className="sr-only"
+              <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_13rem] sm:items-start">
+                <Field data-invalid={Boolean(shortNameError)}>
+                  <FieldLabel htmlFor="product-short-name">Nombre corto</FieldLabel>
+                  <FieldContent>
+                    <Input
+                      id="product-short-name"
+                      value={values.shortName}
+                      maxLength={80}
+                      required
                       onChange={(event) => {
-                        selectImage(event.target.files?.item(0) ?? undefined);
-                        event.target.value = '';
+                        setValue('shortName', event.target.value);
+                        if (shortNameError) setShortNameError(undefined);
                       }}
+                      aria-invalid={Boolean(shortNameError)}
+                      aria-describedby={shortNameError ? 'product-short-name-error' : undefined}
                     />
-                    {displayedImageUrl ? (
-                      <Attachment
-                        state={isSaving && imageFile ? 'uploading' : 'done'}
-                        className="w-full"
-                      >
-                        <AttachmentMedia variant="image">
-                          <img
-                            src={displayedImageUrl}
-                            alt="Vista previa de la imagen del producto"
-                          />
-                        </AttachmentMedia>
-                        <AttachmentContent>
-                          <AttachmentTitle>
-                            {imageFile?.name ??
-                              product?.imageKey?.split('/').at(-1) ??
-                              'Imagen actual'}
-                          </AttachmentTitle>
-                          <AttachmentDescription>
-                            {imageFile
-                              ? `${Math.ceil(imageFile.size / 1024)} KB · lista para subir`
-                              : 'Imagen actual'}
-                          </AttachmentDescription>
-                        </AttachmentContent>
-                        {imageFile && (
-                          <AttachmentActions>
-                            <AttachmentAction
-                              type="button"
-                              aria-label="Quitar imagen seleccionada"
-                              disabled={isSaving}
-                              onClick={() => setImageFile(undefined)}
-                            >
-                              <X />
-                            </AttachmentAction>
-                          </AttachmentActions>
-                        )}
-                      </Attachment>
-                    ) : (
-                      <Attachment state="idle" className="w-full">
-                        <AttachmentMedia>
-                          <ImagePlus />
-                        </AttachmentMedia>
-                        <AttachmentContent>
-                          <AttachmentTitle>Arrastra una imagen aquí</AttachmentTitle>
-                          <AttachmentDescription>
-                            Pega, arrastra o selecciona una imagen
-                          </AttachmentDescription>
-                        </AttachmentContent>
-                      </Attachment>
+                    <FieldError id="product-short-name-error">{shortNameError}</FieldError>
+                  </FieldContent>
+                </Field>
+                <Field data-invalid={Boolean(averageSellingPriceError)}>
+                  <FieldLabel htmlFor="product-average-selling-price">
+                    Precio medio de venta (€)
+                  </FieldLabel>
+                  <FieldContent>
+                    <Input
+                      id="product-average-selling-price"
+                      type="number"
+                      min="0"
+                      max="9999999999.99"
+                      step="0.01"
+                      inputMode="decimal"
+                      value={values.averageSellingPrice}
+                      disabled={containedProducts.length > 0}
+                      onChange={(event) => {
+                        setValue('averageSellingPrice', event.target.value);
+                        if (averageSellingPriceError) setAverageSellingPriceError(undefined);
+                      }}
+                      aria-invalid={Boolean(averageSellingPriceError)}
+                      aria-describedby={
+                        averageSellingPriceError ? 'product-average-selling-price-error' : undefined
+                      }
+                    />
+                    <FieldError id="product-average-selling-price-error">
+                      {averageSellingPriceError}
+                    </FieldError>
+                    {containedProducts.length > 0 && (
+                      <FieldDescription>
+                        El precio de un combo se calcula automáticamente a partir de sus
+                        componentes.
+                      </FieldDescription>
                     )}
-                  </div>
-                  <FieldDescription id="product-image-description">
-                    JPG, PNG, WebP o GIF; tamaño máximo de 5 MB.
-                  </FieldDescription>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    disabled={isSaving}
-                    onClick={() => imageInputRef.current?.click()}
-                  >
-                    <Upload />
-                    {displayedImageUrl ? 'Cambiar imagen' : 'Seleccionar imagen'}
-                  </Button>
-                  <FieldError id="product-image-error">{imageError}</FieldError>
-                </FieldContent>
-              </Field>
-              <Field data-invalid={Boolean(averageSellingPriceError)}>
-                <FieldLabel htmlFor="product-average-selling-price">
-                  Precio medio de venta (€)
-                </FieldLabel>
-                <FieldContent>
-                  <Input
-                    id="product-average-selling-price"
-                    type="number"
-                    min="0"
-                    max="9999999999.99"
-                    step="0.01"
-                    inputMode="decimal"
-                    value={values.averageSellingPrice}
-                    disabled={containedProducts.length > 0}
-                    onChange={(event) => {
-                      setValue('averageSellingPrice', event.target.value);
-                      if (averageSellingPriceError) setAverageSellingPriceError(undefined);
-                    }}
-                    aria-invalid={Boolean(averageSellingPriceError)}
-                    aria-describedby={
-                      averageSellingPriceError ? 'product-average-selling-price-error' : undefined
-                    }
-                  />
-                  <FieldError id="product-average-selling-price-error">
-                    {averageSellingPriceError}
-                  </FieldError>
-                  {containedProducts.length > 0 && (
-                    <FieldDescription>
-                      El precio de un combo se calcula automáticamente a partir de sus componentes.
-                    </FieldDescription>
-                  )}
-                </FieldContent>
-              </Field>
+                  </FieldContent>
+                </Field>
+                <Field className="sm:col-span-2">
+                  <FieldLabel htmlFor="product-description">Descripción</FieldLabel>
+                  <FieldContent>
+                    <Textarea
+                      id="product-description"
+                      value={values.description}
+                      onChange={(event) => setValue('description', event.target.value)}
+                    />
+                  </FieldContent>
+                </Field>
+              </div>
               <ProductComponentsEditor
                 productId={product?.id}
                 components={containedProducts}
@@ -423,30 +452,37 @@ export function ProductFormDialog({
                 disabled={isSaving}
                 onChange={setContainedProducts}
               />
-              <Field>
-                <FieldLabel htmlFor="product-description">Descripción</FieldLabel>
-                <FieldContent>
-                  <Textarea
-                    id="product-description"
-                    value={values.description}
-                    onChange={(event) => setValue('description', event.target.value)}
-                  />
-                </FieldContent>
-              </Field>
             </FieldGroup>
           </FieldSet>
 
           {product && (
-            <dl className="mt-6 grid gap-3 text-sm text-muted-foreground sm:grid-cols-2">
-              <div>
-                <dt>Creado</dt>
-                <dd>{new Date(product.createdAt).toLocaleString()}</dd>
+            <>
+              <dl className="mt-6 grid gap-3 text-sm text-muted-foreground sm:grid-cols-2">
+                <div>
+                  <dt>Creado</dt>
+                  <dd>{new Date(product.createdAt).toLocaleString()}</dd>
+                </div>
+                <div>
+                  <dt>Actualizado</dt>
+                  <dd>{new Date(product.updatedAt).toLocaleString()}</dd>
+                </div>
+              </dl>
+              <div className="mt-3 text-xs text-muted-foreground">
+                <p>ID de producto</p>
+                <div className="mt-1 flex items-center gap-1">
+                  <span className="break-all">{product.id}</span>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-xs"
+                    aria-label="Copiar ID de producto"
+                    onClick={copyProductId}
+                  >
+                    <Copy />
+                  </Button>
+                </div>
               </div>
-              <div>
-                <dt>Actualizado</dt>
-                <dd>{new Date(product.updatedAt).toLocaleString()}</dd>
-              </div>
-            </dl>
+            </>
           )}
           {error && <FieldError className="mt-6">{error}</FieldError>}
 

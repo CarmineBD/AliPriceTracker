@@ -26,11 +26,12 @@ describe('ProductFormDialog', () => {
   it('uses a dialog and groups the product controls in a fieldset', () => {
     render(<ProductFormDialog open isSaving={false} onOpenChange={vi.fn()} onSubmit={vi.fn()} />);
 
-    expect(screen.getByRole('dialog', { name: 'Agregar producto' })).toBeInTheDocument();
+    expect(screen.getByRole('dialog', { name: 'Alta de producto' })).toBeInTheDocument();
     expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
     expect(screen.getByRole('group', { name: 'Datos del producto' })).toBeInTheDocument();
     expect(screen.getByRole('textbox', { name: 'Nombre' })).toBeRequired();
     expect(screen.getByRole('textbox', { name: 'Nombre corto' })).toBeRequired();
+    expect(screen.getByRole('button', { name: 'Seleccionar imagen' })).toBeInTheDocument();
   });
 
   it('uses DialogClose for the cancel action', () => {
@@ -40,13 +41,20 @@ describe('ProductFormDialog', () => {
       <ProductFormDialog open isSaving={false} onOpenChange={onOpenChange} onSubmit={vi.fn()} />,
     );
 
+    fireEvent.click(screen.getByRole('button', { name: 'Cerrar ventana' }));
     fireEvent.click(screen.getByRole('button', { name: 'Cancelar' }));
 
-    expect(onOpenChange).toHaveBeenCalledWith(false);
+    expect(onOpenChange).toHaveBeenCalledTimes(2);
+    expect(onOpenChange).toHaveBeenLastCalledWith(false);
   });
 
   it('shows the delete action only while editing and invokes its callback', () => {
     const onDelete = vi.fn();
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText },
+    });
 
     render(
       <ProductFormDialog
@@ -62,5 +70,10 @@ describe('ProductFormDialog', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Eliminar producto' }));
 
     expect(onDelete).toHaveBeenCalledOnce();
+    expect(screen.getByRole('dialog', { name: 'Edición de producto' })).toBeInTheDocument();
+    expect(screen.getByText('ID de producto')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Copiar ID de producto' }));
+    expect(writeText).toHaveBeenCalledWith(product.id);
+    expect(screen.queryByDisplayValue(product.id)).not.toBeInTheDocument();
   });
 });
