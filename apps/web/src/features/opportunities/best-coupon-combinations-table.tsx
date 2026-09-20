@@ -2,6 +2,7 @@ import type { BestCouponCombination, Opportunity } from '@alitracker/shared';
 import { ImageOff } from 'lucide-react';
 
 import { CouponDiscountBadge } from '@/components/coupon-discount-badge';
+import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
   Table,
@@ -80,8 +81,8 @@ export function BestCouponCombinationsTable({
           <TableHead>Cupón</TableHead>
           <TableHead>Imagen</TableHead>
           <TableHead>Nombre corto</TableHead>
+          <TableHead className="text-right">Precio final</TableHead>
           <TableHead className="text-right">Beneficio</TableHead>
-          <TableHead className="text-right">ROI</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -96,7 +97,7 @@ export function BestCouponCombinationsTable({
                     : selectedCombinationIds.filter((id) => id !== combination.coupon.id);
                   onSelectedCombinationIdsChange(nextIds);
                 }}
-                aria-label={`Incluir ${combination.options[0]!.shortName} con este cupón`}
+                aria-label={`Incluir ${combination.products.map((product) => product.shortName).join(', ')} con este cupón`}
               />
             </TableCell>
             <TableCell>
@@ -106,18 +107,29 @@ export function BestCouponCombinationsTable({
               />
             </TableCell>
             <TableCell>
-              <ProductImage opportunity={combination.options[0]!} />
+              <div className="flex flex-col gap-2">
+                {combination.products.map((product) => (
+                  <ProductImage key={product.productId} opportunity={product} />
+                ))}
+              </div>
             </TableCell>
             <TableCell className="min-w-48">
-              <ProductOption opportunity={combination.options[0]} />
+              <div className="space-y-1">
+                {combination.products.map((product) => (
+                  <div key={product.productId} className="flex min-h-10 items-center">
+                    <ProductOption opportunity={product} />
+                  </div>
+                ))}
+              </div>
             </TableCell>
             <TableCell className="text-right">
-              {roiFormatter.format(combination.options[0]!.estimatedProfit)} €
+              {roiFormatter.format(combination.effectivePurchasePrice)} €
             </TableCell>
             <TableCell className="text-right">
-              {combination.options[0]!.roi === null
-                ? '—'
-                : `${roiFormatter.format(combination.options[0]!.roi)} %`}
+              <div className="flex flex-col items-end gap-1">
+                <span>{roiFormatter.format(combination.estimatedProfit)} €</span>
+                <Badge variant="secondary">{roiFormatter.format(combination.roi)} %</Badge>
+              </div>
             </TableCell>
           </TableRow>
         ))}

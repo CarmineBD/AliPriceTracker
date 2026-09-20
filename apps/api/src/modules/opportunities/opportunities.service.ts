@@ -34,6 +34,23 @@ export type Opportunity = {
   offerObservedAt: string;
 };
 
+export type BestCouponCombination = {
+  coupon: MoneyCoupon;
+  isCombo: boolean;
+  products: Opportunity[];
+  basePurchasePrice: number;
+  effectivePurchasePrice: number;
+  estimatedSellingPrice: number;
+  estimatedProfit: number;
+  roi: number;
+};
+
+type PurchasableProduct = {
+  offer: CurrentProductOffer;
+  basePurchasePrice: number;
+  estimatedSellingPrice: number;
+};
+
 export type OpportunityServiceRepositories = {
   opportunities: Pick<
     OpportunitiesRepository,
@@ -177,7 +194,19 @@ function sortByRoiDescending(left: Opportunity, right: Opportunity): number {
   if (left.roi !== null && right.roi !== null && left.roi !== right.roi) {
     return right.roi - left.roi;
   }
+
   return left.name.localeCompare(right.name) || left.productId.localeCompare(right.productId);
+}
+
+function sortCombinationsByRoiDescending(
+  left: BestCouponCombination,
+  right: BestCouponCombination,
+): number {
+  if (left.roi !== right.roi) return right.roi - left.roi;
+  if (left.estimatedProfit !== right.estimatedProfit) {
+    return right.estimatedProfit - left.estimatedProfit;
+  }
+  return left.coupon.id.localeCompare(right.coupon.id);
 }
 
 function sortByCouponDescending(
@@ -262,12 +291,161 @@ function createOpportunity(
   };
 }
 
+function toPurchasableProduct(
+  offer: CurrentProductOffer,
+  componentsByProductId: ReadonlyMap<string, ProductComboComponent[]>,
+): PurchasableProduct | null {
+  if (!offer.isAvailable || offer.price === null) return null;
+
+  const basePurchasePrice = Number(offer.price);
+  const estimatedSellingPrice = resolveEstimatedSellingPrice(offer, componentsByProductId);
+  if (!Number.isFinite(basePurchasePrice) || estimatedSellingPrice === null) return null;
+
+  return { offer, basePurchasePrice, estimatedSellingPrice };
+}
+
+/** Splits the coupon in cents so product-level totals always add up to the combo total. */
+function allocateCouponDiscount(products: PurchasableProduct[], discountInCents: number): number[] {
+  const totalInCents = products.reduce(
+    (total, product) => total + toCents(product.basePurchasePrice),
+    0,
+  );
+  let allocated = 0;
+
+  return products.map((product, index) => {
+    if (index === products.length - 1) return discountInCents - allocated;
+
+    const share = Math.floor((toCents(product.basePurchasePrice) * discountInCents) / totalInCents);
+    allocated += share;
+    return share;
+  });
+}
+
+function createPurchaseOption(
+  selectedProducts: PurchasableProduct[],
+  coupon: MoneyCoupon,
+): BestCouponCombination | null {
+  const basePurchasePrice = fromCents(
+    selectedProducts.reduce((total, product) => total + toCents(product.basePurchasePrice), 0),
+  );
+  if (toCents(basePurchasePrice) < toCents(coupon.minPurchase)) return null;
+
+  const estimatedSellingPrice = fromCents(
+    selectedProducts.reduce((total, product) => total + toCents(product.estimatedSellingPrice), 0),
+  );
+  const effectivePurchasePrice = fromCents(
+    toCents(basePurchasePrice) - toCents(coupon.discountAmount),
+  );
+  const estimatedProfit = calculateProfit(estimatedSellingPrice, effectivePurchasePrice);
+  const roi = calculateRoi(estimatedProfit, effectivePurchasePrice);
+  if (estimatedProfit <= 0 || roi === null) return null;
+
+  const discounts = allocateCouponDiscount(selectedProducts, toCents(coupon.discountAmount));
+  const products = selectedProducts.map((product, index): Opportunity => {
+    const effectivePrice = fromCents(toCents(product.basePurchasePrice) - (discounts[index] ?? 0));
+    const profit = calculateProfit(product.estimatedSellingPrice, effectivePrice);
+
+    return {
+      productId: product.offer.productId,
+      imageUrl: product.offer.imageKey
+        ? getPublicUrl(product.offer.imageKey)
+        : product.offer.iconUrl,
+      name: product.offer.name,
+      shortName: product.offer.shortName,
+      basePurchasePrice: product.basePurchasePrice,
+      currency: product.offer.currency,
+      coupon,
+      effectivePurchasePrice: effectivePrice,
+      estimatedSellingPrice: product.estimatedSellingPrice,
+      estimatedProfit: profit,
+      roi: calculateRoi(profit, effectivePrice),
+      nextCoupon: null,
+      amountToNextCoupon: null,
+      stock: product.offer.quantityAvailable,
+      offerUrl: product.offer.publicationUrl,
+      offerObservedAt: product.offer.capturedAt.toISOString(),
+    };
+  });
+
+  return {
+    coupon,
+    isCombo: products.length > 1,
+    products,
+    basePurchasePrice,
+    effectivePurchasePrice,
+    estimatedSellingPrice,
+    estimatedProfit,
+    roi,
+  };
+}
+
+function isBetterPurchaseOption(
+  candidate: BestCouponCombination,
+  current: BestCouponCombination | null,
+): boolean {
+  if (current === null || candidate.roi !== current.roi)
+    return current === null || candidate.roi > current.roi;
+  if (candidate.estimatedProfit !== current.estimatedProfit) {
+    return candidate.estimatedProfit > current.estimatedProfit;
+  }
+  if (candidate.basePurchasePrice !== current.basePurchasePrice) {
+    return candidate.basePurchasePrice < current.basePurchasePrice;
+  }
+  return (
+    candidate.products
+      .map((product) => product.productId)
+      .join(',')
+      .localeCompare(current.products.map((product) => product.productId).join(',')) < 0
+  );
+}
+
+/**
+ * Finds the exact highest-ROI use of one coupon in memory. It reuses the current-offer query and
+ * prunes branches whose remaining products cannot reach the coupon threshold.
+ */
+function findBestCouponPurchases(
+  products: PurchasableProduct[],
+  coupon: MoneyCoupon,
+): { best: BestCouponCombination | null; bestCombo: BestCouponCombination | null } {
+  const sortedProducts = [...products].sort((left, right) =>
+    left.offer.productId.localeCompare(right.offer.productId),
+  );
+  const suffixPrices = new Array<number>(sortedProducts.length + 1).fill(0);
+  for (let index = sortedProducts.length - 1; index >= 0; index -= 1) {
+    suffixPrices[index] =
+      (suffixPrices[index + 1] ?? 0) + toCents(sortedProducts[index]!.basePurchasePrice);
+  }
+
+  const minimumInCents = toCents(coupon.minPurchase);
+  let best: BestCouponCombination | null = null;
+  let bestCombo: BestCouponCombination | null = null;
+
+  const visit = (startIndex: number, selected: PurchasableProduct[], totalInCents: number) => {
+    if (totalInCents + (suffixPrices[startIndex] ?? 0) < minimumInCents) return;
+
+    if (selected.length > 0 && totalInCents >= minimumInCents) {
+      const option = createPurchaseOption(selected, coupon);
+      if (option && isBetterPurchaseOption(option, best)) best = option;
+      if (option && option.isCombo && isBetterPurchaseOption(option, bestCombo)) bestCombo = option;
+    }
+
+    for (let index = startIndex; index < sortedProducts.length; index += 1) {
+      const product = sortedProducts[index]!;
+      visit(index + 1, [...selected, product], totalInCents + toCents(product.basePurchasePrice));
+    }
+  };
+
+  visit(0, [], 0);
+  return { best, bestCombo };
+}
+
 export async function listOpportunities(
   query: OpportunitiesListQuery,
   currentTime = new Date(),
   repositories: OpportunityServiceRepositories = defaultRepositories,
 ): Promise<{
   opportunities: Opportunity[];
+  comboOpportunities: BestCouponCombination[];
   pagination: { page: number; pageSize: number; total: number; totalPages: number };
 }> {
   const { offers, componentsByProductId, coupons } = await getOpportunityData(
@@ -284,12 +462,24 @@ export async function listOpportunities(
     const opportunity = createOpportunity(offer, componentsByProductId, coupon, nextCoupon);
     return opportunity ? [opportunity] : [];
   });
+  const purchasableProducts = offers.flatMap((offer) => {
+    const product = toPurchasableProduct(offer, componentsByProductId);
+    return product ? [product] : [];
+  });
+  const couponPurchases = coupons.map((coupon) =>
+    findBestCouponPurchases(purchasableProducts, coupon),
+  );
+  const comboOpportunities = couponPurchases.flatMap((purchases) =>
+    purchases.bestCombo ? [purchases.bestCombo] : [],
+  );
   opportunities.sort(sortByRoiDescending);
+  comboOpportunities.sort(sortCombinationsByRoiDescending);
 
   const total = opportunities.length;
   const offset = (query.page - 1) * query.pageSize;
   return {
     opportunities: opportunities.slice(offset, offset + query.pageSize),
+    comboOpportunities,
     pagination: {
       page: query.page,
       pageSize: query.pageSize,
@@ -303,26 +493,20 @@ export async function listBestCouponCombinations(
   query: BestCouponCombinationsListQuery,
   currentTime = new Date(),
   repositories: OpportunityServiceRepositories = defaultRepositories,
-): Promise<{ combinations: Array<{ coupon: MoneyCoupon; options: Opportunity[] }> }> {
+): Promise<{ combinations: BestCouponCombination[] }> {
   const { offers, componentsByProductId, coupons } = await getOpportunityData(
     query.couponIds,
     currentTime,
     repositories,
   );
 
+  const purchasableProducts = offers.flatMap((offer) => {
+    const product = toPurchasableProduct(offer, componentsByProductId);
+    return product ? [product] : [];
+  });
   const combinations = coupons.flatMap((coupon) => {
-    const options = offers
-      .flatMap((offer) => {
-        if (offer.price === null || toCents(Number(offer.price)) < toCents(coupon.minPurchase)) {
-          return [];
-        }
-        const opportunity = createOpportunity(offer, componentsByProductId, coupon, null);
-        return opportunity === null || opportunity.roi === null ? [] : [opportunity];
-      })
-      .sort(sortByRoiDescending)
-      .slice(0, 3);
-
-    return options.length > 0 ? [{ coupon, options }] : [];
+    const { best } = findBestCouponPurchases(purchasableProducts, coupon);
+    return best ? [best] : [];
   });
 
   combinations.sort(sortByCouponDescending);

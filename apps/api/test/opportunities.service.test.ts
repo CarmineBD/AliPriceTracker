@@ -370,40 +370,118 @@ describe('listOpportunities', () => {
 });
 
 describe('listBestCouponCombinations', () => {
-  it('sorts coupons by discount and returns their three highest-ROI applicable products', async () => {
-    const result = await listBestCouponCombinations(
-      { couponIds: [coupons[0]!.id, coupons[1]!.id] },
+  it('returns one highest-ROI purchase per coupon, including every product in a better combo', async () => {
+    const result = await listBestCouponCombinations({ couponIds: [coupons[0]!.id] }, new Date(), {
+      opportunities: {
+        findProductsWithCurrentOffers: async () => [
+          offer({
+            productId: '00000000-0000-4000-8000-000000000051',
+            name: 'Producto A',
+            shortName: 'Producto A',
+            averageSellingPrice: '40.00',
+            price: '20.00',
+          }),
+          offer({
+            productId: '00000000-0000-4000-8000-000000000052',
+            name: 'Producto B',
+            shortName: 'Producto B',
+            averageSellingPrice: '40.00',
+            price: '20.00',
+          }),
+          offer({
+            productId: '00000000-0000-4000-8000-000000000053',
+            name: 'Producto C',
+            shortName: 'Producto C',
+            averageSellingPrice: '40.00',
+            price: '20.00',
+          }),
+          offer({
+            productId: '00000000-0000-4000-8000-000000000054',
+            name: 'Producto individual',
+            shortName: 'Producto individual',
+            averageSellingPrice: '135.00',
+            price: '70.00',
+          }),
+        ],
+        findComboComponents: async () => [],
+      },
+      events: {
+        findActiveWithCoupons: async () => [],
+        findCouponOptions: async () =>
+          coupons.map((coupon) => ({
+            ...coupon,
+            minPurchase: coupon.minPurchase.toFixed(2),
+            discountAmount: coupon.discountAmount.toFixed(2),
+          })),
+      },
+    });
+
+    expect(result.combinations).toHaveLength(1);
+    expect(result.combinations[0]).toMatchObject({
+      coupon: coupons[0],
+      isCombo: true,
+      basePurchasePrice: 60,
+      effectivePurchasePrice: 55,
+      estimatedSellingPrice: 120,
+      estimatedProfit: 65,
+      roi: 118.18,
+    });
+    expect(result.combinations[0]?.products.map((product) => product.shortName)).toEqual([
+      'Producto A',
+      'Producto B',
+      'Producto C',
+    ]);
+    expect(result.combinations[0]?.products).toEqual([
+      expect.objectContaining({
+        basePurchasePrice: 20,
+        effectivePurchasePrice: 18.34,
+        estimatedProfit: 21.66,
+        roi: 118.1,
+      }),
+      expect.objectContaining({
+        basePurchasePrice: 20,
+        effectivePurchasePrice: 18.34,
+        estimatedProfit: 21.66,
+        roi: 118.1,
+      }),
+      expect.objectContaining({
+        basePurchasePrice: 20,
+        effectivePurchasePrice: 18.32,
+        estimatedProfit: 21.68,
+        roi: 118.34,
+      }),
+    ]);
+  });
+});
+
+describe('combined opportunities', () => {
+  it('adds only the best multi-product purchase for each coupon to the paginated listing', async () => {
+    const result = await listOpportunities(
+      { sort: 'roi-desc', page: 1, pageSize: 20, couponIds: [coupons[0]!.id] },
       new Date(),
       {
         opportunities: {
           findProductsWithCurrentOffers: async () => [
             offer({
-              productId: '00000000-0000-4000-8000-000000000051',
-              name: 'ROI alto',
-              shortName: 'ROI alto',
-              averageSellingPrice: '300.00',
-              price: '100.00',
+              productId: '00000000-0000-4000-8000-000000000061',
+              name: 'Producto A',
+              shortName: 'Producto A',
+              averageSellingPrice: '40.00',
+              price: '20.00',
             }),
             offer({
-              productId: '00000000-0000-4000-8000-000000000052',
-              name: 'ROI medio',
-              shortName: 'ROI medio',
-              averageSellingPrice: '200.00',
-              price: '100.00',
+              productId: '00000000-0000-4000-8000-000000000062',
+              name: 'Producto B',
+              shortName: 'Producto B',
+              averageSellingPrice: '40.00',
+              price: '20.00',
             }),
             offer({
-              productId: '00000000-0000-4000-8000-000000000053',
-              name: 'ROI bajo',
-              shortName: 'ROI bajo',
-              averageSellingPrice: '150.00',
-              price: '100.00',
-            }),
-            offer({
-              productId: '00000000-0000-4000-8000-000000000054',
-              name: 'No rentable',
-              shortName: 'No rentable',
-              averageSellingPrice: '50.00',
-              price: '100.00',
+              productId: '00000000-0000-4000-8000-000000000063',
+              name: 'Producto C',
+              shortName: 'Producto C',
+              averageSellingPrice: '40.00',
+              price: '20.00',
             }),
           ],
           findComboComponents: async () => [],
@@ -420,20 +498,16 @@ describe('listBestCouponCombinations', () => {
       },
     );
 
-    expect(result.combinations).toHaveLength(2);
-    expect(result.combinations.map((combination) => combination.coupon.id)).toEqual([
-      coupons[1]!.id,
-      coupons[0]!.id,
-    ]);
-    expect(result.combinations[1]).toMatchObject({ coupon: coupons[0] });
-    expect(result.combinations[1]?.options.map((option) => option.shortName)).toEqual([
-      'ROI alto',
-      'ROI medio',
-      'ROI bajo',
-    ]);
-    expect(
-      result.combinations[1]?.options.every((option) => option.coupon?.id === coupons[0]!.id),
-    ).toBe(true);
+    expect(result.comboOpportunities).toHaveLength(1);
+    expect(result.comboOpportunities[0]).toMatchObject({
+      coupon: coupons[0],
+      products: [
+        expect.objectContaining({ shortName: 'Producto A' }),
+        expect.objectContaining({ shortName: 'Producto B' }),
+        expect.objectContaining({ shortName: 'Producto C' }),
+      ],
+      roi: 118.18,
+    });
   });
 });
 

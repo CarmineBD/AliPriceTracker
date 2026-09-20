@@ -16,6 +16,7 @@ import {
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { OpportunitiesTable } from '@/features/opportunities/opportunities-table';
+import { CombinedOpportunitiesTable } from '@/features/opportunities/combined-opportunities-table';
 import { BestCouponCombinationsTable } from '@/features/opportunities/best-coupon-combinations-table';
 import { OpportunityCouponFilters } from '@/features/opportunities/opportunity-coupon-filters';
 import { AppLayout } from '@/layouts/app-layout';
@@ -77,12 +78,12 @@ export function OpportunitiesPage() {
           : { sort: 'roi-desc', page, pageSize },
       ),
   });
+  const pagination = opportunitiesQuery.data?.pagination;
   const bestCouponCombinationsQuery = useQuery({
     queryKey: ['best-coupon-combinations', { couponIds }],
     enabled: couponDefaultsReady,
     queryFn: () => getBestCouponCombinations(couponIds.length > 0 ? { couponIds } : {}),
   });
-  const pagination = opportunitiesQuery.data?.pagination;
   const combinations = bestCouponCombinationsQuery.data?.combinations ?? [];
   const selectedBestCombinationIds =
     selectedCombinationIds ?? combinations.map((combination) => combination.coupon.id);
@@ -90,11 +91,11 @@ export function OpportunitiesPage() {
     selectedBestCombinationIds.includes(combination.coupon.id),
   );
   const totalProfit = selectedBestCombinations.reduce(
-    (total, combination) => total + combination.options[0]!.estimatedProfit,
+    (total, combination) => total + combination.estimatedProfit,
     0,
   );
   const totalPurchasePrice = selectedBestCombinations.reduce(
-    (total, combination) => total + combination.options[0]!.effectivePurchasePrice,
+    (total, combination) => total + combination.effectivePurchasePrice,
     0,
   );
   const totalRoi = totalPurchasePrice > 0 ? (totalProfit / totalPurchasePrice) * 100 : null;
@@ -192,6 +193,32 @@ export function OpportunitiesPage() {
               </div>
             )}
           </>
+        )}
+      </section>
+
+      <section className="mt-10" aria-labelledby="combined-opportunities-title">
+        <h2 id="combined-opportunities-title" className="text-xl font-semibold text-slate-900">
+          Oportunidades combinadas
+        </h2>
+        <p className="mt-2 text-sm text-muted-foreground">
+          La mejor compra de dos o más productos para cada cupón disponible.
+        </p>
+        {opportunitiesQuery.isPending && (
+          <p className="mt-6" role="status">
+            Cargando oportunidades combinadas…
+          </p>
+        )}
+        {opportunitiesQuery.isError && (
+          <p className="mt-6 text-destructive" role="alert">
+            No se pudieron cargar las oportunidades combinadas.
+          </p>
+        )}
+        {opportunitiesQuery.isSuccess && (
+          <div className="mt-6">
+            <CombinedOpportunitiesTable
+              opportunities={opportunitiesQuery.data.comboOpportunities}
+            />
+          </div>
         )}
       </section>
 

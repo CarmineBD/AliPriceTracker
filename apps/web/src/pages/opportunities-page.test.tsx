@@ -89,6 +89,7 @@ describe('OpportunitiesPage', () => {
           offerObservedAt: '2026-09-18T10:00:00.000Z',
         },
       ],
+      comboOpportunities: [],
       pagination: { page: 1, pageSize: 20, total: 1, totalPages: 1 },
     });
     getBestCouponCombinationsMock.mockResolvedValue({
@@ -100,7 +101,8 @@ describe('OpportunitiesPage', () => {
             discountAmount: 30,
             category: 'event',
           },
-          options: [
+          isCombo: false,
+          products: [
             {
               productId: '00000000-0000-4000-8000-000000000001',
               imageUrl: 'https://media.example.test/products/example.png',
@@ -125,6 +127,11 @@ describe('OpportunitiesPage', () => {
               offerObservedAt: '2026-09-18T10:00:00.000Z',
             },
           ],
+          basePurchasePrice: 1289,
+          effectivePurchasePrice: 1259,
+          estimatedSellingPrice: 2355,
+          estimatedProfit: 1096,
+          roi: 87.05,
         },
       ],
     });
@@ -167,15 +174,22 @@ describe('OpportunitiesPage', () => {
     expect(
       screen
         .getAllByRole('columnheader')
-        .slice(0, 6)
+        .slice(0, 7)
         .map((header) => header.textContent),
-    ).toEqual(['Imagen', 'Nombre', 'Precio final', 'Cupón aplicado', 'Beneficio', 'ROI']);
+    ).toEqual(['Imagen', 'Nombre', 'Precio', 'Precio final', 'Cupón aplicado', 'Beneficio', 'ROI']);
     expect(
       screen
         .getAllByRole('columnheader')
-        .slice(6)
+        .slice(7)
         .map((header) => header.textContent),
-    ).toEqual(['Incluir en el cálculo', 'Cupón', 'Imagen', 'Nombre corto', 'Beneficio', 'ROI']);
+    ).toEqual([
+      'Incluir en el cálculo',
+      'Cupón',
+      'Imagen',
+      'Nombre corto',
+      'Precio final',
+      'Beneficio',
+    ]);
     await waitFor(() => {
       expect(getOpportunitiesMock).toHaveBeenLastCalledWith({
         sort: 'roi-desc',

@@ -494,19 +494,26 @@ export const opportunitySchema = z.object({
   offerObservedAt: z.string().datetime({ offset: true }),
 });
 
+export const bestCouponCombinationSchema = z.object({
+  coupon: couponSchema,
+  isCombo: z.boolean(),
+  products: z.array(opportunitySchema).min(1),
+  basePurchasePrice: z.number().finite().nonnegative(),
+  effectivePurchasePrice: z.number().finite(),
+  estimatedSellingPrice: z.number().finite().nonnegative(),
+  estimatedProfit: z.number().finite(),
+  roi: z.number().finite(),
+});
+
 export const opportunitiesListResponseSchema = z.object({
   opportunities: z.array(opportunitySchema),
+  comboOpportunities: z.array(bestCouponCombinationSchema),
   pagination: z.object({
     page: z.number().int().positive(),
     pageSize: z.number().int().positive(),
     total: z.number().int().nonnegative(),
     totalPages: z.number().int().nonnegative(),
   }),
-});
-
-export const bestCouponCombinationSchema = z.object({
-  coupon: couponSchema,
-  options: z.array(opportunitySchema).min(1).max(3),
 });
 
 export const bestCouponCombinationsListResponseSchema = z.object({
