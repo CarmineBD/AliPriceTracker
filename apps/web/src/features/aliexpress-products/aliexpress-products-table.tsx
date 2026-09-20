@@ -2,7 +2,7 @@ import type { AliExpressProductVariant, ProductOption } from '@alitracker/shared
 import { ImageOff } from 'lucide-react';
 
 import { Badge } from '@/components/ui/badge';
-import { ProductCombobox } from './product-combobox';
+import { ProductCombobox } from '@/features/products/product-combobox';
 import {
   Table,
   TableBody,

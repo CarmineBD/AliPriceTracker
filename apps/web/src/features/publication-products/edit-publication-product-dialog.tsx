@@ -9,7 +9,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { ProductCombobox } from '@/features/aliexpress-products/product-combobox';
+import { ProductCombobox } from '@/features/products/product-combobox';
 
 export function EditPublicationProductDialog({
   open,

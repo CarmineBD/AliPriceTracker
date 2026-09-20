@@ -1,4 +1,5 @@
 import type { ProductOption } from '@alitracker/shared';
+import { ImageOff } from 'lucide-react';
 
 import {
   Combobox,
@@ -52,6 +53,20 @@ export function ProductCombobox({
         <ComboboxList>
           {(option: ProductOption) => (
             <ComboboxItem key={option.id} value={option}>
+              {option.imageUrl ? (
+                <img
+                  src={option.imageUrl}
+                  alt={`Imagen de ${getProductLabel(option)}`}
+                  className="size-10 shrink-0 rounded-md border object-cover"
+                />
+              ) : (
+                <span
+                  className="flex size-10 shrink-0 items-center justify-center rounded-md border bg-muted text-muted-foreground"
+                  aria-label={`Sin imagen para ${getProductLabel(option)}`}
+                >
+                  <ImageOff className="size-4" />
+                </span>
+              )}
               <span className="flex min-w-0 flex-col items-start">
                 <span>{getProductLabel(option)}</span>
                 <span className="text-xs text-muted-foreground">{option.name}</span>

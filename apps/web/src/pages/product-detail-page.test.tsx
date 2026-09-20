@@ -140,7 +140,7 @@ describe('ProductDetailPage', () => {
     expect(screen.getByText('Fecha de actualización')).toBeInTheDocument();
     expect(screen.getByText('Fecha de creación')).toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: 'Productos que contiene (0)' })).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'editar' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^editar$/i })).toBeInTheDocument();
   });
 
   it('shows contained products as compact cards and orders offers from cheapest to most expensive', async () => {
@@ -290,7 +290,7 @@ describe('ProductDetailPage', () => {
       </QueryClientProvider>,
     );
 
-    fireEvent.click(await screen.findByRole('button', { name: 'editar' }));
+    fireEvent.click(await screen.findByRole('button', { name: /^editar$/i }));
     fireEvent.click(await screen.findByRole('button', { name: 'Eliminar producto' }));
 
     expect(screen.getByRole('heading', { name: '¿Eliminar producto?' })).toBeInTheDocument();

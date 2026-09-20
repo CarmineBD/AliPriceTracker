@@ -11,7 +11,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { ProductCombobox } from '@/features/aliexpress-products/product-combobox';
+import { ProductCombobox } from './product-combobox';
 
 type ProductComponentsEditorProps = {
   productId?: string;

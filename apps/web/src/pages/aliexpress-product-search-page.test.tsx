@@ -26,7 +26,7 @@ vi.mock('@/api/products.api', async (importOriginal) => {
   return { ...actual, getProductOptions: vi.fn() };
 });
 
-vi.mock('@/features/aliexpress-products/product-combobox', () => ({
+vi.mock('@/features/products/product-combobox', () => ({
   ProductCombobox: ({
     options,
     productId,
