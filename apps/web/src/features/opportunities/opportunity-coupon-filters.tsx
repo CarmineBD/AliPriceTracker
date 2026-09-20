@@ -37,11 +37,8 @@ export function OpportunityCouponFilters({
     <section className="mb-6 max-w-xl space-y-2" aria-labelledby="opportunity-coupon-filters-title">
       <div>
         <h2 id="opportunity-coupon-filters-title" className="text-sm font-medium">
-          Filtrar cupones disponibles
+          Cupones disponibles
         </h2>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Los cupones del evento activo están seleccionados por defecto.
-        </p>
       </div>
       <Combobox
         multiple

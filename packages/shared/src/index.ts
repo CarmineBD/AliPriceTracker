@@ -455,18 +455,24 @@ export const couponSchema = z.object({
   category: couponCategorySchema.nullable(),
 });
 
+const opportunityCouponIdsQuerySchema = z
+  .preprocess(
+    (value) => (value === undefined || Array.isArray(value) ? value : [value]),
+    z.array(couponSchema.shape.id).max(100).optional(),
+  )
+  .transform((couponIds) => (couponIds ? [...new Set(couponIds)] : undefined));
+
 export const opportunitiesListQuerySchema = z
   .object({
     sort: z.literal('roi-desc'),
     page: z.coerce.number().int().positive().default(1),
     pageSize: z.coerce.number().int().positive().max(100).default(20),
-    couponIds: z
-      .preprocess(
-        (value) => (value === undefined || Array.isArray(value) ? value : [value]),
-        z.array(couponSchema.shape.id).max(100).optional(),
-      )
-      .transform((couponIds) => (couponIds ? [...new Set(couponIds)] : undefined)),
+    couponIds: opportunityCouponIdsQuerySchema,
   })
+  .strict();
+
+export const bestCouponCombinationsListQuerySchema = z
+  .object({ couponIds: opportunityCouponIdsQuerySchema })
   .strict();
 
 export const opportunitySchema = z.object({
@@ -496,6 +502,15 @@ export const opportunitiesListResponseSchema = z.object({
     total: z.number().int().nonnegative(),
     totalPages: z.number().int().nonnegative(),
   }),
+});
+
+export const bestCouponCombinationSchema = z.object({
+  coupon: couponSchema,
+  options: z.array(opportunitySchema).min(1).max(3),
+});
+
+export const bestCouponCombinationsListResponseSchema = z.object({
+  combinations: z.array(bestCouponCombinationSchema),
 });
 
 const couponAmountSchema = z
@@ -593,6 +608,9 @@ export type Coupon = z.infer<typeof couponSchema>;
 export type Opportunity = z.infer<typeof opportunitySchema>;
 export type OpportunitiesListQuery = z.infer<typeof opportunitiesListQuerySchema>;
 export type OpportunitiesList = z.infer<typeof opportunitiesListResponseSchema>;
+export type BestCouponCombinationsListQuery = z.infer<typeof bestCouponCombinationsListQuerySchema>;
+export type BestCouponCombination = z.infer<typeof bestCouponCombinationSchema>;
+export type BestCouponCombinationsList = z.infer<typeof bestCouponCombinationsListResponseSchema>;
 export type ActiveEvent = z.infer<typeof activeEventSchema>;
 export type CouponCreateInput = z.infer<typeof couponCreateSchema>;
 export type CouponUpdateInput = z.infer<typeof couponUpdateSchema>;

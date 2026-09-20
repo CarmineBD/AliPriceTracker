@@ -1,4 +1,9 @@
-import type { Coupon, CouponCategory, OpportunitiesListQuery } from '@alitracker/shared';
+import type {
+  BestCouponCombinationsListQuery,
+  Coupon,
+  CouponCategory,
+  OpportunitiesListQuery,
+} from '@alitracker/shared';
 
 import { getPublicUrl } from '../../services/storage.service.js';
 import { EventsRepository } from '../events/events.repository.js';
@@ -175,6 +180,88 @@ function sortByRoiDescending(left: Opportunity, right: Opportunity): number {
   return left.name.localeCompare(right.name) || left.productId.localeCompare(right.productId);
 }
 
+function sortByCouponDescending(
+  left: { coupon: MoneyCoupon },
+  right: { coupon: MoneyCoupon },
+): number {
+  const discountDifference =
+    toCents(right.coupon.discountAmount) - toCents(left.coupon.discountAmount);
+  if (discountDifference !== 0) return discountDifference;
+
+  const minimumPurchaseDifference =
+    toCents(right.coupon.minPurchase) - toCents(left.coupon.minPurchase);
+  if (minimumPurchaseDifference !== 0) return minimumPurchaseDifference;
+
+  return compareCouponIds(left.coupon, right.coupon);
+}
+
+async function getOpportunityData(
+  couponIds: string[] | undefined,
+  currentTime: Date,
+  repositories: OpportunityServiceRepositories,
+) {
+  const [offers, components, activeEvents, couponOptions] = await Promise.all([
+    repositories.opportunities.findProductsWithCurrentOffers(),
+    repositories.opportunities.findComboComponents(),
+    repositories.events.findActiveWithCoupons(currentTime),
+    couponIds === undefined ? Promise.resolve(undefined) : repositories.events.findCouponOptions(),
+  ]);
+  const activeEvent = activeEvents[0];
+
+  return {
+    offers,
+    componentsByProductId: groupComponentsByProductId(components),
+    coupons: filterAvailableCoupons(
+      couponOptions
+        ? couponOptions.map(toCoupon)
+        : activeEvent
+          ? activeEvent.coupons.map(toCoupon)
+          : [],
+      couponIds,
+    ),
+  };
+}
+
+function createOpportunity(
+  offer: CurrentProductOffer,
+  componentsByProductId: ReadonlyMap<string, ProductComboComponent[]>,
+  coupon: MoneyCoupon | null,
+  nextCoupon: MoneyCoupon | null,
+): Opportunity | null {
+  if (!offer.isAvailable || offer.price === null) return null;
+
+  const basePurchasePrice = Number(offer.price);
+  const estimatedSellingPrice = resolveEstimatedSellingPrice(offer, componentsByProductId);
+  if (!Number.isFinite(basePurchasePrice) || estimatedSellingPrice === null) return null;
+
+  const effectivePurchasePrice = fromCents(
+    toCents(basePurchasePrice) - toCents(coupon?.discountAmount ?? 0),
+  );
+  const estimatedProfit = calculateProfit(estimatedSellingPrice, effectivePurchasePrice);
+  if (estimatedProfit <= 0) return null;
+
+  return {
+    productId: offer.productId,
+    imageUrl: offer.imageKey ? getPublicUrl(offer.imageKey) : offer.iconUrl,
+    name: offer.name,
+    shortName: offer.shortName,
+    basePurchasePrice,
+    currency: offer.currency,
+    coupon,
+    effectivePurchasePrice,
+    estimatedSellingPrice,
+    estimatedProfit,
+    roi: calculateRoi(estimatedProfit, effectivePurchasePrice),
+    nextCoupon,
+    amountToNextCoupon: nextCoupon
+      ? fromCents(toCents(nextCoupon.minPurchase) - toCents(basePurchasePrice))
+      : null,
+    stock: offer.quantityAvailable,
+    offerUrl: offer.publicationUrl,
+    offerObservedAt: offer.capturedAt.toISOString(),
+  };
+}
+
 export async function listOpportunities(
   query: OpportunitiesListQuery,
   currentTime = new Date(),
@@ -183,62 +270,19 @@ export async function listOpportunities(
   opportunities: Opportunity[];
   pagination: { page: number; pageSize: number; total: number; totalPages: number };
 }> {
-  const [offers, components, activeEvents, couponOptions] = await Promise.all([
-    repositories.opportunities.findProductsWithCurrentOffers(),
-    repositories.opportunities.findComboComponents(),
-    repositories.events.findActiveWithCoupons(currentTime),
-    query.couponIds === undefined
-      ? Promise.resolve(undefined)
-      : repositories.events.findCouponOptions(),
-  ]);
-  const activeEvent = activeEvents[0];
-  const coupons = filterAvailableCoupons(
-    couponOptions
-      ? couponOptions.map(toCoupon)
-      : activeEvent
-        ? activeEvent.coupons.map(toCoupon)
-        : [],
+  const { offers, componentsByProductId, coupons } = await getOpportunityData(
     query.couponIds,
+    currentTime,
+    repositories,
   );
-  const componentsByProductId = groupComponentsByProductId(components);
 
   const opportunities = offers.flatMap((offer) => {
-    if (!offer.isAvailable || offer.price === null) return [];
-
+    if (offer.price === null) return [];
     const basePurchasePrice = Number(offer.price);
-    const estimatedSellingPrice = resolveEstimatedSellingPrice(offer, componentsByProductId);
-    if (!Number.isFinite(basePurchasePrice) || estimatedSellingPrice === null) return [];
-
     const coupon = findBestApplicableCoupon(basePurchasePrice, coupons);
     const nextCoupon = findNextCoupon(basePurchasePrice, coupons);
-    const effectivePurchasePrice = fromCents(
-      toCents(basePurchasePrice) - toCents(coupon?.discountAmount ?? 0),
-    );
-    const estimatedProfit = calculateProfit(estimatedSellingPrice, effectivePurchasePrice);
-    if (estimatedProfit <= 0) return [];
-
-    return [
-      {
-        productId: offer.productId,
-        imageUrl: offer.imageKey ? getPublicUrl(offer.imageKey) : offer.iconUrl,
-        name: offer.name,
-        shortName: offer.shortName,
-        basePurchasePrice,
-        currency: offer.currency,
-        coupon,
-        effectivePurchasePrice,
-        estimatedSellingPrice,
-        estimatedProfit,
-        roi: calculateRoi(estimatedProfit, effectivePurchasePrice),
-        nextCoupon,
-        amountToNextCoupon: nextCoupon
-          ? fromCents(toCents(nextCoupon.minPurchase) - toCents(basePurchasePrice))
-          : null,
-        stock: offer.quantityAvailable,
-        offerUrl: offer.publicationUrl,
-        offerObservedAt: offer.capturedAt.toISOString(),
-      },
-    ];
+    const opportunity = createOpportunity(offer, componentsByProductId, coupon, nextCoupon);
+    return opportunity ? [opportunity] : [];
   });
   opportunities.sort(sortByRoiDescending);
 
@@ -253,4 +297,35 @@ export async function listOpportunities(
       totalPages: Math.ceil(total / query.pageSize),
     },
   };
+}
+
+export async function listBestCouponCombinations(
+  query: BestCouponCombinationsListQuery,
+  currentTime = new Date(),
+  repositories: OpportunityServiceRepositories = defaultRepositories,
+): Promise<{ combinations: Array<{ coupon: MoneyCoupon; options: Opportunity[] }> }> {
+  const { offers, componentsByProductId, coupons } = await getOpportunityData(
+    query.couponIds,
+    currentTime,
+    repositories,
+  );
+
+  const combinations = coupons.flatMap((coupon) => {
+    const options = offers
+      .flatMap((offer) => {
+        if (offer.price === null || toCents(Number(offer.price)) < toCents(coupon.minPurchase)) {
+          return [];
+        }
+        const opportunity = createOpportunity(offer, componentsByProductId, coupon, null);
+        return opportunity === null || opportunity.roi === null ? [] : [opportunity];
+      })
+      .sort(sortByRoiDescending)
+      .slice(0, 3);
+
+    return options.length > 0 ? [{ coupon, options }] : [];
+  });
+
+  combinations.sort(sortByCouponDescending);
+
+  return { combinations };
 }

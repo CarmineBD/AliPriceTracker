@@ -1,17 +1,26 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
 
 import { OpportunitiesPage } from './opportunities-page';
 
-const { getActiveEventsMock, getCouponOptionsMock, getOpportunitiesMock } = vi.hoisted(() => ({
+const {
+  getActiveEventsMock,
+  getCouponOptionsMock,
+  getOpportunitiesMock,
+  getBestCouponCombinationsMock,
+} = vi.hoisted(() => ({
   getActiveEventsMock: vi.fn(),
   getCouponOptionsMock: vi.fn(),
   getOpportunitiesMock: vi.fn(),
+  getBestCouponCombinationsMock: vi.fn(),
 }));
 
-vi.mock('@/api/opportunities.api', () => ({ getOpportunities: getOpportunitiesMock }));
+vi.mock('@/api/opportunities.api', () => ({
+  getOpportunities: getOpportunitiesMock,
+  getBestCouponCombinations: getBestCouponCombinationsMock,
+}));
 vi.mock('@/api/events.api', () => ({
   getActiveEvents: getActiveEventsMock,
   getCouponOptions: getCouponOptionsMock,
@@ -82,6 +91,43 @@ describe('OpportunitiesPage', () => {
       ],
       pagination: { page: 1, pageSize: 20, total: 1, totalPages: 1 },
     });
+    getBestCouponCombinationsMock.mockResolvedValue({
+      combinations: [
+        {
+          coupon: {
+            id: '00000000-0000-4000-8000-000000000002',
+            minPurchase: 279,
+            discountAmount: 30,
+            category: 'event',
+          },
+          options: [
+            {
+              productId: '00000000-0000-4000-8000-000000000001',
+              imageUrl: 'https://media.example.test/products/example.png',
+              name: 'DJI Neo 2 Fly More Combo',
+              shortName: 'DJI Neo 2',
+              basePurchasePrice: 289,
+              currency: 'EUR',
+              coupon: {
+                id: '00000000-0000-4000-8000-000000000002',
+                minPurchase: 279,
+                discountAmount: 30,
+                category: 'event',
+              },
+              effectivePurchasePrice: 1259,
+              estimatedSellingPrice: 2355,
+              estimatedProfit: 1096,
+              roi: 87.05,
+              nextCoupon: null,
+              amountToNextCoupon: null,
+              stock: 5,
+              offerUrl: 'https://example.com/offer',
+              offerObservedAt: '2026-09-18T10:00:00.000Z',
+            },
+          ],
+        },
+      ],
+    });
     const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
 
     render(
@@ -93,34 +139,43 @@ describe('OpportunitiesPage', () => {
     );
 
     expect(screen.getByRole('heading', { name: 'Oportunidades' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Por cuenta' })).toBeInTheDocument();
     expect(getOpportunitiesMock).not.toHaveBeenCalled();
-    expect(await screen.findByText('DJI Neo 2')).toBeInTheDocument();
+    expect(await screen.findAllByText('DJI Neo 2')).toHaveLength(2);
     const couponCombobox = screen.getByRole('combobox', {
       name: 'Cupones disponibles para oportunidades',
     });
     expect(couponCombobox).toBeEnabled();
     expect(screen.getByText('259,00 €')).toBeInTheDocument();
-    expect(screen.getAllByText('-30€')).toHaveLength(2);
-    expect(screen.getByText('37,07 %')).toBeInTheDocument();
+    expect(screen.getAllByText('-30€')).toHaveLength(3);
+    expect(screen.getAllByText('37,07 %')).toHaveLength(1);
     expect(
       screen.getByRole('button', { name: 'Ver cálculo del beneficio de DJI Neo 2' }),
     ).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'DJI Neo 2' })).toHaveAttribute(
-      'href',
-      'https://example.com/offer',
-    );
+    expect(screen.getAllByRole('link', { name: 'DJI Neo 2' })).toHaveLength(2);
+    expect(screen.getByLabelText('Inversión estimada')).toHaveTextContent('1.259 €');
+    expect(screen.getByLabelText('Beneficio total estimado')).toHaveTextContent('1.096 €');
+    expect(screen.getByText('ROI 87,1%')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Incluir DJI Neo 2 con este cupón' }));
+    expect(screen.getByLabelText('Inversión estimada')).toHaveTextContent('0 €');
+    expect(screen.getByLabelText('Beneficio total estimado')).toHaveTextContent('0 €');
+    expect(screen.getByText('ROI —')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Oportunidades' })).toHaveAttribute(
       'href',
       '/opportunities',
     );
-    expect(screen.getAllByRole('columnheader').map((header) => header.textContent)).toEqual([
-      'Imagen',
-      'Nombre',
-      'Precio final',
-      'Cupón aplicado',
-      'Beneficio',
-      'ROI',
-    ]);
+    expect(
+      screen
+        .getAllByRole('columnheader')
+        .slice(0, 6)
+        .map((header) => header.textContent),
+    ).toEqual(['Imagen', 'Nombre', 'Precio final', 'Cupón aplicado', 'Beneficio', 'ROI']);
+    expect(
+      screen
+        .getAllByRole('columnheader')
+        .slice(6)
+        .map((header) => header.textContent),
+    ).toEqual(['Incluir en el cálculo', 'Cupón', 'Imagen', 'Nombre corto', 'Beneficio', 'ROI']);
     await waitFor(() => {
       expect(getOpportunitiesMock).toHaveBeenLastCalledWith({
         sort: 'roi-desc',
@@ -128,9 +183,13 @@ describe('OpportunitiesPage', () => {
         pageSize: 20,
         couponIds: ['00000000-0000-4000-8000-000000000002'],
       });
+      expect(getBestCouponCombinationsMock).toHaveBeenLastCalledWith({
+        couponIds: ['00000000-0000-4000-8000-000000000002'],
+      });
     });
     expect(getActiveEventsMock).toHaveBeenCalledOnce();
     expect(getCouponOptionsMock).toHaveBeenCalledOnce();
     expect(getOpportunitiesMock).toHaveBeenCalledOnce();
+    expect(getBestCouponCombinationsMock).toHaveBeenCalledOnce();
   });
 });

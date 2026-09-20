@@ -13,6 +13,7 @@ import {
   calculateRoi,
   findBestApplicableCoupon,
   findNextCoupon,
+  listBestCouponCombinations,
   listOpportunities,
   resolveEstimatedSellingPrice,
 } from '../src/modules/opportunities/opportunities.service';
@@ -368,6 +369,74 @@ describe('listOpportunities', () => {
   });
 });
 
+describe('listBestCouponCombinations', () => {
+  it('sorts coupons by discount and returns their three highest-ROI applicable products', async () => {
+    const result = await listBestCouponCombinations(
+      { couponIds: [coupons[0]!.id, coupons[1]!.id] },
+      new Date(),
+      {
+        opportunities: {
+          findProductsWithCurrentOffers: async () => [
+            offer({
+              productId: '00000000-0000-4000-8000-000000000051',
+              name: 'ROI alto',
+              shortName: 'ROI alto',
+              averageSellingPrice: '300.00',
+              price: '100.00',
+            }),
+            offer({
+              productId: '00000000-0000-4000-8000-000000000052',
+              name: 'ROI medio',
+              shortName: 'ROI medio',
+              averageSellingPrice: '200.00',
+              price: '100.00',
+            }),
+            offer({
+              productId: '00000000-0000-4000-8000-000000000053',
+              name: 'ROI bajo',
+              shortName: 'ROI bajo',
+              averageSellingPrice: '150.00',
+              price: '100.00',
+            }),
+            offer({
+              productId: '00000000-0000-4000-8000-000000000054',
+              name: 'No rentable',
+              shortName: 'No rentable',
+              averageSellingPrice: '50.00',
+              price: '100.00',
+            }),
+          ],
+          findComboComponents: async () => [],
+        },
+        events: {
+          findActiveWithCoupons: async () => [],
+          findCouponOptions: async () =>
+            coupons.map((coupon) => ({
+              ...coupon,
+              minPurchase: coupon.minPurchase.toFixed(2),
+              discountAmount: coupon.discountAmount.toFixed(2),
+            })),
+        },
+      },
+    );
+
+    expect(result.combinations).toHaveLength(2);
+    expect(result.combinations.map((combination) => combination.coupon.id)).toEqual([
+      coupons[1]!.id,
+      coupons[0]!.id,
+    ]);
+    expect(result.combinations[1]).toMatchObject({ coupon: coupons[0] });
+    expect(result.combinations[1]?.options.map((option) => option.shortName)).toEqual([
+      'ROI alto',
+      'ROI medio',
+      'ROI bajo',
+    ]);
+    expect(
+      result.combinations[1]?.options.every((option) => option.coupon?.id === coupons[0]!.id),
+    ).toBe(true);
+  });
+});
+
 describe('opportunities request validation', () => {
   it('accepts one or more repeated coupon IDs and leaves the filter undefined when omitted', () => {
     expect(
@@ -391,6 +460,9 @@ describe('opportunities request validation', () => {
     expect((await request(app).get('/api/opportunities?sort=roi-desc&page=0')).status).toBe(400);
     expect(
       (await request(app).get('/api/opportunities?sort=roi-desc&couponIds=invalid')).status,
+    ).toBe(400);
+    expect(
+      (await request(app).get('/api/opportunities/best-by-coupon?couponIds=invalid')).status,
     ).toBe(400);
   });
 });

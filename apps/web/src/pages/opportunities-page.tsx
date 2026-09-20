@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 
 import { getActiveEvents, getCouponOptions } from '@/api/events.api';
-import { getOpportunities } from '@/api/opportunities.api';
+import { getBestCouponCombinations, getOpportunities } from '@/api/opportunities.api';
 import {
   Pagination,
   PaginationContent,
@@ -13,11 +13,23 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from '@/components/ui/pagination';
+import { Card, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { OpportunitiesTable } from '@/features/opportunities/opportunities-table';
+import { BestCouponCombinationsTable } from '@/features/opportunities/best-coupon-combinations-table';
 import { OpportunityCouponFilters } from '@/features/opportunities/opportunity-coupon-filters';
 import { AppLayout } from '@/layouts/app-layout';
 
 const pageSize = 20;
+
+const wholeAmountFormatter = new Intl.NumberFormat('es-ES', {
+  useGrouping: true,
+  maximumFractionDigits: 0,
+});
+
+const totalRoiFormatter = new Intl.NumberFormat('es-ES', {
+  maximumFractionDigits: 1,
+});
 
 function getPageItems(currentPage: number, totalPages: number): Array<number | 'ellipsis'> {
   if (totalPages <= 7) return Array.from({ length: totalPages }, (_, index) => index + 1);
@@ -39,6 +51,7 @@ function getPageItems(currentPage: number, totalPages: number): Array<number | '
 export function OpportunitiesPage() {
   const [page, setPage] = useState(1);
   const [selectedCouponIds, setSelectedCouponIds] = useState<string[] | null>(null);
+  const [selectedCombinationIds, setSelectedCombinationIds] = useState<string[] | null>(null);
   const activeEventsQuery = useQuery({
     queryKey: ['active-events'],
     queryFn: getActiveEvents,
@@ -64,14 +77,34 @@ export function OpportunitiesPage() {
           : { sort: 'roi-desc', page, pageSize },
       ),
   });
+  const bestCouponCombinationsQuery = useQuery({
+    queryKey: ['best-coupon-combinations', { couponIds }],
+    enabled: couponDefaultsReady,
+    queryFn: () => getBestCouponCombinations(couponIds.length > 0 ? { couponIds } : {}),
+  });
   const pagination = opportunitiesQuery.data?.pagination;
+  const combinations = bestCouponCombinationsQuery.data?.combinations ?? [];
+  const selectedBestCombinationIds =
+    selectedCombinationIds ?? combinations.map((combination) => combination.coupon.id);
+  const selectedBestCombinations = combinations.filter((combination) =>
+    selectedBestCombinationIds.includes(combination.coupon.id),
+  );
+  const totalProfit = selectedBestCombinations.reduce(
+    (total, combination) => total + combination.options[0]!.estimatedProfit,
+    0,
+  );
+  const totalPurchasePrice = selectedBestCombinations.reduce(
+    (total, combination) => total + combination.options[0]!.effectivePurchasePrice,
+    0,
+  );
+  const totalRoi = totalPurchasePrice > 0 ? (totalProfit / totalPurchasePrice) * 100 : null;
 
   return (
     <AppLayout>
       <div className="mb-6">
         <h1 className="text-3xl font-semibold text-slate-900">Oportunidades</h1>
         <p className="mt-2 text-slate-600">
-          Productos ordenados de mayor a menor ROI estimado para la compra de una unidad.
+          Mejores opciones de compra para los cupones disponibles en el evento actual.
         </p>
       </div>
 
@@ -82,6 +115,7 @@ export function OpportunitiesPage() {
           disabled={couponOptionsQuery.isPending || couponOptionsQuery.isError}
           onSelectedCouponsChange={(coupons) => {
             setSelectedCouponIds(coupons.map((coupon) => coupon.id));
+            setSelectedCombinationIds(null);
             setPage(1);
           }}
         />
@@ -158,6 +192,59 @@ export function OpportunitiesPage() {
               </div>
             )}
           </>
+        )}
+      </section>
+
+      <section className="mt-10" aria-labelledby="best-coupon-combinations-title">
+        <h2 id="best-coupon-combinations-title" className="text-xl font-semibold text-slate-900">
+          Por cuenta
+        </h2>
+        <p className="mt-2 text-sm text-muted-foreground">
+          Combinaciones de cupones que ofrecen el mayor beneficio total por cuenta.
+        </p>
+        {bestCouponCombinationsQuery.isPending && (
+          <p className="mt-6" role="status">
+            Cargando combinaciones por cupón…
+          </p>
+        )}
+        {bestCouponCombinationsQuery.isError && (
+          <p className="mt-6 text-destructive" role="alert">
+            No se pudieron cargar las combinaciones por cupón.
+          </p>
+        )}
+        {bestCouponCombinationsQuery.isSuccess && (
+          <div className="mt-6 space-y-6">
+            <Card>
+              {/* <CardHeader>
+                <CardTitle>Resultado de las compras seleccionadas</CardTitle>
+              </CardHeader> */}
+              <CardContent className="flex flex-wrap items-start justify-between gap-x-10 gap-y-3">
+                <div>
+                  <p className="text-sm text-muted-foreground">Inversión total</p>
+                  <p className="text-xl font-semibold" aria-label="Inversión estimada">
+                    {wholeAmountFormatter.format(totalPurchasePrice)} €
+                  </p>
+                </div>
+                <div className="ml-auto text-right">
+                  <p className="text-sm text-muted-foreground">Beneficio total</p>
+                  <p
+                    className="text-3xl font-semibold tracking-tight"
+                    aria-label="Beneficio total estimado"
+                  >
+                    {wholeAmountFormatter.format(totalProfit)} €
+                  </p>
+                  <Badge variant="secondary">
+                    ROI {totalRoi === null ? '—' : `${totalRoiFormatter.format(totalRoi)}%`}
+                  </Badge>
+                </div>
+              </CardContent>
+            </Card>
+            <BestCouponCombinationsTable
+              combinations={combinations}
+              selectedCombinationIds={selectedBestCombinationIds}
+              onSelectedCombinationIdsChange={setSelectedCombinationIds}
+            />
+          </div>
         )}
       </section>
     </AppLayout>
