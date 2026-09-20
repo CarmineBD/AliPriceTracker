@@ -50,6 +50,7 @@ export function ProductBestOfferHistoryDialog({
     ? buildBestOfferHistoryChartData({
         baseline: response.baseline,
         history: response.history,
+        current: response.current,
         from,
       })
     : [];

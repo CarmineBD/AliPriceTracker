@@ -12,11 +12,15 @@ export type BestOfferHistoryChartPoint = {
   quantityAvailable: number | null;
   publicationUrl: string | null;
   isAvailable: boolean;
+  /** A visual continuation of the latest known offer to the present time. */
+  isProjectedToNow?: boolean;
 };
 export type BestOfferHistoryChartInput = Pick<
   ProductBestOfferHistoryResponse,
   'baseline' | 'history'
 > & {
+  current: ProductBestOfferHistoryResponse['current'];
   from?: string;
+  now?: string;
 };
 export type { ProductBestOfferHistoryEntry };

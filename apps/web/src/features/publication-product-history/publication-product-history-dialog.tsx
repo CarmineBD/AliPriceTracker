@@ -83,7 +83,7 @@ export function PublicationProductHistoryDialog({
         Ver histórico
       </Button>
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-h-[90vh] max-w-4xl overflow-y-auto">
+        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-6xl">
           <DialogHeader>
             <DialogTitle>Histórico</DialogTitle>
             <DialogDescription>

@@ -34,6 +34,7 @@ export function buildHistoryChartData({
   current,
   from,
   lastCheckedAt,
+  now = new Date().toISOString(),
 }: HistoryChartInput): HistoryChartPoint[] {
   const points: HistoryChartPoint[] = [];
 
@@ -55,6 +56,17 @@ export function buildHistoryChartData({
   const lastPoint = points.at(-1);
   if (finalPoint && lastPoint && finalPoint.timestamp > lastPoint.timestamp) {
     points.push(finalPoint);
+  }
+
+  const latestPoint = points.at(-1);
+  const nowTimestamp = new Date(now).getTime();
+  if (latestPoint && Number.isFinite(nowTimestamp) && nowTimestamp > latestPoint.timestamp) {
+    points.push({
+      ...latestPoint,
+      timestamp: nowTimestamp,
+      capturedAt: now,
+      isProjectedToNow: true,
+    });
   }
 
   return points;

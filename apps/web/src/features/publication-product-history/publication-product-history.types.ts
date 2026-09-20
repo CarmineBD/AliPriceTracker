@@ -11,12 +11,15 @@ export type HistoryChartPoint = {
   price: number | null;
   currency: string | null;
   quantityAvailable: number | null;
+  /** A visual continuation of the latest known state to the present time. */
+  isProjectedToNow?: boolean;
 };
 
 export type HistoryChartInput = Pick<PublicationProductHistoryResponse, 'baseline' | 'history'> & {
   current: PublicationProductHistoryResponse['publicationProduct']['current'];
   from?: string;
   lastCheckedAt: string | null;
+  now?: string;
 };
 
 export type { PublicationProductHistoryEntry };

@@ -29,7 +29,9 @@ function toPoint(entry: {
 export function buildBestOfferHistoryChartData({
   baseline,
   history,
+  current,
   from,
+  now = new Date().toISOString(),
 }: BestOfferHistoryChartInput): BestOfferHistoryChartPoint[] {
   const points: BestOfferHistoryChartPoint[] = [];
   if (baseline && from) {
@@ -40,7 +42,27 @@ export function buildBestOfferHistoryChartData({
     const point = toPoint(entry);
     if (point) points.push(point);
   }
-  return points.sort((left, right) => left.timestamp - right.timestamp);
+
+  points.sort((left, right) => left.timestamp - right.timestamp);
+
+  const currentPoint = current ? toPoint(current) : null;
+  const latestPoint = points.at(-1);
+  if (currentPoint && (!latestPoint || currentPoint.timestamp > latestPoint.timestamp)) {
+    points.push(currentPoint);
+  }
+
+  const pointToExtend = points.at(-1);
+  const nowTimestamp = new Date(now).getTime();
+  if (pointToExtend && Number.isFinite(nowTimestamp) && nowTimestamp > pointToExtend.timestamp) {
+    points.push({
+      ...pointToExtend,
+      timestamp: nowTimestamp,
+      capturedAt: now,
+      isProjectedToNow: true,
+    });
+  }
+
+  return points;
 }
 
 export function getBestOfferRangeFrom(

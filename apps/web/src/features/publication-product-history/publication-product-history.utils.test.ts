@@ -56,6 +56,24 @@ describe('buildHistoryChartData', () => {
     });
   });
 
+  it('continues the latest state to the present without treating it as an observation', () => {
+    const data = buildHistoryChartData({
+      baseline: null,
+      history: [historyEntry],
+      current: { price: '415.30', currency: 'EUR', quantityAvailable: 40 },
+      lastCheckedAt: historyEntry.capturedAt,
+      now: '2026-09-25T12:00:00.000Z',
+    });
+
+    expect(data).toHaveLength(2);
+    expect(data[1]).toMatchObject({
+      capturedAt: '2026-09-25T12:00:00.000Z',
+      price: 415.3,
+      quantityAvailable: 40,
+      isProjectedToNow: true,
+    });
+  });
+
   it('does not duplicate the final point when it was captured at lastCheckedAt', () => {
     const data = buildHistoryChartData({
       baseline: null,
