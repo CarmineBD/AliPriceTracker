@@ -16,6 +16,7 @@ type ProductComboboxProps = {
   onProductIdChange: (productId: string | undefined) => void;
   invalid?: boolean;
   disabled?: boolean;
+  autoFocus?: boolean;
   ariaLabel?: string;
   placeholder?: string;
 };
@@ -30,6 +31,7 @@ export function ProductCombobox({
   onProductIdChange,
   invalid = false,
   disabled = false,
+  autoFocus = false,
   ariaLabel = 'Producto asociado',
   placeholder = 'Seleccionar producto...',
 }: ProductComboboxProps) {
@@ -48,6 +50,7 @@ export function ProductCombobox({
         aria-label={ariaLabel}
         aria-invalid={invalid || undefined}
         disabled={disabled}
+        autoFocus={autoFocus}
       />
       <ComboboxContent>
         <ComboboxList>

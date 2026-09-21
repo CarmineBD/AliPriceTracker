@@ -72,6 +72,7 @@ export const publicationProducts = pgTable(
   },
   (table) => [
     uniqueIndex('publication_products_aliexpress_sku_id_unique').on(table.aliexpressSkuId),
+    uniqueIndex('publication_products_product_id_id_unique').on(table.productId, table.id),
     index('publication_products_product_id_index').on(table.productId),
   ],
 );

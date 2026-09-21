@@ -35,6 +35,110 @@ export const productUpdateSchema = productCreateSchema
 
 export const productIdSchema = z.string().uuid();
 
+const moneyAmountSchema = z
+  .number()
+  .finite()
+  .nonnegative()
+  .max(9_999_999_999.99)
+  .refine(
+    (value) => Math.abs(value * 100 - Math.round(value * 100)) < 0.000_001,
+    'El importe puede tener como máximo dos decimales.',
+  );
+
+export const purchaseStatuses = ['ordered', 'received', 'returned'] as const;
+export const purchaseStatusSchema = z.enum(purchaseStatuses);
+
+export const saleStatuses = ['to_be_sent', 'sent', 'completed'] as const;
+export const saleStatusSchema = z.enum(saleStatuses);
+
+const transactionDateSchema = z.string().datetime({ offset: true });
+
+export const purchaseCreateSchema = z
+  .object({
+    productId: productIdSchema,
+    offerId: productIdSchema,
+    totalFinalPrice: moneyAmountSchema,
+    status: purchaseStatusSchema,
+    date: transactionDateSchema.optional(),
+  })
+  .strict();
+
+export const purchaseUpdateSchema = purchaseCreateSchema
+  .partial()
+  .refine((values) => Object.keys(values).length > 0, 'Debe enviarse al menos un campo.');
+
+export const saleCreateSchema = z
+  .object({
+    productId: productIdSchema,
+    totalSalePrice: moneyAmountSchema,
+    status: saleStatusSchema,
+    date: transactionDateSchema.optional(),
+  })
+  .strict();
+
+export const saleUpdateSchema = saleCreateSchema
+  .partial()
+  .refine((values) => Object.keys(values).length > 0, 'Debe enviarse al menos un campo.');
+
+export type PurchaseStatus = z.infer<typeof purchaseStatusSchema>;
+export type SaleStatus = z.infer<typeof saleStatusSchema>;
+export type PurchaseCreateInput = z.infer<typeof purchaseCreateSchema>;
+export type PurchaseUpdateInput = z.infer<typeof purchaseUpdateSchema>;
+export type SaleCreateInput = z.infer<typeof saleCreateSchema>;
+export type SaleUpdateInput = z.infer<typeof saleUpdateSchema>;
+
+export const transactionsListQuerySchema = z
+  .object({
+    page: z.coerce.number().int().positive().default(1),
+    pageSize: z.coerce.number().int().positive().max(100).default(20),
+  })
+  .strict();
+
+const transactionPaginationSchema = z.object({
+  page: z.number().int().positive(),
+  pageSize: z.number().int().positive(),
+  total: z.number().int().nonnegative(),
+  totalPages: z.number().int().nonnegative(),
+});
+
+export const purchaseHistoryEntrySchema = z.object({
+  id: productIdSchema,
+  productId: productIdSchema,
+  offerId: productIdSchema,
+  imageUrl: z.string().url().nullable(),
+  shortName: z.string(),
+  publicationUrl: z.string().url().nullable(),
+  totalFinalPrice: moneyAmountSchema,
+  status: purchaseStatusSchema,
+  date: transactionDateSchema,
+});
+
+export const purchasesListResponseSchema = z.object({
+  purchases: z.array(purchaseHistoryEntrySchema),
+  pagination: transactionPaginationSchema,
+});
+
+export const saleHistoryEntrySchema = z.object({
+  id: productIdSchema,
+  productId: productIdSchema,
+  imageUrl: z.string().url().nullable(),
+  shortName: z.string(),
+  totalSalePrice: moneyAmountSchema,
+  status: saleStatusSchema,
+  date: transactionDateSchema,
+});
+
+export const salesListResponseSchema = z.object({
+  sales: z.array(saleHistoryEntrySchema),
+  pagination: transactionPaginationSchema,
+});
+
+export type TransactionsListQuery = z.infer<typeof transactionsListQuerySchema>;
+export type PurchaseHistoryEntry = z.infer<typeof purchaseHistoryEntrySchema>;
+export type PurchasesList = z.infer<typeof purchasesListResponseSchema>;
+export type SaleHistoryEntry = z.infer<typeof saleHistoryEntrySchema>;
+export type SalesList = z.infer<typeof salesListResponseSchema>;
+
 export const productsListQuerySchema = z
   .object({
     page: z.coerce.number().int().positive().default(1),
