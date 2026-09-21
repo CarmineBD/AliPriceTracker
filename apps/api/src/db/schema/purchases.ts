@@ -21,9 +21,7 @@ export const purchases = pgTable(
     productId: uuid('product_id')
       .notNull()
       .references(() => products.id),
-    offerId: uuid('offer_id')
-      .notNull()
-      .references(() => publicationProducts.id),
+    offerId: uuid('offer_id').references(() => publicationProducts.id),
     totalFinalPrice: numeric('total_final_price', { precision: 12, scale: 2 }).notNull(),
     status: varchar('status', { length: 16 }).$type<PurchaseStatus>().notNull(),
     date: timestamp('date', { withTimezone: true }).defaultNow().notNull(),

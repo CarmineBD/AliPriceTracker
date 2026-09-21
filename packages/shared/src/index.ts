@@ -56,7 +56,7 @@ const transactionDateSchema = z.string().datetime({ offset: true });
 export const purchaseCreateSchema = z
   .object({
     productId: productIdSchema,
-    offerId: productIdSchema,
+    offerId: productIdSchema.nullable().optional(),
     totalFinalPrice: moneyAmountSchema,
     status: purchaseStatusSchema,
     date: transactionDateSchema.optional(),
@@ -104,7 +104,7 @@ const transactionPaginationSchema = z.object({
 export const purchaseHistoryEntrySchema = z.object({
   id: productIdSchema,
   productId: productIdSchema,
-  offerId: productIdSchema,
+  offerId: productIdSchema.nullable(),
   imageUrl: z.string().url().nullable(),
   shortName: z.string(),
   publicationUrl: z.string().url().nullable(),

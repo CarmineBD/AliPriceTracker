@@ -41,7 +41,7 @@ export async function listPurchases(
 function toPurchaseResponse(purchase: {
   id: string;
   productId: string;
-  offerId: string;
+  offerId: string | null;
   totalFinalPrice: string;
   status: string;
   date: Date;
@@ -55,15 +55,15 @@ function toPurchaseResponse(purchase: {
 
 async function assertPurchaseDependencies(
   productId: string,
-  offerId: string,
+  offerId: string | null | undefined,
   purchasesRepository: PurchaseDependenciesRepository,
 ) {
-  const [product, offer] = await Promise.all([
-    purchasesRepository.findProduct(productId),
-    purchasesRepository.findOffer(offerId),
-  ]);
+  const product = await purchasesRepository.findProduct(productId);
 
   if (!product) throw new HttpError('Product not found.', 404);
+  if (!offerId) return;
+
+  const offer = await purchasesRepository.findOffer(offerId);
   if (!offer) throw new HttpError('Publication product not found.', 404);
   if (offer.productId !== productId) {
     throw new HttpError('The offer does not belong to the selected product.', 400);

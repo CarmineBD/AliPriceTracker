@@ -95,7 +95,7 @@ function toValues(kind: TransactionKind, transaction?: Transaction): FormValues 
   return {
     date: transaction ? toDateInputValue(new Date(transaction.date)) : toDateInputValue(new Date()),
     productId: transaction?.productId ?? '',
-    offerId: isPurchase ? transaction.offerId : '',
+    offerId: isPurchase ? (transaction.offerId ?? '') : '',
     amount,
     status: transaction?.status ?? (kind === 'purchase' ? 'ordered' : 'to_be_sent'),
   };
@@ -160,17 +160,12 @@ export function TransactionFormDialog({
       setFormError('Completa la fecha, el producto y un precio válido.');
       return;
     }
-    if (kind === 'purchase' && !values.offerId) {
-      setFormError('Selecciona la oferta o publicación comprada.');
-      return;
-    }
-
     const date = new Date(`${values.date}T12:00:00`).toISOString();
     setFormError(undefined);
     if (kind === 'purchase') {
       onSubmit({
         productId: values.productId,
-        offerId: values.offerId,
+        offerId: values.offerId || null,
         totalFinalPrice: amount,
         status: values.status as PurchaseStatus,
         date,
@@ -237,7 +232,7 @@ export function TransactionFormDialog({
               </Field>
               {kind === 'purchase' && (
                 <Field>
-                  <FieldLabel>Oferta o publicación</FieldLabel>
+                  <FieldLabel>Oferta o publicación (opcional)</FieldLabel>
                   <FieldContent>
                     <Combobox
                       items={offerOptions}
@@ -261,7 +256,6 @@ export function TransactionFormDialog({
                         }
                         aria-label="Seleccionar oferta o publicación"
                         disabled={!values.productId || selectedProductQuery.isPending}
-                        aria-invalid={Boolean(formError) && !values.offerId ? true : undefined}
                       />
                       <ComboboxContent>
                         <ComboboxList>

@@ -42,8 +42,8 @@ export class PurchasesRepository {
         })
         .from(purchases)
         .innerJoin(products, eq(products.id, purchases.productId))
-        .innerJoin(publicationProducts, eq(publicationProducts.id, purchases.offerId))
-        .innerJoin(publications, eq(publications.id, publicationProducts.publicationId))
+        .leftJoin(publicationProducts, eq(publicationProducts.id, purchases.offerId))
+        .leftJoin(publications, eq(publications.id, publicationProducts.publicationId))
         .orderBy(desc(purchases.date), desc(purchases.id))
         .limit(pageSize)
         .offset(offset),
@@ -74,7 +74,7 @@ export class PurchasesRepository {
       .insert(purchases)
       .values({
         productId: input.productId,
-        offerId: input.offerId,
+        offerId: input.offerId ?? null,
         totalFinalPrice: input.totalFinalPrice.toFixed(2),
         status: input.status,
         date: input.date === undefined ? undefined : new Date(input.date),

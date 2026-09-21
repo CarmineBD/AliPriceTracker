@@ -27,7 +27,7 @@ describe('purchases service', () => {
         return {
           id: purchaseId,
           productId: purchase.productId,
-          offerId: purchase.offerId,
+          offerId: purchase.offerId ?? null,
           totalFinalPrice: '12.50',
           status: purchase.status,
           date: new Date('2026-09-21T10:00:00.000Z'),
@@ -37,6 +37,31 @@ describe('purchases service', () => {
 
     expect(receivedInput?.date).toBeUndefined();
     expect(result).toMatchObject({ totalFinalPrice: 12.5, date: '2026-09-21T10:00:00.000Z' });
+  });
+
+  it('creates a historical purchase without an offer', async () => {
+    const input = purchaseCreateSchema.parse({
+      productId,
+      totalFinalPrice: 12.5,
+      status: 'received',
+    });
+
+    const result = await createPurchase(input, {
+      findProduct: async () => ({ id: productId }),
+      findOffer: async () => {
+        throw new Error('An offer must not be queried when none was supplied.');
+      },
+      create: async () => ({
+        id: purchaseId,
+        productId,
+        offerId: null,
+        totalFinalPrice: '12.50',
+        status: 'received',
+        date: new Date('2026-09-21T10:00:00.000Z'),
+      }),
+    });
+
+    expect(result.offerId).toBeNull();
   });
 
   it('rejects an offer that belongs to a different product', async () => {
