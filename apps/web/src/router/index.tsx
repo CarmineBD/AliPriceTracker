@@ -8,6 +8,7 @@ import { PublicationProductChangesPage } from '@/pages/publication-product-chang
 import { ProductsPage } from '@/pages/products-page';
 import { PurchasesPage } from '@/pages/purchases-page';
 import { SalesPage } from '@/pages/sales-page';
+import { StockPage } from '@/pages/stock-page';
 import { StoresPage } from '@/pages/stores-page';
 import { StoreDetailPage } from '@/pages/store-detail-page';
 
@@ -35,6 +36,10 @@ export const router = createBrowserRouter([
   {
     path: '/sales',
     element: <SalesPage />,
+  },
+  {
+    path: '/stock',
+    element: <StockPage />,
   },
   {
     path: '/opportunities',

@@ -25,6 +25,9 @@ export function AppLayout({ children }: PropsWithChildren) {
           <Link to="/sales" className={navigationLinkClass}>
             Ventas
           </Link>
+          <Link to="/stock" className={navigationLinkClass}>
+            Stock
+          </Link>
           <Link to="/opportunities" className={navigationLinkClass}>
             Oportunidades
           </Link>

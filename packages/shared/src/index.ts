@@ -139,6 +139,29 @@ export type PurchasesList = z.infer<typeof purchasesListResponseSchema>;
 export type SaleHistoryEntry = z.infer<typeof saleHistoryEntrySchema>;
 export type SalesList = z.infer<typeof salesListResponseSchema>;
 
+export const stockStatusLabelSchema = z.object({
+  status: z.enum(['ordered', 'to_be_sent']),
+  label: z.string(),
+  quantity: z.number().int().positive(),
+});
+
+export const stockItemSchema = z.object({
+  productId: productIdSchema,
+  imageUrl: z.string().url().nullable(),
+  name: z.string(),
+  shortName: z.string(),
+  quantity: z.number().int(),
+  statusLabels: z.array(stockStatusLabelSchema),
+});
+
+export const stockListResponseSchema = z.object({
+  stock: z.array(stockItemSchema),
+});
+
+export type StockStatusLabel = z.infer<typeof stockStatusLabelSchema>;
+export type StockItem = z.infer<typeof stockItemSchema>;
+export type StockList = z.infer<typeof stockListResponseSchema>;
+
 export const productsListQuerySchema = z
   .object({
     page: z.coerce.number().int().positive().default(1),

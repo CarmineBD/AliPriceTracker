@@ -13,6 +13,7 @@ import { productsRouter } from '../modules/products/products.routes';
 import { productBestOfferRouter } from '../modules/product-best-offer/product-best-offer.routes';
 import { purchasesRouter } from '../modules/purchases/purchases.routes';
 import { salesRouter } from '../modules/sales/sales.routes';
+import { stockRouter } from '../modules/stock/stock.routes';
 import { storesRouter } from '../modules/stores/stores.routes';
 
 export const apiRouter = Router();
@@ -30,4 +31,5 @@ apiRouter.use('/products', productBestOfferRouter);
 apiRouter.use('/products', productsRouter);
 apiRouter.use('/purchases', purchasesRouter);
 apiRouter.use('/sales', salesRouter);
+apiRouter.use('/stock', stockRouter);
 apiRouter.use('/stores', storesRouter);
