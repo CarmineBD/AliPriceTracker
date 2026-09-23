@@ -2,6 +2,7 @@ import { createBrowserRouter } from 'react-router-dom';
 
 import { AliExpressProductSearchPage } from '@/pages/aliexpress-product-search-page';
 import { EventsPage } from '@/pages/events-page';
+import { MetricsPage } from '@/pages/metrics-page';
 import { OpportunitiesPage } from '@/pages/opportunities-page';
 import { ProductDetailPage } from '@/pages/product-detail-page';
 import { PublicationProductChangesPage } from '@/pages/publication-product-changes-page';
@@ -40,6 +41,10 @@ export const router = createBrowserRouter([
   {
     path: '/stock',
     element: <StockPage />,
+  },
+  {
+    path: '/metrics',
+    element: <MetricsPage />,
   },
   {
     path: '/opportunities',

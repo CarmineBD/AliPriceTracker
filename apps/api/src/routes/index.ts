@@ -1,6 +1,7 @@
 import { Router } from 'express';
 
 import { healthRouter } from '../modules/health/health.routes';
+import { metricsRouter } from '../modules/metrics/metrics.routes';
 import { aliexpressDebugRouter } from '../modules/aliexpress-debug/aliexpress-debug.routes';
 import { aliExpressPublicationImportRouter } from '../modules/aliexpress-publication-import/aliexpress-publication-import.routes';
 import { aliExpressProductLookupRouter } from '../modules/aliexpress-product-lookup/aliexpress-product-lookup.routes';
@@ -19,6 +20,7 @@ import { storesRouter } from '../modules/stores/stores.routes';
 export const apiRouter = Router();
 
 apiRouter.use('/health', healthRouter);
+apiRouter.use('/metrics', metricsRouter);
 apiRouter.use('/debug/aliexpress', aliexpressDebugRouter);
 apiRouter.use('/events', eventsRouter);
 apiRouter.use('/opportunities', opportunitiesRouter);

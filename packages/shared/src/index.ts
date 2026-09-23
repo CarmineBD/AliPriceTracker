@@ -139,6 +139,15 @@ export type PurchasesList = z.infer<typeof purchasesListResponseSchema>;
 export type SaleHistoryEntry = z.infer<typeof saleHistoryEntrySchema>;
 export type SalesList = z.infer<typeof salesListResponseSchema>;
 
+export const metricsResponseSchema = z.object({
+  totalPurchases: z.number().finite().nonnegative(),
+  totalSales: z.number().finite().nonnegative(),
+  totalProfit: z.number().finite(),
+  roi: z.number().finite().nullable(),
+});
+
+export type Metrics = z.infer<typeof metricsResponseSchema>;
+
 export const stockStatusLabelSchema = z.object({
   status: z.enum(['ordered', 'to_be_sent']),
   label: z.string(),
