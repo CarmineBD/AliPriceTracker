@@ -90,10 +90,7 @@ describe('PublicationProductChangesPage', () => {
     expect(stockRow).toHaveTextContent('+12');
     expect(stockRow.querySelectorAll('.text-emerald-700, .text-destructive')).toHaveLength(0);
     expect(screen.getAllByText(/^Hace \d+ segundos$/)).toHaveLength(2);
-    expect(screen.getByRole('link', { name: 'Últimos cambios' })).toHaveAttribute(
-      'href',
-      '/publication-product-changes',
-    );
+    expect(screen.getByRole('combobox', { name: 'Tipo de cambio' })).toHaveValue('Todo');
     expect(screen.getAllByRole('columnheader').map((header) => header.textContent)).toEqual([
       'Imagen',
       'Nombre corto',
@@ -104,13 +101,21 @@ describe('PublicationProductChangesPage', () => {
     ]);
 
     await waitFor(() => {
-      expect(getPublicationProductChangesMock).toHaveBeenLastCalledWith({ page: 1, pageSize: 20 });
+      expect(getPublicationProductChangesMock).toHaveBeenLastCalledWith({
+        page: 1,
+        pageSize: 20,
+        changeType: 'all',
+      });
     });
 
     fireEvent.click(screen.getByRole('button', { name: 'Ir a la página siguiente' }));
 
     await waitFor(() => {
-      expect(getPublicationProductChangesMock).toHaveBeenLastCalledWith({ page: 2, pageSize: 20 });
+      expect(getPublicationProductChangesMock).toHaveBeenLastCalledWith({
+        page: 2,
+        pageSize: 20,
+        changeType: 'all',
+      });
     });
     expect(
       await screen.findByText('Aún no se han detectado cambios de precio ni de stock.'),

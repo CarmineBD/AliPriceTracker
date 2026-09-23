@@ -14,6 +14,7 @@ export async function getPublicationProductChanges(
   const search = new URLSearchParams({
     page: String(parsedQuery.page),
     pageSize: String(parsedQuery.pageSize),
+    changeType: parsedQuery.changeType,
   });
 
   return publicationProductChangesListResponseSchema.parse(

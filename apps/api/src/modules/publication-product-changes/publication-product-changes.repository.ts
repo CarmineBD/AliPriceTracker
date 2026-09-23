@@ -35,9 +35,15 @@ type ChangePage = {
  * compare every snapshot with the preceding one without loading the complete history into Node.
  */
 export class PublicationProductChangesRepository {
-  async findPage({ page, pageSize }: PublicationProductChangesListQuery): Promise<ChangePage> {
+  async findPage({
+    page,
+    pageSize,
+    changeType,
+  }: PublicationProductChangesListQuery): Promise<ChangePage> {
     const offset = (page - 1) * pageSize;
     const database = getDatabase();
+    const changeTypeCondition =
+      changeType === 'all' ? sql`TRUE` : sql`"changeType" = ${changeType}`;
     const changesCte = sql`
       WITH snapshots AS (
         SELECT
@@ -94,6 +100,11 @@ export class PublicationProductChangesRepository {
         FROM snapshots
         WHERE "previousHistoryId" IS NOT NULL
           AND "currentQuantityAvailable" IS DISTINCT FROM "previousQuantityAvailable"
+      ),
+      filtered_changes AS (
+        SELECT *
+        FROM changes
+        WHERE ${changeTypeCondition}
       )
     `;
 
@@ -118,7 +129,7 @@ export class PublicationProductChangesRepository {
         product.icon_url AS "productIconUrl",
         store.name AS "storeName",
         publication.url AS "publicationUrl"
-      FROM changes
+      FROM filtered_changes AS changes
       INNER JOIN publication_products AS publication_product
         ON publication_product.id = changes."publicationProductId"
       INNER JOIN products AS product ON product.id = publication_product.product_id
@@ -131,7 +142,7 @@ export class PublicationProductChangesRepository {
       database.execute<{ total: number }>(sql`
       ${changesCte}
       SELECT count(*)::int AS total
-      FROM changes
+      FROM filtered_changes
       `),
     ]);
 

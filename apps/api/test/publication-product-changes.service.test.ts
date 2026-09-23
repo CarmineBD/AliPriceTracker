@@ -34,9 +34,12 @@ describe('listPublicationProductChanges', () => {
       findPage: vi.fn().mockResolvedValue({ changes: [priceChange], total: 2 }),
     };
 
-    const result = await listPublicationProductChanges({ page: 2, pageSize: 1 }, repository);
+    const result = await listPublicationProductChanges(
+      { page: 2, pageSize: 1, changeType: 'price' },
+      repository,
+    );
 
-    expect(repository.findPage).toHaveBeenCalledWith({ page: 2, pageSize: 1 });
+    expect(repository.findPage).toHaveBeenCalledWith({ page: 2, pageSize: 1, changeType: 'price' });
     expect(result).toEqual({
       changes: [
         {
@@ -64,7 +67,7 @@ describe('listPublicationProductChanges', () => {
 
   it('maps a stock change with numeric values', async () => {
     const result = await listPublicationProductChanges(
-      { page: 1, pageSize: 20 },
+      { page: 1, pageSize: 20, changeType: 'stock' },
       {
         findPage: async () => ({
           changes: [
@@ -98,5 +101,8 @@ describe('publication product changes request validation', () => {
     expect((await request(app).get('/api/publication-product-changes?unknown=true')).status).toBe(
       400,
     );
+    expect(
+      (await request(app).get('/api/publication-product-changes?changeType=invalid')).status,
+    ).toBe(400);
   });
 });

@@ -4,6 +4,14 @@ import { useQuery } from '@tanstack/react-query';
 
 import { getPublicationProductChanges } from '@/api/publication-product-changes.api';
 import {
+  Combobox,
+  ComboboxContent,
+  ComboboxInput,
+  ComboboxItem,
+  ComboboxList,
+} from '@/components/ui/combobox';
+import { Field, FieldContent, FieldLabel } from '@/components/ui/field';
+import {
   Pagination,
   PaginationContent,
   PaginationItem,
@@ -12,8 +20,20 @@ import {
 } from '@/components/ui/pagination';
 import { PublicationProductChangesTable } from '@/features/publication-product-changes/publication-product-changes-table';
 import { AppLayout } from '@/layouts/app-layout';
+import type { PublicationProductChangesListQuery } from '@alitracker/shared';
 
 const pageSize = 20;
+
+type ChangeTypeOption = {
+  value: PublicationProductChangesListQuery['changeType'];
+  label: string;
+};
+
+const changeTypeOptions: ChangeTypeOption[] = [
+  { value: 'all', label: 'Todo' },
+  { value: 'price', label: 'Precio' },
+  { value: 'stock', label: 'Stock' },
+];
 
 function useCurrentTime() {
   const [now, setNow] = useState(() => new Date());
@@ -28,10 +48,12 @@ function useCurrentTime() {
 
 export function PublicationProductChangesPage() {
   const [page, setPage] = useState(1);
+  const [changeType, setChangeType] =
+    useState<PublicationProductChangesListQuery['changeType']>('all');
   const now = useCurrentTime();
   const changesQuery = useQuery({
-    queryKey: ['publication-product-changes', { page, pageSize }],
-    queryFn: () => getPublicationProductChanges({ page, pageSize }),
+    queryKey: ['publication-product-changes', { page, pageSize, changeType }],
+    queryFn: () => getPublicationProductChanges({ page, pageSize, changeType }),
     refetchInterval: 30_000,
   });
   const pagination = changesQuery.data?.pagination;
@@ -50,6 +72,34 @@ export function PublicationProductChangesPage() {
         <h2 id="publication-product-changes-list-title" className="sr-only">
           Listado de cambios recientes
         </h2>
+        <Field className="mb-6 max-w-xs">
+          <FieldLabel htmlFor="publication-product-change-type">Tipo de cambio</FieldLabel>
+          <FieldContent>
+            <Combobox
+              items={changeTypeOptions}
+              value={changeTypeOptions.find((option) => option.value === changeType)}
+              onValueChange={(option) => {
+                if (!option) return;
+
+                setChangeType(option.value);
+                setPage(1);
+              }}
+              itemToStringLabel={(option) => option.label}
+              itemToStringValue={(option) => option.value}
+            >
+              <ComboboxInput id="publication-product-change-type" readOnly />
+              <ComboboxContent>
+                <ComboboxList>
+                  {(option: ChangeTypeOption) => (
+                    <ComboboxItem key={option.value} value={option}>
+                      {option.label}
+                    </ComboboxItem>
+                  )}
+                </ComboboxList>
+              </ComboboxContent>
+            </Combobox>
+          </FieldContent>
+        </Field>
         {changesQuery.isPending && <p role="status">Cargando cambios recientes…</p>}
         {changesQuery.isError && (
           <p className="text-destructive" role="alert">
