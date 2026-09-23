@@ -233,6 +233,10 @@ export function TransactionsPage({ kind }: { kind: TransactionKind }) {
                 deleteMutation.reset();
                 setTransactionToDelete(transaction);
               }}
+              onCreate={() => {
+                saveMutation.reset();
+                setFormTransaction(null);
+              }}
             />
             <PaginationControls
               pagination={transactionsQuery.data.pagination}

@@ -118,7 +118,7 @@ describe('PublicationProductChangesPage', () => {
       });
     });
     expect(
-      await screen.findByText('Aún no se han detectado cambios de precio ni de stock.'),
+      await screen.findByText('Aún no se han detectado cambios'),
     ).toBeInTheDocument();
   });
 });

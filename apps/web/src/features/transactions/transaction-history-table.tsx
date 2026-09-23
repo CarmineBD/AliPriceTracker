@@ -1,8 +1,9 @@
 import type { PurchaseHistoryEntry, SaleHistoryEntry } from '@alitracker/shared';
-import { ExternalLink, ImageOff, Pencil, Trash2 } from 'lucide-react';
+import { ExternalLink, ImageOff, Pencil, ShoppingCart, Trash2 } from 'lucide-react';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { EmptyState } from '@/components/empty-state';
 import {
   Table,
   TableBody,
@@ -20,6 +21,7 @@ type TransactionHistoryTableProps = {
   transactions: Transaction[];
   onEdit: (transaction: Transaction) => void;
   onDelete: (transaction: Transaction) => void;
+  onCreate?: () => void;
 };
 
 const dateFormatter = new Intl.DateTimeFormat('es-ES', { dateStyle: 'medium' });
@@ -52,12 +54,22 @@ export function TransactionHistoryTable({
   transactions,
   onEdit,
   onDelete,
+  onCreate,
 }: TransactionHistoryTableProps) {
   const entityName = kind === 'purchase' ? 'compras' : 'ventas';
 
   if (transactions.length === 0) {
     return (
-      <p className="py-8 text-center text-sm text-muted-foreground">Aún no hay {entityName}.</p>
+      <EmptyState
+        icon={ShoppingCart}
+        title={`Aún no hay ${entityName}`}
+        description={`Registra la primera ${kind === 'purchase' ? 'compra' : 'venta'} para mantener el historial al día.`}
+        action={
+          onCreate ? (
+            <Button onClick={onCreate}>Registrar {kind === 'purchase' ? 'compra' : 'venta'}</Button>
+          ) : undefined
+        }
+      />
     );
   }
 

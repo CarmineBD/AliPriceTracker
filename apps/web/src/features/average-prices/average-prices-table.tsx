@@ -1,5 +1,5 @@
 import type { AveragePriceItem } from '@alitracker/shared';
-import { ImageOff } from 'lucide-react';
+import { ChartNoAxesCombined, ImageOff } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 import {
@@ -10,6 +10,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { EmptyState } from '@/components/empty-state';
 
 type AveragePricesTableProps = {
   prices: AveragePriceItem[];
@@ -27,9 +28,11 @@ export function AveragePricesTable({ prices, kind }: AveragePricesTableProps) {
 
   if (prices.length === 0) {
     return (
-      <p className="py-8 text-center text-sm text-muted-foreground">
-        Aún no hay historial de {historyLabel}.
-      </p>
+      <EmptyState
+        icon={ChartNoAxesCombined}
+        title={`Aún no hay historial de ${historyLabel}`}
+        description={`Los precios medios de ${historyLabel} aparecerán al registrar operaciones.`}
+      />
     );
   }
 

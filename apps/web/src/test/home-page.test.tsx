@@ -34,7 +34,7 @@ describe('ProductsPage', () => {
     );
 
     expect(screen.getByRole('heading', { name: 'Productos' })).toBeInTheDocument();
-    expect(await screen.findByText('Aún no hay productos.')).toBeInTheDocument();
+    expect(await screen.findByText('Aún no hay productos')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Agregar nuevo producto' })).toBeInTheDocument();
   });
 });

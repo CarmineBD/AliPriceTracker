@@ -1,8 +1,9 @@
 import type { Product } from '@alitracker/shared';
-import { ImageOff, Pencil } from 'lucide-react';
+import { ImageOff, Package, Pencil } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 import { Button } from '@/components/ui/button';
+import { EmptyState } from '@/components/empty-state';
 import {
   Card,
   CardAction,
@@ -15,6 +16,7 @@ import {
 type ProductsCardsProps = {
   products: Product[];
   onEdit: (product: Product) => void;
+  onCreate?: () => void;
 };
 
 const euroFormatter = new Intl.NumberFormat('es-ES', {
@@ -24,9 +26,16 @@ const euroFormatter = new Intl.NumberFormat('es-ES', {
   maximumFractionDigits: 2,
 });
 
-export function ProductsCards({ products, onEdit }: ProductsCardsProps) {
+export function ProductsCards({ products, onEdit, onCreate }: ProductsCardsProps) {
   if (products.length === 0) {
-    return <p className="py-8 text-center text-sm text-muted-foreground">Aún no hay productos.</p>;
+    return (
+      <EmptyState
+        icon={Package}
+        title="Aún no hay productos"
+        description="Crea tu primer producto para empezar a registrar ofertas, compras y ventas."
+        action={onCreate ? <Button onClick={onCreate}>Crear producto</Button> : undefined}
+      />
+    );
   }
 
   return (

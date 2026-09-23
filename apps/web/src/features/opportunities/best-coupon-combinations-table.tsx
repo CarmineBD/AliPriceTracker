@@ -1,9 +1,10 @@
 import type { BestCouponCombination, Opportunity } from '@alitracker/shared';
-import { ImageOff } from 'lucide-react';
+import { ImageOff, SearchX } from 'lucide-react';
 
 import { CouponDiscountBadge } from '@/components/coupon-discount-badge';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
+import { EmptyState } from '@/components/empty-state';
 import {
   Table,
   TableBody,
@@ -65,9 +66,11 @@ export function BestCouponCombinationsTable({
 }: BestCouponCombinationsTableProps) {
   if (combinations.length === 0) {
     return (
-      <p className="py-8 text-center text-sm text-muted-foreground">
-        No hay combinaciones rentables para los cupones seleccionados.
-      </p>
+      <EmptyState
+        icon={SearchX}
+        title="No hay combinaciones rentables"
+        description="Prueba a cambiar los cupones o la base del precio de venta."
+      />
     );
   }
 

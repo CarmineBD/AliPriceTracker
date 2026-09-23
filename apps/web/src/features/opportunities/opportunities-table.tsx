@@ -1,8 +1,9 @@
 import type { Opportunity } from '@alitracker/shared';
-import { ExternalLink, ImageOff, Info } from 'lucide-react';
+import { ExternalLink, ImageOff, Info, SearchX } from 'lucide-react';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { EmptyState } from '@/components/empty-state';
 import { CouponDiscountBadge } from '@/components/coupon-discount-badge';
 import {
   Table,
@@ -62,9 +63,11 @@ function ProductName({ opportunity }: { opportunity: Opportunity }) {
 export function OpportunitiesTable({ opportunities }: OpportunitiesTableProps) {
   if (opportunities.length === 0) {
     return (
-      <p className="py-8 text-center text-sm text-muted-foreground">
-        No hay oportunidades disponibles con precio de compra y venta estimada.
-      </p>
+      <EmptyState
+        icon={SearchX}
+        title="No hay oportunidades disponibles"
+        description="No hay productos rentables con el precio de compra, venta y los cupones seleccionados."
+      />
     );
   }
 

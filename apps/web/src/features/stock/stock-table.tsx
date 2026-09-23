@@ -1,8 +1,9 @@
 import type { StockItem } from '@alitracker/shared';
-import { ImageOff } from 'lucide-react';
+import { ImageOff, PackageOpen } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 import { Badge } from '@/components/ui/badge';
+import { EmptyState } from '@/components/empty-state';
 import {
   Table,
   TableBody,
@@ -33,9 +34,11 @@ function productLinkClass(quantity: number) {
 export function StockTable({ stock }: StockTableProps) {
   if (stock.length === 0) {
     return (
-      <p className="py-8 text-center text-sm text-muted-foreground">
-        Aún no hay productos en stock.
-      </p>
+      <EmptyState
+        icon={PackageOpen}
+        title="Aún no hay productos en stock"
+        description="El stock aparecerá aquí cuando registres compras recibidas."
+      />
     );
   }
 

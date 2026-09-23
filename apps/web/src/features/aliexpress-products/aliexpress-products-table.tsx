@@ -1,7 +1,8 @@
 import type { AliExpressProductVariant, ProductOption } from '@alitracker/shared';
-import { ImageOff } from 'lucide-react';
+import { ImageOff, PackageOpen } from 'lucide-react';
 
 import { Badge } from '@/components/ui/badge';
+import { EmptyState } from '@/components/empty-state';
 import { ProductCombobox } from '@/features/products/product-combobox';
 import {
   Table,
@@ -29,9 +30,11 @@ export function AliExpressProductsTable({
 }: AliExpressProductsTableProps) {
   if (products.length === 0) {
     return (
-      <p className="py-8 text-center text-sm text-muted-foreground">
-        Esta publicación no tiene variantes disponibles.
-      </p>
+      <EmptyState
+        icon={PackageOpen}
+        title="Esta publicación no tiene variantes disponibles"
+        description="No hay variantes que se puedan asociar a productos internos."
+      />
     );
   }
 

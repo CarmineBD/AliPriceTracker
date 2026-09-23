@@ -1,6 +1,8 @@
 import type { Store } from '@alitracker/shared';
+import { Store as StoreIcon } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
+import { EmptyState } from '@/components/empty-state';
 import {
   Table,
   TableBody,
@@ -20,7 +22,13 @@ function displayValue(value: string | number | null) {
 
 export function StoresTable({ stores }: StoresTableProps) {
   if (stores.length === 0) {
-    return <p className="py-8 text-center text-sm text-muted-foreground">Aún no hay tiendas.</p>;
+    return (
+      <EmptyState
+        icon={StoreIcon}
+        title="Aún no hay tiendas"
+        description="Las tiendas aparecerán aquí al importar una publicación de AliExpress."
+      />
+    );
   }
 
   return (

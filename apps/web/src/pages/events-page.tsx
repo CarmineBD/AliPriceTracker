@@ -250,6 +250,10 @@ export function EventsPage() {
                   deleteCouponMutation.reset();
                   setCouponToDelete(coupon);
                 }}
+                onCreate={() => {
+                  saveCouponMutation.reset();
+                  setCouponForm(null);
+                }}
               />
               <PaginationControls
                 pagination={couponsQuery.data.pagination}
@@ -292,6 +296,10 @@ export function EventsPage() {
                 onDelete={(event) => {
                   deleteEventMutation.reset();
                   setEventToDelete(event);
+                }}
+                onCreate={() => {
+                  saveEventMutation.reset();
+                  setEventForm(null);
                 }}
               />
               <PaginationControls

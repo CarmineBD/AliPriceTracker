@@ -162,6 +162,10 @@ export function ProductsPage() {
                   saveMutation.reset();
                   setFormProduct(product);
                 }}
+                onCreate={() => {
+                  saveMutation.reset();
+                  setFormProduct(null);
+                }}
               />
 
               {pagination && pagination.totalPages > 1 && (

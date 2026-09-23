@@ -1,8 +1,9 @@
 import { useQuery } from '@tanstack/react-query';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, PackageOpen } from 'lucide-react';
 import { Link, useParams } from 'react-router-dom';
 
 import { getStore } from '@/api/stores.api';
+import { EmptyState } from '@/components/empty-state';
 import { PublicationProductHistoryDialog } from '@/features/publication-product-history/publication-product-history-dialog';
 import {
   Table,
@@ -97,7 +98,13 @@ export function StoreDetailPage() {
             </h2>
 
             {storeQuery.data.publications.length === 0 ? (
-              <p className="mt-4 text-slate-700">Esta tienda aún no tiene publicaciones.</p>
+              <div className="mt-4">
+                <EmptyState
+                  icon={PackageOpen}
+                  title="Esta tienda aún no tiene publicaciones"
+                  description="Las publicaciones importadas de esta tienda aparecerán aquí."
+                />
+              </div>
             ) : (
               <div className="mt-4 space-y-6">
                 {storeQuery.data.publications.map((publication) => (
@@ -155,9 +162,13 @@ export function StoreDetailPage() {
                         Productos disponibles ({publication.products.length})
                       </h4>
                       {publication.products.length === 0 ? (
-                        <p className="mt-3 text-sm text-muted-foreground">
-                          Esta publicación no tiene productos asociados.
-                        </p>
+                        <div className="mt-3">
+                          <EmptyState
+                            icon={PackageOpen}
+                            title="Esta publicación no tiene productos asociados"
+                            description="No hay variantes vinculadas a productos internos."
+                          />
+                        </div>
                       ) : (
                         <div className="mt-3 overflow-x-auto">
                           <Table>

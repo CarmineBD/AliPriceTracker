@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, ImageOff, Pencil, Trash2 } from 'lucide-react';
+import { ArrowLeft, ImageOff, PackageOpen, Pencil, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 
@@ -19,6 +19,7 @@ import {
   uploadProductImage,
 } from '@/api/products.api';
 import { Button } from '@/components/ui/button';
+import { EmptyState } from '@/components/empty-state';
 import { Card, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Table,
@@ -263,7 +264,13 @@ export function ProductDetailPage() {
               Ofertas disponibles ({productQuery.data.offersCount})
             </h2>
             {productQuery.data.offers.length === 0 ? (
-              <p className="mt-2 text-slate-700">No hay ofertas disponibles para este producto.</p>
+              <div className="mt-4">
+                <EmptyState
+                  icon={PackageOpen}
+                  title="No hay ofertas disponibles para este producto"
+                  description="Las ofertas asociadas a este producto aparecerán aquí."
+                />
+              </div>
             ) : (
               <div className="mt-4">
                 <Table>

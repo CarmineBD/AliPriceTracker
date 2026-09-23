@@ -1,7 +1,8 @@
 import type { ActiveEvent } from '@alitracker/shared';
-import { Pencil, Trash2 } from 'lucide-react';
+import { CalendarDays, Pencil, Trash2 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
+import { EmptyState } from '@/components/empty-state';
 import {
   Table,
   TableBody,
@@ -15,6 +16,7 @@ type EventsTableProps = {
   events: ActiveEvent[];
   onEdit: (event: ActiveEvent) => void;
   onDelete: (event: ActiveEvent) => void;
+  onCreate?: () => void;
 };
 
 const dateFormatter = new Intl.DateTimeFormat('es-ES', {
@@ -22,9 +24,16 @@ const dateFormatter = new Intl.DateTimeFormat('es-ES', {
   timeStyle: 'short',
 });
 
-export function EventsTable({ events, onEdit, onDelete }: EventsTableProps) {
+export function EventsTable({ events, onEdit, onDelete, onCreate }: EventsTableProps) {
   if (events.length === 0) {
-    return <p className="py-8 text-center text-sm text-muted-foreground">Aún no hay eventos.</p>;
+    return (
+      <EmptyState
+        icon={CalendarDays}
+        title="Aún no hay eventos"
+        description="Crea un evento y así podrás aplicar sus cupones a las oportunidades."
+        action={onCreate ? <Button onClick={onCreate}>Crear evento</Button> : undefined}
+      />
+    );
   }
 
   return (

@@ -1,5 +1,5 @@
 import type { PublicationProductChange } from '@alitracker/shared';
-import { ArrowDown, ArrowUp, ExternalLink, ImageOff } from 'lucide-react';
+import { ArrowDown, ArrowUp, ExternalLink, History, ImageOff } from 'lucide-react';
 
 import {
   Table,
@@ -9,6 +9,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { EmptyState } from '@/components/empty-state';
 
 import { formatRelativeExecutionTime } from './publication-product-changes.utils';
 
@@ -119,9 +120,11 @@ export function PublicationProductChangesTable({
 }: PublicationProductChangesTableProps) {
   if (changes.length === 0) {
     return (
-      <p className="py-8 text-center text-sm text-muted-foreground">
-        Aún no se han detectado cambios de precio ni de stock.
-      </p>
+      <EmptyState
+        icon={History}
+        title="Aún no se han detectado cambios"
+        description="Los cambios de precio y stock aparecerán aquí cuando se detecten."
+      />
     );
   }
 

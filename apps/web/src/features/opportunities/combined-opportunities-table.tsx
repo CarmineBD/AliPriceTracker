@@ -1,8 +1,9 @@
 import type { BestCouponCombination, Opportunity } from '@alitracker/shared';
-import { ExternalLink, ImageOff } from 'lucide-react';
+import { ExternalLink, ImageOff, SearchX } from 'lucide-react';
 
 import { CouponDiscountBadge } from '@/components/coupon-discount-badge';
 import { Badge } from '@/components/ui/badge';
+import { EmptyState } from '@/components/empty-state';
 import {
   Table,
   TableBody,
@@ -60,9 +61,11 @@ function ProductName({ opportunity }: { opportunity: Opportunity }) {
 export function CombinedOpportunitiesTable({ opportunities }: CombinedOpportunitiesTableProps) {
   if (opportunities.length === 0) {
     return (
-      <p className="py-8 text-center text-sm text-muted-foreground">
-        No hay oportunidades combinadas rentables para los cupones seleccionados.
-      </p>
+      <EmptyState
+        icon={SearchX}
+        title="No hay oportunidades combinadas rentables"
+        description="Prueba a cambiar los cupones o la base del precio de venta."
+      />
     );
   }
 

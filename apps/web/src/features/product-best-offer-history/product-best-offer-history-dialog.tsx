@@ -1,7 +1,9 @@
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
+import { History } from 'lucide-react';
 import { useState } from 'react';
 
 import { getProductBestOfferHistory } from '@/api/product-best-offer-history.api';
+import { EmptyState } from '@/components/empty-state';
 import { Button, buttonVariants } from '@/components/ui/button';
 import {
   Dialog,
@@ -86,9 +88,11 @@ export function ProductBestOfferHistoryDialog({
         </p>
       )}
       {response && !historyQuery.isError && chartData.length === 0 && (
-        <p className="py-16 text-center text-muted-foreground">
-          Aún no hay datos históricos disponibles.
-        </p>
+        <EmptyState
+          icon={History}
+          title="Aún no hay datos históricos disponibles"
+          description="El histórico aparecerá tras las próximas comprobaciones de ofertas."
+        />
       )}
       {response && !historyQuery.isError && chartData.length > 0 && (
         <ProductBestOfferHistoryChart

@@ -1,7 +1,8 @@
 import type { CouponResponse } from '@alitracker/shared';
-import { Pencil, Trash2 } from 'lucide-react';
+import { Pencil, Ticket, Trash2 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
+import { EmptyState } from '@/components/empty-state';
 import {
   CouponDiscountBadge,
   formatCouponDiscount,
@@ -19,6 +20,7 @@ type CouponTableProps = {
   coupons: CouponResponse[];
   onEdit: (coupon: CouponResponse) => void;
   onDelete: (coupon: CouponResponse) => void;
+  onCreate?: () => void;
 };
 
 const minimumPurchaseFormatter = new Intl.NumberFormat('es-ES', {
@@ -27,9 +29,16 @@ const minimumPurchaseFormatter = new Intl.NumberFormat('es-ES', {
   maximumFractionDigits: 0,
 });
 
-export function CouponTable({ coupons, onEdit, onDelete }: CouponTableProps) {
+export function CouponTable({ coupons, onEdit, onDelete, onCreate }: CouponTableProps) {
   if (coupons.length === 0) {
-    return <p className="py-8 text-center text-sm text-muted-foreground">Aún no hay cupones.</p>;
+    return (
+      <EmptyState
+        icon={Ticket}
+        title="Aún no hay cupones"
+        description="Añade los cupones que estarán disponibles para tus eventos."
+        action={onCreate ? <Button onClick={onCreate}>Crear cupón</Button> : undefined}
+      />
+    );
   }
 
   return (

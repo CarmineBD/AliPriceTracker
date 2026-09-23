@@ -1,7 +1,8 @@
 import type { Coupon } from '@alitracker/shared';
-import { Trash2 } from 'lucide-react';
+import { Ticket, Trash2 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
+import { EmptyState } from '@/components/empty-state';
 import {
   CouponDiscountBadge,
   formatCouponAmount,
@@ -57,7 +58,11 @@ export function EventCouponsEditor({
         onCouponIdChange={addCoupon}
       />
       {coupons.length === 0 ? (
-        <p className="text-sm text-muted-foreground">Este evento no tiene cupones asociados.</p>
+        <EmptyState
+          icon={Ticket}
+          title="Este evento no tiene cupones asociados"
+          description="Selecciona un cupón para poder utilizarlo durante el evento."
+        />
       ) : (
         <Table>
           <TableHeader>
