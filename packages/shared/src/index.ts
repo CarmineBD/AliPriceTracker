@@ -148,6 +148,21 @@ export const metricsResponseSchema = z.object({
 
 export type Metrics = z.infer<typeof metricsResponseSchema>;
 
+export const averagePriceItemSchema = z.object({
+  productId: productIdSchema,
+  imageUrl: z.string().url().nullable(),
+  shortName: z.string(),
+  averagePrice: z.number().finite().nonnegative(),
+});
+
+export const averagePricesResponseSchema = z.object({
+  sales: z.array(averagePriceItemSchema),
+  purchases: z.array(averagePriceItemSchema),
+});
+
+export type AveragePriceItem = z.infer<typeof averagePriceItemSchema>;
+export type AveragePrices = z.infer<typeof averagePricesResponseSchema>;
+
 export const stockStatusLabelSchema = z.object({
   status: z.enum(['ordered', 'to_be_sent']),
   label: z.string(),

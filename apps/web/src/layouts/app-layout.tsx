@@ -34,6 +34,7 @@ export function AppLayout({ children }: PropsWithChildren) {
                   <MenuLink to="/sales">Ventas</MenuLink>
                   <MenuLink to="/stock">Stock</MenuLink>
                   <MenuLink to="/metrics">Métricas</MenuLink>
+                  <MenuLink to="/average-prices">Precios medios</MenuLink>
                 </NavigationMenuContent>
               </NavigationMenuItem>
               <NavigationMenuItem>
