@@ -1,8 +1,23 @@
 import type { PropsWithChildren } from 'react';
 import { Link } from 'react-router-dom';
 
-const navigationLinkClass =
-  'rounded-md px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground';
+import { Button } from '@/components/ui/button';
+import {
+  NavigationMenu,
+  NavigationMenuContent,
+  NavigationMenuItem,
+  NavigationMenuLink,
+  NavigationMenuList,
+  NavigationMenuTrigger,
+} from '@/components/ui/navigation-menu';
+
+function MenuLink({ to, children }: PropsWithChildren<{ to: string }>) {
+  return (
+    <NavigationMenuLink render={<Link to={to} />} closeOnClick>
+      {children}
+    </NavigationMenuLink>
+  );
+}
 
 export function AppLayout({ children }: PropsWithChildren) {
   return (
@@ -10,33 +25,44 @@ export function AppLayout({ children }: PropsWithChildren) {
       <header className="border-b bg-background">
         <nav className="mx-auto flex max-w-7xl items-center gap-2 px-6 py-3" aria-label="Principal">
           <span className="mr-3 text-lg font-semibold">AliTracker</span>
-          <Link to="/" className={navigationLinkClass}>
-            Productos
-          </Link>
-          <Link to="/stores" className={navigationLinkClass}>
-            Tiendas
-          </Link>
-          <Link to="/events" className={navigationLinkClass}>
-            Eventos y cupones
-          </Link>
-          <Link to="/purchases" className={navigationLinkClass}>
-            Compras
-          </Link>
-          <Link to="/sales" className={navigationLinkClass}>
-            Ventas
-          </Link>
-          <Link to="/stock" className={navigationLinkClass}>
-            Stock
-          </Link>
-          <Link to="/opportunities" className={navigationLinkClass}>
-            Oportunidades
-          </Link>
-          <Link to="/publication-product-changes" className={navigationLinkClass}>
-            Últimos cambios
-          </Link>
-          <Link to="/aliexpress" className={navigationLinkClass}>
-            Buscar en AliExpress
-          </Link>
+          <NavigationMenu>
+            <NavigationMenuList>
+              <NavigationMenuItem>
+                <NavigationMenuTrigger>Gestión</NavigationMenuTrigger>
+                <NavigationMenuContent className="grid w-44 gap-1">
+                  <MenuLink to="/purchases">Compras</MenuLink>
+                  <MenuLink to="/sales">Ventas</MenuLink>
+                  <MenuLink to="/stock">Stock</MenuLink>
+                </NavigationMenuContent>
+              </NavigationMenuItem>
+              <NavigationMenuItem>
+                <NavigationMenuTrigger>Registros</NavigationMenuTrigger>
+                <NavigationMenuContent className="grid w-44 gap-1">
+                  <MenuLink to="/">Productos</MenuLink>
+                  <MenuLink to="/stores">Tiendas</MenuLink>
+                </NavigationMenuContent>
+              </NavigationMenuItem>
+              <NavigationMenuItem>
+                <NavigationMenuTrigger>Eventos y cupones</NavigationMenuTrigger>
+                <NavigationMenuContent className="grid w-44 gap-1">
+                  <MenuLink to="/events">Eventos</MenuLink>
+                  <MenuLink to="/events">Cupones</MenuLink>
+                </NavigationMenuContent>
+              </NavigationMenuItem>
+              <NavigationMenuItem>
+                <NavigationMenuTrigger>Oportunidades</NavigationMenuTrigger>
+                <NavigationMenuContent className="grid w-52 gap-1">
+                  <MenuLink to="/opportunities">Mejores oportunidades</MenuLink>
+                  <MenuLink to="/publication-product-changes">Últimos cambios</MenuLink>
+                </NavigationMenuContent>
+              </NavigationMenuItem>
+            </NavigationMenuList>
+          </NavigationMenu>
+          <div className="ml-auto">
+            <Button nativeButton={false} render={<Link to="/aliexpress" />}>
+              + Añadir de AliExpress
+            </Button>
+          </div>
         </nav>
       </header>
       <main className="mx-auto max-w-7xl px-6 py-12">{children}</main>
