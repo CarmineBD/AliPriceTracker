@@ -618,17 +618,25 @@ const opportunityCouponIdsQuerySchema = z
   )
   .transform((couponIds) => (couponIds ? [...new Set(couponIds)] : undefined));
 
+export const opportunitySellingPriceSourceSchema = z
+  .enum(['hard-coded', 'historical'])
+  .default('hard-coded');
+
 export const opportunitiesListQuerySchema = z
   .object({
     sort: z.literal('roi-desc'),
     page: z.coerce.number().int().positive().default(1),
     pageSize: z.coerce.number().int().positive().max(100).default(20),
     couponIds: opportunityCouponIdsQuerySchema,
+    sellingPriceSource: opportunitySellingPriceSourceSchema,
   })
   .strict();
 
 export const bestCouponCombinationsListQuerySchema = z
-  .object({ couponIds: opportunityCouponIdsQuerySchema })
+  .object({
+    couponIds: opportunityCouponIdsQuerySchema,
+    sellingPriceSource: opportunitySellingPriceSourceSchema,
+  })
   .strict();
 
 export const opportunitySchema = z.object({
@@ -769,6 +777,7 @@ export const eventsListResponseSchema = z.object({
 
 export type Coupon = z.infer<typeof couponSchema>;
 export type Opportunity = z.infer<typeof opportunitySchema>;
+export type OpportunitySellingPriceSource = z.infer<typeof opportunitySellingPriceSourceSchema>;
 export type OpportunitiesListQuery = z.infer<typeof opportunitiesListQuerySchema>;
 export type OpportunitiesList = z.infer<typeof opportunitiesListResponseSchema>;
 export type BestCouponCombinationsListQuery = z.infer<typeof bestCouponCombinationsListQuerySchema>;

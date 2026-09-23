@@ -1,4 +1,4 @@
-import { desc, eq, exists } from 'drizzle-orm';
+import { desc, eq, exists, isNull, sql } from 'drizzle-orm';
 
 import { getDatabase } from '../../db/client.js';
 import {
@@ -7,6 +7,7 @@ import {
 } from '../../db/schema/aliexpress-publications.js';
 import { productCombos } from '../../db/schema/product-combos.js';
 import { products } from '../../db/schema/products.js';
+import { sales } from '../../db/schema/sales.js';
 
 type DatabaseClient = ReturnType<typeof getDatabase>;
 
@@ -30,6 +31,11 @@ export type ProductComboComponent = {
   containsProductId: string;
   quantity: number;
   averageSellingPrice: string | null;
+};
+
+export type HistoricalSellingPrice = {
+  productId: string;
+  averageSellingPrice: string;
 };
 
 export class OpportunitiesRepository {
@@ -86,5 +92,20 @@ export class OpportunitiesRepository {
       })
       .from(productCombos)
       .innerJoin(products, eq(products.id, productCombos.containsProductId));
+  }
+
+  async findHistoricalSellingPrices(): Promise<HistoricalSellingPrice[]> {
+    return (
+      this.client
+        .select({
+          productId: sales.productId,
+          averageSellingPrice: sql<string>`avg(${sales.totalSalePrice})`,
+        })
+        .from(sales)
+        // Combos always derive their historical price from their components.
+        .leftJoin(productCombos, eq(productCombos.productId, sales.productId))
+        .where(isNull(productCombos.productId))
+        .groupBy(sales.productId)
+    );
   }
 }

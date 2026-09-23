@@ -3,6 +3,7 @@ import type {
   Coupon,
   CouponCategory,
   OpportunitiesListQuery,
+  OpportunitySellingPriceSource,
 } from '@alitracker/shared';
 
 import { getPublicUrl } from '../../services/storage.service.js';
@@ -10,10 +11,19 @@ import { EventsRepository } from '../events/events.repository.js';
 import {
   OpportunitiesRepository,
   type CurrentProductOffer,
+  type HistoricalSellingPrice,
   type ProductComboComponent,
 } from './opportunities.repository.js';
 
 type MoneyCoupon = Pick<Coupon, 'id' | 'minPurchase' | 'discountAmount' | 'category'>;
+
+type OpportunityCalculationQuery = Omit<OpportunitiesListQuery, 'sellingPriceSource'> & {
+  sellingPriceSource?: OpportunitySellingPriceSource;
+};
+
+type BestCouponCalculationQuery = Omit<BestCouponCombinationsListQuery, 'sellingPriceSource'> & {
+  sellingPriceSource?: OpportunitySellingPriceSource;
+};
 
 export type Opportunity = {
   productId: string;
@@ -55,7 +65,8 @@ export type OpportunityServiceRepositories = {
   opportunities: Pick<
     OpportunitiesRepository,
     'findProductsWithCurrentOffers' | 'findComboComponents'
-  >;
+  > &
+    Partial<Pick<OpportunitiesRepository, 'findHistoricalSellingPrices'>>;
   events: Pick<EventsRepository, 'findActiveWithCoupons' | 'findCouponOptions'>;
 };
 
@@ -139,11 +150,31 @@ export function findNextCoupon(price: number, coupons: MoneyCoupon[]): MoneyCoup
 export function resolveEstimatedSellingPrice(
   product: Pick<CurrentProductOffer, 'productId' | 'averageSellingPrice'>,
   componentsByProductId: ReadonlyMap<string, ProductComboComponent[]>,
+  sellingPriceSource: OpportunitySellingPriceSource = 'hard-coded',
+  historicalSellingPrices: ReadonlyMap<string, number> = new Map(),
 ): number | null {
   const components = componentsByProductId.get(product.productId);
+  if (sellingPriceSource === 'historical') {
+    if (!components || components.length === 0) {
+      return historicalSellingPrices.get(product.productId) ?? null;
+    }
+    if (components.some((component) => !historicalSellingPrices.has(component.containsProductId))) {
+      return null;
+    }
+
+    return fromCents(
+      components.reduce(
+        (total, component) =>
+          total +
+          toCents(historicalSellingPrices.get(component.containsProductId) ?? 0) *
+            component.quantity,
+        0,
+      ),
+    );
+  }
+
   const fallback =
     product.averageSellingPrice === null ? null : Number(product.averageSellingPrice);
-
   if (!components || components.length === 0) return fallback;
   if (components.some((component) => component.averageSellingPrice === null)) return fallback;
 
@@ -226,20 +257,31 @@ function sortByCouponDescending(
 
 async function getOpportunityData(
   couponIds: string[] | undefined,
+  sellingPriceSource: OpportunitySellingPriceSource,
   currentTime: Date,
   repositories: OpportunityServiceRepositories,
 ) {
-  const [offers, components, activeEvents, couponOptions] = await Promise.all([
-    repositories.opportunities.findProductsWithCurrentOffers(),
-    repositories.opportunities.findComboComponents(),
-    repositories.events.findActiveWithCoupons(currentTime),
-    couponIds === undefined ? Promise.resolve(undefined) : repositories.events.findCouponOptions(),
-  ]);
+  const [offers, components, activeEvents, couponOptions, historicalSellingPrices] =
+    await Promise.all([
+      repositories.opportunities.findProductsWithCurrentOffers(),
+      repositories.opportunities.findComboComponents(),
+      repositories.events.findActiveWithCoupons(currentTime),
+      couponIds === undefined
+        ? Promise.resolve(undefined)
+        : repositories.events.findCouponOptions(),
+      sellingPriceSource === 'historical'
+        ? (repositories.opportunities.findHistoricalSellingPrices?.() ??
+          Promise.resolve([] as HistoricalSellingPrice[]))
+        : Promise.resolve([] as HistoricalSellingPrice[]),
+    ]);
   const activeEvent = activeEvents[0];
 
   return {
     offers,
     componentsByProductId: groupComponentsByProductId(components),
+    historicalSellingPrices: new Map(
+      historicalSellingPrices.map((price) => [price.productId, Number(price.averageSellingPrice)]),
+    ),
     coupons: filterAvailableCoupons(
       couponOptions
         ? couponOptions.map(toCoupon)
@@ -256,11 +298,18 @@ function createOpportunity(
   componentsByProductId: ReadonlyMap<string, ProductComboComponent[]>,
   coupon: MoneyCoupon | null,
   nextCoupon: MoneyCoupon | null,
+  sellingPriceSource: OpportunitySellingPriceSource,
+  historicalSellingPrices: ReadonlyMap<string, number>,
 ): Opportunity | null {
   if (!offer.isAvailable || offer.price === null) return null;
 
   const basePurchasePrice = Number(offer.price);
-  const estimatedSellingPrice = resolveEstimatedSellingPrice(offer, componentsByProductId);
+  const estimatedSellingPrice = resolveEstimatedSellingPrice(
+    offer,
+    componentsByProductId,
+    sellingPriceSource,
+    historicalSellingPrices,
+  );
   if (!Number.isFinite(basePurchasePrice) || estimatedSellingPrice === null) return null;
 
   const effectivePurchasePrice = fromCents(
@@ -294,11 +343,18 @@ function createOpportunity(
 function toPurchasableProduct(
   offer: CurrentProductOffer,
   componentsByProductId: ReadonlyMap<string, ProductComboComponent[]>,
+  sellingPriceSource: OpportunitySellingPriceSource,
+  historicalSellingPrices: ReadonlyMap<string, number>,
 ): PurchasableProduct | null {
   if (!offer.isAvailable || offer.price === null) return null;
 
   const basePurchasePrice = Number(offer.price);
-  const estimatedSellingPrice = resolveEstimatedSellingPrice(offer, componentsByProductId);
+  const estimatedSellingPrice = resolveEstimatedSellingPrice(
+    offer,
+    componentsByProductId,
+    sellingPriceSource,
+    historicalSellingPrices,
+  );
   if (!Number.isFinite(basePurchasePrice) || estimatedSellingPrice === null) return null;
 
   return { offer, basePurchasePrice, estimatedSellingPrice };
@@ -440,7 +496,7 @@ function findBestCouponPurchases(
 }
 
 export async function listOpportunities(
-  query: OpportunitiesListQuery,
+  query: OpportunityCalculationQuery,
   currentTime = new Date(),
   repositories: OpportunityServiceRepositories = defaultRepositories,
 ): Promise<{
@@ -448,22 +504,32 @@ export async function listOpportunities(
   comboOpportunities: BestCouponCombination[];
   pagination: { page: number; pageSize: number; total: number; totalPages: number };
 }> {
-  const { offers, componentsByProductId, coupons } = await getOpportunityData(
-    query.couponIds,
-    currentTime,
-    repositories,
-  );
+  const sellingPriceSource = query.sellingPriceSource ?? 'hard-coded';
+  const { offers, componentsByProductId, coupons, historicalSellingPrices } =
+    await getOpportunityData(query.couponIds, sellingPriceSource, currentTime, repositories);
 
   const opportunities = offers.flatMap((offer) => {
     if (offer.price === null) return [];
     const basePurchasePrice = Number(offer.price);
     const coupon = findBestApplicableCoupon(basePurchasePrice, coupons);
     const nextCoupon = findNextCoupon(basePurchasePrice, coupons);
-    const opportunity = createOpportunity(offer, componentsByProductId, coupon, nextCoupon);
+    const opportunity = createOpportunity(
+      offer,
+      componentsByProductId,
+      coupon,
+      nextCoupon,
+      sellingPriceSource,
+      historicalSellingPrices,
+    );
     return opportunity ? [opportunity] : [];
   });
   const purchasableProducts = offers.flatMap((offer) => {
-    const product = toPurchasableProduct(offer, componentsByProductId);
+    const product = toPurchasableProduct(
+      offer,
+      componentsByProductId,
+      sellingPriceSource,
+      historicalSellingPrices,
+    );
     return product ? [product] : [];
   });
   const couponPurchases = coupons.map((coupon) =>
@@ -490,18 +556,21 @@ export async function listOpportunities(
 }
 
 export async function listBestCouponCombinations(
-  query: BestCouponCombinationsListQuery,
+  query: BestCouponCalculationQuery,
   currentTime = new Date(),
   repositories: OpportunityServiceRepositories = defaultRepositories,
 ): Promise<{ combinations: BestCouponCombination[] }> {
-  const { offers, componentsByProductId, coupons } = await getOpportunityData(
-    query.couponIds,
-    currentTime,
-    repositories,
-  );
+  const sellingPriceSource = query.sellingPriceSource ?? 'hard-coded';
+  const { offers, componentsByProductId, coupons, historicalSellingPrices } =
+    await getOpportunityData(query.couponIds, sellingPriceSource, currentTime, repositories);
 
   const purchasableProducts = offers.flatMap((offer) => {
-    const product = toPurchasableProduct(offer, componentsByProductId);
+    const product = toPurchasableProduct(
+      offer,
+      componentsByProductId,
+      sellingPriceSource,
+      historicalSellingPrices,
+    );
     return product ? [product] : [];
   });
   const combinations = coupons.flatMap((coupon) => {

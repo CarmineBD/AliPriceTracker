@@ -139,6 +139,39 @@ describe('resolveEstimatedSellingPrice', () => {
       ),
     ).toBeNull();
   });
+
+  it('uses sale history for individual products and derives combo prices from its components', () => {
+    const historicalSellingPrices = new Map([
+      [productId, 160],
+      [componentId, 100],
+      ['00000000-0000-4000-8000-000000000003', 40],
+    ]);
+
+    expect(
+      resolveEstimatedSellingPrice(
+        offer({ averageSellingPrice: '355.00' }),
+        new Map(),
+        'historical',
+        historicalSellingPrices,
+      ),
+    ).toBe(160);
+    expect(
+      resolveEstimatedSellingPrice(
+        offer({ averageSellingPrice: null }),
+        componentsByProductId([
+          { productId, containsProductId: componentId, quantity: 2, averageSellingPrice: null },
+          {
+            productId,
+            containsProductId: '00000000-0000-4000-8000-000000000003',
+            quantity: 3,
+            averageSellingPrice: null,
+          },
+        ]),
+        'historical',
+        historicalSellingPrices,
+      ),
+    ).toBe(320);
+  });
 });
 
 describe('opportunity calculations', () => {

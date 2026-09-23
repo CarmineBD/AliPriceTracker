@@ -17,6 +17,7 @@ export async function getOpportunities(query: OpportunitiesListQuery): Promise<O
     sort: parsedQuery.sort,
     page: String(parsedQuery.page),
     pageSize: String(parsedQuery.pageSize),
+    sellingPriceSource: parsedQuery.sellingPriceSource,
   });
   for (const couponId of parsedQuery.couponIds ?? []) {
     search.append('couponIds', couponId);
@@ -31,7 +32,7 @@ export async function getBestCouponCombinations(
   query: BestCouponCombinationsListQuery,
 ): Promise<BestCouponCombinationsList> {
   const parsedQuery = bestCouponCombinationsListQuerySchema.parse(query);
-  const search = new URLSearchParams();
+  const search = new URLSearchParams({ sellingPriceSource: parsedQuery.sellingPriceSource });
   for (const couponId of parsedQuery.couponIds ?? []) {
     search.append('couponIds', couponId);
   }

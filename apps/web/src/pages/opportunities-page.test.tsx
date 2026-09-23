@@ -153,6 +153,9 @@ describe('OpportunitiesPage', () => {
       name: 'Cupones disponibles para oportunidades',
     });
     expect(couponCombobox).toBeEnabled();
+    expect(screen.getByRole('combobox', { name: 'Base del precio de venta' })).toHaveValue(
+      'Precio medio hard codeado',
+    );
     expect(screen.getByText('259,00 €')).toBeInTheDocument();
     expect(screen.getAllByText('-30€')).toHaveLength(3);
     expect(screen.getAllByText('37,07 %')).toHaveLength(1);
@@ -167,10 +170,7 @@ describe('OpportunitiesPage', () => {
     expect(screen.getByLabelText('Inversión estimada')).toHaveTextContent('0 €');
     expect(screen.getByLabelText('Beneficio total estimado')).toHaveTextContent('0 €');
     expect(screen.getByText('ROI —')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Oportunidades' })).toHaveAttribute(
-      'href',
-      '/opportunities',
-    );
+    expect(screen.getByRole('button', { name: 'Oportunidades' })).toBeInTheDocument();
     expect(
       screen
         .getAllByRole('columnheader')
@@ -196,9 +196,11 @@ describe('OpportunitiesPage', () => {
         page: 1,
         pageSize: 20,
         couponIds: ['00000000-0000-4000-8000-000000000002'],
+        sellingPriceSource: 'hard-coded',
       });
       expect(getBestCouponCombinationsMock).toHaveBeenLastCalledWith({
         couponIds: ['00000000-0000-4000-8000-000000000002'],
+        sellingPriceSource: 'hard-coded',
       });
     });
     expect(getActiveEventsMock).toHaveBeenCalledOnce();

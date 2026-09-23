@@ -1,6 +1,7 @@
 import { useState } from 'react';
 
 import { useQuery } from '@tanstack/react-query';
+import type { OpportunitySellingPriceSource } from '@alitracker/shared';
 
 import { getActiveEvents, getCouponOptions } from '@/api/events.api';
 import { getBestCouponCombinations, getOpportunities } from '@/api/opportunities.api';
@@ -15,6 +16,14 @@ import {
 } from '@/components/ui/pagination';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import {
+  Combobox,
+  ComboboxContent,
+  ComboboxInput,
+  ComboboxItem,
+  ComboboxList,
+} from '@/components/ui/combobox';
+import { Field, FieldContent, FieldLabel } from '@/components/ui/field';
 import { OpportunitiesTable } from '@/features/opportunities/opportunities-table';
 import { CombinedOpportunitiesTable } from '@/features/opportunities/combined-opportunities-table';
 import { BestCouponCombinationsTable } from '@/features/opportunities/best-coupon-combinations-table';
@@ -22,6 +31,16 @@ import { OpportunityCouponFilters } from '@/features/opportunities/opportunity-c
 import { AppLayout } from '@/layouts/app-layout';
 
 const pageSize = 20;
+
+type SellingPriceSourceOption = {
+  value: OpportunitySellingPriceSource;
+  label: string;
+};
+
+const sellingPriceSourceOptions: SellingPriceSourceOption[] = [
+  { value: 'hard-coded', label: 'Precio medio hard codeado' },
+  { value: 'historical', label: 'Precio medio histórico' },
+];
 
 const wholeAmountFormatter = new Intl.NumberFormat('es-ES', {
   useGrouping: true,
@@ -51,6 +70,8 @@ function getPageItems(currentPage: number, totalPages: number): Array<number | '
 
 export function OpportunitiesPage() {
   const [page, setPage] = useState(1);
+  const [sellingPriceSource, setSellingPriceSource] =
+    useState<OpportunitySellingPriceSource>('hard-coded');
   const [selectedCouponIds, setSelectedCouponIds] = useState<string[] | null>(null);
   const [selectedCombinationIds, setSelectedCombinationIds] = useState<string[] | null>(null);
   const activeEventsQuery = useQuery({
@@ -69,20 +90,26 @@ export function OpportunitiesPage() {
   const selectedCoupons = coupons.filter((coupon) => couponIds.includes(coupon.id));
   const couponDefaultsReady = activeEventsQuery.isSuccess && couponOptionsQuery.isSuccess;
   const opportunitiesQuery = useQuery({
-    queryKey: ['opportunities', { sort: 'roi-desc', page, pageSize, couponIds }],
+    queryKey: [
+      'opportunities',
+      { sort: 'roi-desc', page, pageSize, couponIds, sellingPriceSource },
+    ],
     enabled: couponDefaultsReady,
     queryFn: () =>
       getOpportunities(
         couponIds.length > 0
-          ? { sort: 'roi-desc', page, pageSize, couponIds }
-          : { sort: 'roi-desc', page, pageSize },
+          ? { sort: 'roi-desc', page, pageSize, couponIds, sellingPriceSource }
+          : { sort: 'roi-desc', page, pageSize, sellingPriceSource },
       ),
   });
   const pagination = opportunitiesQuery.data?.pagination;
   const bestCouponCombinationsQuery = useQuery({
-    queryKey: ['best-coupon-combinations', { couponIds }],
+    queryKey: ['best-coupon-combinations', { couponIds, sellingPriceSource }],
     enabled: couponDefaultsReady,
-    queryFn: () => getBestCouponCombinations(couponIds.length > 0 ? { couponIds } : {}),
+    queryFn: () =>
+      getBestCouponCombinations(
+        couponIds.length > 0 ? { couponIds, sellingPriceSource } : { sellingPriceSource },
+      ),
   });
   const combinations = bestCouponCombinationsQuery.data?.combinations ?? [];
   const selectedBestCombinationIds =
@@ -110,6 +137,39 @@ export function OpportunitiesPage() {
       </div>
 
       <section aria-labelledby="opportunities-list-title">
+        <Field className="mb-6 max-w-xs">
+          <FieldLabel htmlFor="opportunity-selling-price-source">
+            Base del precio de venta
+          </FieldLabel>
+          <FieldContent>
+            <Combobox
+              items={sellingPriceSourceOptions}
+              value={sellingPriceSourceOptions.find(
+                (option) => option.value === sellingPriceSource,
+              )}
+              onValueChange={(option) => {
+                if (!option) return;
+
+                setSellingPriceSource(option.value);
+                setSelectedCombinationIds(null);
+                setPage(1);
+              }}
+              itemToStringLabel={(option) => option.label}
+              itemToStringValue={(option) => option.value}
+            >
+              <ComboboxInput id="opportunity-selling-price-source" readOnly />
+              <ComboboxContent>
+                <ComboboxList>
+                  {(option: SellingPriceSourceOption) => (
+                    <ComboboxItem key={option.value} value={option}>
+                      {option.label}
+                    </ComboboxItem>
+                  )}
+                </ComboboxList>
+              </ComboboxContent>
+            </Combobox>
+          </FieldContent>
+        </Field>
         <OpportunityCouponFilters
           coupons={coupons}
           selectedCoupons={selectedCoupons}
