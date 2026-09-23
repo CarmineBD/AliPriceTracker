@@ -24,6 +24,7 @@ describe('sales service', () => {
           id: saleId,
           productId: sale.productId,
           totalSalePrice: '25.75',
+          shippingCost: sale.shippingCost.toFixed(2),
           status: sale.status,
           date: new Date('2026-09-21T10:00:00.000Z'),
         };
@@ -31,7 +32,11 @@ describe('sales service', () => {
     });
 
     expect(receivedInput?.date).toBeUndefined();
-    expect(result).toMatchObject({ totalSalePrice: 25.75, date: '2026-09-21T10:00:00.000Z' });
+    expect(result).toMatchObject({
+      totalSalePrice: 25.75,
+      shippingCost: 0,
+      date: '2026-09-21T10:00:00.000Z',
+    });
   });
 
   it('returns not found before updating a missing sale', async () => {

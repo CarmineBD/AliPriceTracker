@@ -37,7 +37,7 @@ describe('MetricsPage', () => {
     expect(screen.getByText('Beneficio realizado')).toBeInTheDocument();
     expect(screen.getByText('Valor del stock')).toBeInTheDocument();
     expect(screen.getByText('Beneficio potencial del stock')).toBeInTheDocument();
-    expect(screen.getByText('Flujo neto de caja')).toBeInTheDocument();
+    expect(screen.getByText(/Flujo neto de caja/)).toBeInTheDocument();
     expect(screen.getByText(/45,25/)).toBeInTheDocument();
     expect(screen.getByText(/74,50/)).toBeInTheDocument();
     expect(screen.getByText(/25,50/)).toBeInTheDocument();

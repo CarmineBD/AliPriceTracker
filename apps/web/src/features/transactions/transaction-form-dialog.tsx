@@ -63,6 +63,7 @@ type FormValues = {
   productId: string;
   offerId: string;
   amount: string;
+  shippingCost: string;
   status: string;
 };
 
@@ -97,6 +98,10 @@ function toValues(kind: TransactionKind, transaction?: Transaction): FormValues 
     productId: transaction?.productId ?? '',
     offerId: isPurchase ? (transaction.offerId ?? '') : '',
     amount,
+    shippingCost:
+      transaction !== undefined && 'shippingCost' in transaction
+        ? transaction.shippingCost.toFixed(2)
+        : '0.00',
     status: transaction?.status ?? (kind === 'purchase' ? 'ordered' : 'to_be_sent'),
   };
 }
@@ -156,7 +161,13 @@ export function TransactionFormDialog({
   const submit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const amount = parseAmount(values.amount);
-    if (!values.date || !values.productId || amount === undefined) {
+    const shippingCost = parseAmount(values.shippingCost);
+    if (
+      !values.date ||
+      !values.productId ||
+      amount === undefined ||
+      (kind === 'sale' && shippingCost === undefined)
+    ) {
       setFormError('Completa la fecha, el producto y un precio válido.');
       return;
     }
@@ -175,6 +186,7 @@ export function TransactionFormDialog({
     onSubmit({
       productId: values.productId,
       totalSalePrice: amount,
+      shippingCost: shippingCost ?? 0,
       status: values.status as SaleStatus,
       date,
     });
@@ -279,7 +291,9 @@ export function TransactionFormDialog({
                 </Field>
               )}
               <Field>
-                <FieldLabel htmlFor={`${kind}-amount`}>Precio final</FieldLabel>
+                <FieldLabel htmlFor={`${kind}-amount`}>
+                  {kind === 'purchase' ? 'Precio final' : 'Precio de venta'}
+                </FieldLabel>
                 <FieldContent>
                   <Input
                     id={`${kind}-amount`}
@@ -296,6 +310,29 @@ export function TransactionFormDialog({
                   />
                 </FieldContent>
               </Field>
+              {kind === 'sale' && (
+                <Field>
+                  <FieldLabel htmlFor="sale-shipping-cost">Coste de envío asumido</FieldLabel>
+                  <FieldContent>
+                    <Input
+                      id="sale-shipping-cost"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      inputMode="decimal"
+                      value={values.shippingCost}
+                      required
+                      onChange={(inputEvent) => {
+                        setValues((current) => ({
+                          ...current,
+                          shippingCost: inputEvent.target.value,
+                        }));
+                        if (formError) setFormError(undefined);
+                      }}
+                    />
+                  </FieldContent>
+                </Field>
+              )}
               <Field>
                 <FieldLabel>Estado</FieldLabel>
                 <FieldContent>

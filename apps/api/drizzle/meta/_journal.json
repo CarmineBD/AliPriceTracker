@@ -71,6 +71,13 @@
       "when": 1790064000000,
       "tag": "0011_make_purchase_offer_optional",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1790236800000,
+      "tag": "0012_add_sale_shipping_cost",
+      "breakpoints": true
     }
   ]
 }

@@ -105,10 +105,10 @@ function expandCompletedSales(rows: SaleMovementRow[]): Map<string, number> {
   return quantities;
 }
 
-export function calculateFifoMetrics({ purchaseMovements, saleMovements }: Pick<
-  MetricsData,
-  'purchaseMovements' | 'saleMovements'
->) {
+export function calculateFifoMetrics({
+  purchaseMovements,
+  saleMovements,
+}: Pick<MetricsData, 'purchaseMovements' | 'saleMovements'>) {
   const lots = createInventoryLots(purchaseMovements);
   const saleQuantities = expandCompletedSales(saleMovements);
   const cogsByProduct = new Map<string, number>();
@@ -173,13 +173,20 @@ export async function getMetrics(
 ) {
   const data = await metricsRepository.getMetricsData();
   const totalPurchases = fromCents(toCents(Number(data.totalPurchases)));
-  const totalSales = fromCents(toCents(Number(data.totalSales)));
+  const totalSales = fromCents(
+    toCents(Number(data.totalSales)) - toCents(Number(data.totalShippingCosts)),
+  );
   const fifo = calculateFifoMetrics(data);
   const completedSalesInCents = data.saleMovements
-    .filter((movement, index, movements) =>
-      movements.findIndex((candidate) => candidate.saleId === movement.saleId) === index,
+    .filter(
+      (movement, index, movements) =>
+        movements.findIndex((candidate) => candidate.saleId === movement.saleId) === index,
     )
-    .reduce((total, sale) => total + toCents(Number(sale.totalSalePrice)), 0);
+    .reduce(
+      (total, sale) =>
+        total + toCents(Number(sale.totalSalePrice)) - toCents(Number(sale.shippingCost)),
+      0,
+    );
 
   return {
     totalPurchases,

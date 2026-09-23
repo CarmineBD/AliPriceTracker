@@ -83,6 +83,7 @@ describe('transaction pages', () => {
           imageUrl: null,
           shortName: 'Teclado',
           totalSalePrice: 25,
+          shippingCost: 3,
           status: 'to_be_sent',
           date: '2026-09-21T12:00:00.000Z',
         },
@@ -94,10 +95,13 @@ describe('transaction pages', () => {
     renderPage(<SalesPage />);
 
     expect(await screen.findByText('Teclado')).toBeInTheDocument();
+    expect(screen.getByText('Envío asumido')).toBeInTheDocument();
+    expect(screen.getByRole('cell', { name: /22,00/ })).toBeInTheDocument();
     expect(screen.queryByText('Ver publicación')).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Añadir registro' }));
 
     expect(screen.getByRole('combobox', { name: 'Seleccionar producto' })).toHaveFocus();
     expect(screen.getByRole('combobox', { name: 'Seleccionar estado' })).toHaveValue('Por enviar');
+    expect(screen.getByLabelText('Coste de envío asumido')).toHaveValue(0);
   });
 });

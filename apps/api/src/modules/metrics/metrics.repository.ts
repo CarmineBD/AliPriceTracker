@@ -21,6 +21,7 @@ export type SaleMovementRow = {
   saleId: string;
   productId: string;
   totalSalePrice: string;
+  shippingCost: string;
   date: Date;
   componentProductId: string | null;
   componentQuantity: number | null;
@@ -29,6 +30,7 @@ export type SaleMovementRow = {
 export type MetricsData = {
   totalPurchases: string;
   totalSales: string;
+  totalShippingCosts: string;
   purchaseMovements: PurchaseMovementRow[];
   saleMovements: SaleMovementRow[];
 };
@@ -57,54 +59,60 @@ export class MetricsRepository {
       .from(sales)
       .groupBy(sales.productId)
       .as('metrics_component_sale_prices');
-    const [purchasesResult, salesResult, purchaseMovements, saleMovements] = await Promise.all([
-      this.client
-        .select({ total: sql<string>`coalesce(sum(${purchases.totalFinalPrice}), 0)` })
-        .from(purchases),
-      this.client
-        .select({ total: sql<string>`coalesce(sum(${sales.totalSalePrice}), 0)` })
-        .from(sales),
-      this.client
-        .select({
-          purchaseId: purchases.id,
-          productId: purchases.productId,
-          totalFinalPrice: purchases.totalFinalPrice,
-          date: purchases.date,
-          componentProductId: productCombos.containsProductId,
-          componentQuantity: productCombos.quantity,
-          averageSellingPrice: sql<string | null>`CASE
+    const [purchasesResult, salesResult, shippingCostsResult, purchaseMovements, saleMovements] =
+      await Promise.all([
+        this.client
+          .select({ total: sql<string>`coalesce(sum(${purchases.totalFinalPrice}), 0)` })
+          .from(purchases),
+        this.client
+          .select({ total: sql<string>`coalesce(sum(${sales.totalSalePrice}), 0)` })
+          .from(sales),
+        this.client
+          .select({ total: sql<string>`coalesce(sum(${sales.shippingCost}), 0)` })
+          .from(sales),
+        this.client
+          .select({
+            purchaseId: purchases.id,
+            productId: purchases.productId,
+            totalFinalPrice: purchases.totalFinalPrice,
+            date: purchases.date,
+            componentProductId: productCombos.containsProductId,
+            componentQuantity: productCombos.quantity,
+            averageSellingPrice: sql<string | null>`CASE
             WHEN ${productCombos.productId} IS NULL
               THEN ${sql.raw('"metrics_purchase_sale_prices"."average_price"')}
             ELSE ${sql.raw('"metrics_component_sale_prices"."average_price"')}
           END`,
-        })
-        .from(purchases)
-        .leftJoin(productCombos, eq(productCombos.productId, purchases.productId))
-        .leftJoin(purchaseSalePrices, eq(purchaseSalePrices.productId, purchases.productId))
-        .leftJoin(
-          componentSalePrices,
-          eq(componentSalePrices.productId, productCombos.containsProductId),
-        )
-        .where(eq(purchases.status, 'received'))
-        .orderBy(asc(purchases.date), asc(purchases.id)),
-      this.client
-        .select({
-          saleId: sales.id,
-          productId: sales.productId,
-          totalSalePrice: sales.totalSalePrice,
-          date: sales.date,
-          componentProductId: productCombos.containsProductId,
-          componentQuantity: productCombos.quantity,
-        })
-        .from(sales)
-        .leftJoin(productCombos, eq(productCombos.productId, sales.productId))
-        .where(eq(sales.status, 'completed'))
-        .orderBy(asc(sales.date), asc(sales.id)),
-    ]);
+          })
+          .from(purchases)
+          .leftJoin(productCombos, eq(productCombos.productId, purchases.productId))
+          .leftJoin(purchaseSalePrices, eq(purchaseSalePrices.productId, purchases.productId))
+          .leftJoin(
+            componentSalePrices,
+            eq(componentSalePrices.productId, productCombos.containsProductId),
+          )
+          .where(eq(purchases.status, 'received'))
+          .orderBy(asc(purchases.date), asc(purchases.id)),
+        this.client
+          .select({
+            saleId: sales.id,
+            productId: sales.productId,
+            totalSalePrice: sales.totalSalePrice,
+            shippingCost: sales.shippingCost,
+            date: sales.date,
+            componentProductId: productCombos.containsProductId,
+            componentQuantity: productCombos.quantity,
+          })
+          .from(sales)
+          .leftJoin(productCombos, eq(productCombos.productId, sales.productId))
+          .where(eq(sales.status, 'completed'))
+          .orderBy(asc(sales.date), asc(sales.id)),
+      ]);
 
     return {
       totalPurchases: purchasesResult[0]?.total ?? '0',
       totalSales: salesResult[0]?.total ?? '0',
+      totalShippingCosts: shippingCostsResult[0]?.total ?? '0',
       purchaseMovements,
       saleMovements,
     };

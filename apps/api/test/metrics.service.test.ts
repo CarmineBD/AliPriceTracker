@@ -13,6 +13,7 @@ describe('metrics service', () => {
         getMetricsData: async () => ({
           totalPurchases: '320.00',
           totalSales: '250.00',
+          totalShippingCosts: '15.00',
           purchaseMovements: [
             {
               purchaseId: 'purchase-1',
@@ -38,6 +39,7 @@ describe('metrics service', () => {
               saleId: 'sale-1',
               productId: 'drone',
               totalSalePrice: '250.00',
+              shippingCost: '15.00',
               date: saleDate,
               componentProductId: null,
               componentQuantity: null,
@@ -47,9 +49,9 @@ describe('metrics service', () => {
       }),
     ).resolves.toEqual({
       totalPurchases: 320,
-      totalSales: 250,
-      netCashFlow: -70,
-      realizedProfit: 100,
+      totalSales: 235,
+      netCashFlow: -85,
+      realizedProfit: 85,
       stockValue: 170,
       potentialStockProfit: 80,
     });
@@ -61,6 +63,7 @@ describe('metrics service', () => {
         getMetricsData: async () => ({
           totalPurchases: '380.00',
           totalSales: '250.00',
+          totalShippingCosts: '20.00',
           purchaseMovements: [
             {
               purchaseId: 'combo-purchase',
@@ -95,6 +98,7 @@ describe('metrics service', () => {
               saleId: 'drone-sale',
               productId: 'drone',
               totalSalePrice: '250.00',
+              shippingCost: '20.00',
               date: saleDate,
               componentProductId: null,
               componentQuantity: null,
@@ -104,9 +108,9 @@ describe('metrics service', () => {
       }),
     ).resolves.toEqual({
       totalPurchases: 380,
-      totalSales: 250,
-      netCashFlow: -130,
-      realizedProfit: 100,
+      totalSales: 230,
+      netCashFlow: -150,
+      realizedProfit: 80,
       stockValue: 230,
       potentialStockProfit: 120,
     });
@@ -118,14 +122,15 @@ describe('metrics service', () => {
         getMetricsData: async () => ({
           totalPurchases: '120.10',
           totalSales: '180.25',
+          totalShippingCosts: '2.00',
           purchaseMovements: [],
           saleMovements: [],
         }),
       }),
     ).resolves.toMatchObject({
       totalPurchases: 120.1,
-      totalSales: 180.25,
-      netCashFlow: 60.15,
+      totalSales: 178.25,
+      netCashFlow: 58.15,
       realizedProfit: 0,
       stockValue: 0,
       potentialStockProfit: 0,

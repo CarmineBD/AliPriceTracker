@@ -12,6 +12,7 @@ export const sales = pgTable(
       .notNull()
       .references(() => products.id),
     totalSalePrice: numeric('total_sale_price', { precision: 12, scale: 2 }).notNull(),
+    shippingCost: numeric('shipping_cost', { precision: 12, scale: 2 }).default('0.00').notNull(),
     status: varchar('status', { length: 16 }).$type<SaleStatus>().notNull(),
     date: timestamp('date', { withTimezone: true }).defaultNow().notNull(),
   },

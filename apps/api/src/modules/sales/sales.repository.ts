@@ -30,6 +30,7 @@ export class SalesRepository {
           imageKey: products.imageKey,
           shortName: products.shortName,
           totalSalePrice: sales.totalSalePrice,
+          shippingCost: sales.shippingCost,
           status: sales.status,
           date: sales.date,
         })
@@ -58,6 +59,7 @@ export class SalesRepository {
       .values({
         productId: input.productId,
         totalSalePrice: input.totalSalePrice.toFixed(2),
+        shippingCost: input.shippingCost.toFixed(2),
         status: input.status,
         date: input.date === undefined ? undefined : new Date(input.date),
       })
@@ -72,6 +74,7 @@ export class SalesRepository {
         productId: input.productId,
         totalSalePrice:
           input.totalSalePrice === undefined ? undefined : input.totalSalePrice.toFixed(2),
+        shippingCost: input.shippingCost === undefined ? undefined : input.shippingCost.toFixed(2),
         status: input.status,
         date: input.date === undefined ? undefined : new Date(input.date),
       })

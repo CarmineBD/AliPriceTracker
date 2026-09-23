@@ -69,7 +69,11 @@ export function TransactionHistoryTable({
           <TableHead>Producto</TableHead>
           <TableHead>Nombre corto</TableHead>
           {kind === 'purchase' && <TableHead>Publicación</TableHead>}
-          <TableHead className="text-right">Precio final total</TableHead>
+          <TableHead className="text-right">
+            {kind === 'purchase' ? 'Precio final total' : 'Precio de venta'}
+          </TableHead>
+          {kind === 'sale' && <TableHead className="text-right">Envío asumido</TableHead>}
+          {kind === 'sale' && <TableHead className="text-right">Ingreso neto</TableHead>}
           <TableHead>Estado</TableHead>
           <TableHead className="text-right">Acciones</TableHead>
         </TableRow>
@@ -117,6 +121,18 @@ export function TransactionHistoryTable({
                 </TableCell>
               )}
               <TableCell className="text-right">{currencyFormatter.format(amount)}</TableCell>
+              {'shippingCost' in transaction && (
+                <>
+                  <TableCell className="text-right">
+                    {currencyFormatter.format(transaction.shippingCost)}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {currencyFormatter.format(
+                      transaction.totalSalePrice - transaction.shippingCost,
+                    )}
+                  </TableCell>
+                </>
+              )}
               <TableCell>
                 <Badge variant={statusVariant(transaction.status)}>
                   {statusLabels[transaction.status]}

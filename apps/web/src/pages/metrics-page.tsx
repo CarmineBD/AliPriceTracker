@@ -36,9 +36,9 @@ export function MetricsPage() {
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             <Card>
               <CardHeader>
-                <CardTitle>Gross Profit</CardTitle>
+                <CardTitle>Beneficio realizado</CardTitle>
                 <CardDescription>
-                  Beneficio realizado de ingresos de ventas completadas menos su coste FIFO.
+                  Ingresos netos de ventas completadas menos el envío asumido y su coste FIFO.
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -51,7 +51,7 @@ export function MetricsPage() {
               <CardHeader>
                 <CardTitle>Cash Flow</CardTitle>
                 <CardDescription>
-                  Flujo neto de caja de todos los ingresos registrados menos todas las compras.
+                  Flujo neto de caja de las ventas tras restar el envío asumido y todas las compras.
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -60,7 +60,7 @@ export function MetricsPage() {
                 </p>
                 <div className="mt-6 grid grid-cols-2 gap-4 text-sm text-muted-foreground">
                   <p>
-                    Ventas totales
+                    Ingresos netos por ventas
                     <span className="mt-1 block font-medium text-foreground">
                       {currencyFormatter.format(metricsQuery.data.totalSales)}
                     </span>

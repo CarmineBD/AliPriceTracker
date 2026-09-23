@@ -18,6 +18,7 @@ export async function listSales(
       imageUrl: sale.imageKey ? getPublicUrl(sale.imageKey) : null,
       shortName: sale.shortName,
       totalSalePrice: Number(sale.totalSalePrice),
+      shippingCost: Number(sale.shippingCost),
       status: sale.status,
       date: sale.date.toISOString(),
     })),
@@ -34,12 +35,14 @@ function toSaleResponse(sale: {
   id: string;
   productId: string;
   totalSalePrice: string;
+  shippingCost: string;
   status: string;
   date: Date;
 }) {
   return {
     ...sale,
     totalSalePrice: Number(sale.totalSalePrice),
+    shippingCost: Number(sale.shippingCost),
     date: sale.date.toISOString(),
   };
 }

@@ -71,6 +71,7 @@ export const saleCreateSchema = z
   .object({
     productId: productIdSchema,
     totalSalePrice: moneyAmountSchema,
+    shippingCost: moneyAmountSchema.default(0),
     status: saleStatusSchema,
     date: transactionDateSchema.optional(),
   })
@@ -124,6 +125,7 @@ export const saleHistoryEntrySchema = z.object({
   imageUrl: z.string().url().nullable(),
   shortName: z.string(),
   totalSalePrice: moneyAmountSchema,
+  shippingCost: moneyAmountSchema,
   status: saleStatusSchema,
   date: transactionDateSchema,
 });
@@ -141,7 +143,7 @@ export type SalesList = z.infer<typeof salesListResponseSchema>;
 
 export const metricsResponseSchema = z.object({
   totalPurchases: z.number().finite().nonnegative(),
-  totalSales: z.number().finite().nonnegative(),
+  totalSales: z.number().finite(),
   netCashFlow: z.number().finite(),
   realizedProfit: z.number().finite(),
   stockValue: z.number().finite().nonnegative(),
