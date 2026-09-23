@@ -41,13 +41,23 @@ export async function listStock(
   const stock = await repositoryOverride.findAll();
 
   return {
-    stock: stock.map((item) => ({
-      productId: item.productId,
-      imageUrl: item.imageKey ? getPublicUrl(item.imageKey) : null,
-      name: item.name,
-      shortName: item.shortName,
-      quantity: item.quantity,
-      statusLabels: getStatusLabels(item),
-    })),
+    stock: stock.flatMap((item) => {
+      const statusLabels = getStatusLabels(item);
+
+      if (item.quantity === 0 && statusLabels.length === 0) {
+        return [];
+      }
+
+      return [
+        {
+          productId: item.productId,
+          imageUrl: item.imageKey ? getPublicUrl(item.imageKey) : null,
+          name: item.name,
+          shortName: item.shortName,
+          quantity: item.quantity,
+          statusLabels,
+        },
+      ];
+    }),
   };
 }

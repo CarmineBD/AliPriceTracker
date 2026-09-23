@@ -9,7 +9,7 @@ export function StockPage() {
     queryKey: ['stock'],
     queryFn: getStock,
   });
-  const availableStock = stockQuery.data?.stock.filter((product) => product.quantity > 0) ?? [];
+  const stock = stockQuery.data?.stock ?? [];
 
   return (
     <AppLayout>
@@ -29,7 +29,7 @@ export function StockPage() {
             No se pudo cargar el stock. Comprueba que la API y la base de datos estén disponibles.
           </p>
         )}
-        {stockQuery.isSuccess && <StockTable stock={availableStock} />}
+        {stockQuery.isSuccess && <StockTable stock={stock} />}
       </section>
     </AppLayout>
   );

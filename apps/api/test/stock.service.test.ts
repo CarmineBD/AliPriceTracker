@@ -44,7 +44,7 @@ describe('listStock', () => {
     });
   });
 
-  it('keeps products without transactions and does not label returned purchases', async () => {
+  it('excludes products without stock or pending operations', async () => {
     const result = await listStock({
       findAll: async () => [
         {
@@ -60,14 +60,40 @@ describe('listStock', () => {
     });
 
     expect(result).toEqual({
+      stock: [],
+    });
+  });
+
+  it('keeps zero-quantity products with pending operations', async () => {
+    const result = await listStock({
+      findAll: async () => [
+        {
+          productId: 'c67b917d-d8f8-4de6-9c47-fbaa82a705e5',
+          imageKey: null,
+          name: 'Pendiente de recibir',
+          shortName: 'Pendiente',
+          quantity: 0,
+          orderedQuantity: 2,
+          toBeSentQuantity: 0,
+        },
+      ],
+    });
+
+    expect(result).toEqual({
       stock: [
         {
           productId: 'c67b917d-d8f8-4de6-9c47-fbaa82a705e5',
           imageUrl: null,
-          name: 'Sin movimientos',
-          shortName: 'Sin movimientos',
+          name: 'Pendiente de recibir',
+          shortName: 'Pendiente',
           quantity: 0,
-          statusLabels: [],
+          statusLabels: [
+            {
+              status: 'ordered',
+              label: 'Pedido, pendiente de recibir',
+              quantity: 2,
+            },
+          ],
         },
       ],
     });

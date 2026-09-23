@@ -67,6 +67,8 @@ describe('StockPage', () => {
       'src',
       'https://media.example.test/products/camera.webp',
     );
-    expect(screen.queryByText('Producto agotado')).not.toBeInTheDocument();
+    const outOfStockRow = screen.getByRole('row', { name: /Producto agotado/ });
+    expect(outOfStockRow).toHaveTextContent('0');
+    expect(outOfStockRow).toHaveClass('text-muted-foreground', 'opacity-60');
   });
 });

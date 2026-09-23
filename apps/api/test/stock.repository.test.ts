@@ -24,6 +24,8 @@ describe('StockRepository', () => {
     expect(compiledSql).toContain('purchase_stock."receivedQuantity"');
     expect(compiledSql).toContain('sale_stock."completedQuantity"');
     expect(compiledSql).toContain('WHERE NOT EXISTS');
+    expect(compiledSql).toContain('COALESCE(purchase_stock."orderedQuantity", 0) > 0');
+    expect(compiledSql).toContain('COALESCE(sale_stock."toBeSentQuantity", 0) > 0');
     expect(compiledSql).not.toContain("status IN ('ordered', 'received')");
   });
 });

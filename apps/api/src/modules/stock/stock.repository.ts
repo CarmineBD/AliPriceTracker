@@ -91,6 +91,12 @@ export class StockRepository {
         FROM product_combos AS product_component
         WHERE product_component.product_id = product.id
       )
+      AND (
+        COALESCE(purchase_stock."receivedQuantity", 0) -
+          COALESCE(sale_stock."completedQuantity", 0) <> 0
+        OR COALESCE(purchase_stock."orderedQuantity", 0) > 0
+        OR COALESCE(sale_stock."toBeSentQuantity", 0) > 0
+      )
       ORDER BY product.name ASC, product.created_at ASC
     `);
 

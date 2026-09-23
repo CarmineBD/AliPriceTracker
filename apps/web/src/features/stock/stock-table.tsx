@@ -20,6 +20,16 @@ function labelVariant(status: StockItem['statusLabels'][number]['status']) {
   return status === 'to_be_sent' ? 'secondary' : 'outline';
 }
 
+function mutedClass(quantity: number) {
+  return quantity === 0 ? 'bg-muted/30 text-muted-foreground opacity-60' : undefined;
+}
+
+function productLinkClass(quantity: number) {
+  return quantity === 0
+    ? 'underline-offset-4 hover:underline'
+    : 'text-primary underline-offset-4 hover:underline';
+}
+
 export function StockTable({ stock }: StockTableProps) {
   if (stock.length === 0) {
     return (
@@ -42,7 +52,7 @@ export function StockTable({ stock }: StockTableProps) {
       </TableHeader>
       <TableBody>
         {stock.map((product) => (
-          <TableRow key={product.productId}>
+          <TableRow key={product.productId} className={mutedClass(product.quantity)}>
             <TableCell>
               {product.imageUrl ? (
                 <img
@@ -62,7 +72,7 @@ export function StockTable({ stock }: StockTableProps) {
             <TableCell className="min-w-56 font-medium">
               <Link
                 to={`/products/${product.productId}`}
-                className="text-primary underline-offset-4 hover:underline"
+                className={productLinkClass(product.quantity)}
               >
                 {product.name}
               </Link>
