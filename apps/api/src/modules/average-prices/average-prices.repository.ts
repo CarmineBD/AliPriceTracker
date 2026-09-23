@@ -4,7 +4,6 @@ import { alias } from 'drizzle-orm/pg-core';
 import { getDatabase } from '../../db/client.js';
 import { productCombos } from '../../db/schema/product-combos.js';
 import { products } from '../../db/schema/products.js';
-import { purchases } from '../../db/schema/purchases.js';
 import { sales } from '../../db/schema/sales.js';
 
 type DatabaseClient = ReturnType<typeof getDatabase>;
@@ -69,16 +68,64 @@ export class AveragePricesRepository {
   }
 
   async findPurchases(): Promise<AveragePriceRow[]> {
-    return this.client
-      .select({
-        productId: products.id,
-        imageKey: products.imageKey,
-        shortName: products.shortName,
-        averagePrice: sql<string>`avg(${purchases.totalFinalPrice})`,
-      })
-      .from(purchases)
-      .innerJoin(products, eq(products.id, purchases.productId))
-      .groupBy(products.id, products.imageKey, products.shortName)
-      .orderBy(asc(products.shortName), asc(products.id));
+    const result = await this.client.execute<AveragePriceRow>(sql`
+      WITH component_sale_prices AS (
+        SELECT
+          sale.product_id AS product_id,
+          avg(sale.total_sale_price) AS average_price
+        FROM sales AS sale
+        GROUP BY sale.product_id
+      ),
+      combo_purchase_components AS (
+        SELECT
+          purchase.id AS purchase_id,
+          purchase.total_final_price,
+          component.contains_product_id,
+          component.quantity,
+          component_sale_prices.average_price,
+          sum(component_sale_prices.average_price * component.quantity)
+            OVER (PARTITION BY purchase.id) AS total_component_sale_value,
+          count(component_sale_prices.product_id)
+            OVER (PARTITION BY purchase.id) AS priced_component_count,
+          count(component.contains_product_id)
+            OVER (PARTITION BY purchase.id) AS component_count
+        FROM purchases AS purchase
+        INNER JOIN product_combos AS component ON component.product_id = purchase.product_id
+        LEFT JOIN component_sale_prices
+          ON component_sale_prices.product_id = component.contains_product_id
+      ),
+      purchase_costs AS (
+        -- Every direct purchase is one purchased unit, including the combo itself.
+        SELECT
+          purchase.product_id,
+          purchase.total_final_price AS assigned_cost,
+          1 AS quantity
+        FROM purchases AS purchase
+
+        UNION ALL
+
+        -- A combo purchase is also expanded into the estimated costs of its components.
+        SELECT
+          contains_product_id AS product_id,
+          total_final_price * (
+            (average_price * quantity) / total_component_sale_value
+          ) AS assigned_cost,
+          quantity
+        FROM combo_purchase_components
+        WHERE priced_component_count = component_count
+          AND total_component_sale_value > 0
+      )
+      SELECT
+        product.id AS "productId",
+        product.image_key AS "imageKey",
+        product.short_name AS "shortName",
+        sum(purchase_costs.assigned_cost) / sum(purchase_costs.quantity) AS "averagePrice"
+      FROM purchase_costs
+      INNER JOIN products AS product ON product.id = purchase_costs.product_id
+      GROUP BY product.id, product.image_key, product.short_name
+      ORDER BY product.short_name ASC, product.id ASC
+    `);
+
+    return [...result];
   }
 }
