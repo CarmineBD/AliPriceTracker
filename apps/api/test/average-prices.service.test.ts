@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { listAveragePrices } from '../src/modules/average-prices/average-prices.service.js';
 
 describe('average prices service', () => {
-  it('returns one entry per product with purchase or sale history', async () => {
+  it('returns entries for products with history and fully priced combos', async () => {
     const result = await listAveragePrices({
       findSales: async () => [
         {
@@ -21,6 +21,14 @@ describe('average prices service', () => {
           averagePrice: '3.50',
         },
       ],
+      findComboSales: async () => [
+        {
+          productId: 'a7777777-7e36-4af0-a8b3-152b20c41f3c',
+          imageKey: null,
+          shortName: 'Pack cÃ¡mara y cable',
+          averagePrice: '25.125',
+        },
+      ],
     });
 
     expect(result).toEqual({
@@ -31,6 +39,12 @@ describe('average prices service', () => {
             'https://media.example.test/products/8d8c883c-7e36-4af0-a8b3-152b20c41f3c/image.webp',
           shortName: 'Cámara',
           averagePrice: 18.125,
+        },
+        {
+          productId: 'a7777777-7e36-4af0-a8b3-152b20c41f3c',
+          imageUrl: null,
+          shortName: 'Pack cÃ¡mara y cable',
+          averagePrice: 25.125,
         },
       ],
       purchases: [

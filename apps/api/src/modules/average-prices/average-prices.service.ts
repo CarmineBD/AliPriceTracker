@@ -5,7 +5,10 @@ import { AveragePricesRepository, type AveragePriceRow } from './average-prices.
 
 const repository = new AveragePricesRepository();
 
-type AveragePricesRepositoryPort = Pick<AveragePricesRepository, 'findPurchases' | 'findSales'>;
+type AveragePricesRepositoryPort = Pick<
+  AveragePricesRepository,
+  'findComboSales' | 'findPurchases' | 'findSales'
+>;
 
 function toAveragePriceItem(item: AveragePriceRow) {
   return {
@@ -19,13 +22,18 @@ function toAveragePriceItem(item: AveragePriceRow) {
 export async function listAveragePrices(
   repositoryOverride: AveragePricesRepositoryPort = repository,
 ): Promise<AveragePrices> {
-  const [sales, purchases] = await Promise.all([
+  const [sales, comboSales, purchases] = await Promise.all([
     repositoryOverride.findSales(),
+    repositoryOverride.findComboSales(),
     repositoryOverride.findPurchases(),
   ]);
 
   return {
-    sales: sales.map(toAveragePriceItem),
+    sales: [...sales, ...comboSales]
+      .sort((left, right) =>
+        left.shortName.localeCompare(right.shortName) || left.productId.localeCompare(right.productId),
+      )
+      .map(toAveragePriceItem),
     purchases: purchases.map(toAveragePriceItem),
   };
 }
