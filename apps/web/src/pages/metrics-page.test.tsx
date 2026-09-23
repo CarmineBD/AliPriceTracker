@@ -13,12 +13,14 @@ vi.mock('@/api/metrics.api', () => ({
 const mockedGetMetrics = vi.mocked(getMetrics);
 
 describe('MetricsPage', () => {
-  it('shows benefit totals and ROI with at most two decimal places', async () => {
+  it('shows FIFO metrics and the separate cash flow', async () => {
     mockedGetMetrics.mockResolvedValue({
       totalPurchases: 120.1,
       totalSales: 180.25,
-      totalProfit: 60.15,
-      roi: 50.08,
+      netCashFlow: 60.15,
+      realizedProfit: 45.25,
+      stockValue: 74.5,
+      potentialStockProfit: 25.5,
     });
     const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
 
@@ -32,7 +34,13 @@ describe('MetricsPage', () => {
 
     expect(screen.getByRole('heading', { name: 'Métricas' })).toBeInTheDocument();
     expect(await screen.findByText(/60,15\s*€/)).toBeInTheDocument();
-    expect(screen.getByText('(50,08 %ROI)')).toBeInTheDocument();
+    expect(screen.getByText('Beneficio realizado')).toBeInTheDocument();
+    expect(screen.getByText('Valor del stock')).toBeInTheDocument();
+    expect(screen.getByText('Beneficio potencial del stock')).toBeInTheDocument();
+    expect(screen.getByText('Flujo neto de caja')).toBeInTheDocument();
+    expect(screen.getByText(/45,25/)).toBeInTheDocument();
+    expect(screen.getByText(/74,50/)).toBeInTheDocument();
+    expect(screen.getByText(/25,50/)).toBeInTheDocument();
     expect(screen.getByText(/180,25\s*€/)).toBeInTheDocument();
     expect(screen.getByText(/120,10\s*€/)).toBeInTheDocument();
   });

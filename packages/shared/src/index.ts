@@ -142,8 +142,10 @@ export type SalesList = z.infer<typeof salesListResponseSchema>;
 export const metricsResponseSchema = z.object({
   totalPurchases: z.number().finite().nonnegative(),
   totalSales: z.number().finite().nonnegative(),
-  totalProfit: z.number().finite(),
-  roi: z.number().finite().nullable(),
+  netCashFlow: z.number().finite(),
+  realizedProfit: z.number().finite(),
+  stockValue: z.number().finite().nonnegative(),
+  potentialStockProfit: z.number().finite(),
 });
 
 export type Metrics = z.infer<typeof metricsResponseSchema>;

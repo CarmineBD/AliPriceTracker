@@ -9,10 +9,6 @@ const currencyFormatter = new Intl.NumberFormat('es-ES', {
   currency: 'EUR',
 });
 
-const roiFormatter = new Intl.NumberFormat('es-ES', {
-  maximumFractionDigits: 2,
-});
-
 export function MetricsPage() {
   const metricsQuery = useQuery({
     queryKey: ['metrics'],
@@ -37,38 +33,74 @@ export function MetricsPage() {
           </p>
         )}
         {metricsQuery.isSuccess && (
-          <Card className="max-w-md">
-            <CardHeader>
-              <CardTitle>Beneficios</CardTitle>
-              <CardDescription>Resultado acumulado de las operaciones registradas.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-4xl font-semibold tracking-tight">
-                {currencyFormatter.format(metricsQuery.data.totalProfit)}{' '}
-                <span className="text-base font-normal text-muted-foreground">
-                  (
-                  {metricsQuery.data.roi === null
-                    ? 'ROI no disponible'
-                    : `${roiFormatter.format(metricsQuery.data.roi)} %ROI`}
-                  )
-                </span>
-              </p>
-              <div className="mt-6 grid grid-cols-2 gap-4 text-sm text-muted-foreground">
-                <p>
-                  Ventas totales
-                  <span className="mt-1 block font-medium text-foreground">
-                    {currencyFormatter.format(metricsQuery.data.totalSales)}
-                  </span>
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>Gross Profit</CardTitle>
+                <CardDescription>
+                  Beneficio realizado de ingresos de ventas completadas menos su coste FIFO.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <p className="text-3xl font-semibold tracking-tight">
+                  {currencyFormatter.format(metricsQuery.data.realizedProfit)}
                 </p>
-                <p>
-                  Compras totales
-                  <span className="mt-1 block font-medium text-foreground">
-                    {currencyFormatter.format(metricsQuery.data.totalPurchases)}
-                  </span>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader>
+                <CardTitle>Cash Flow</CardTitle>
+                <CardDescription>
+                  Flujo neto de caja de todos los ingresos registrados menos todas las compras.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <p className="text-3xl font-semibold tracking-tight">
+                  {currencyFormatter.format(metricsQuery.data.netCashFlow)}
                 </p>
-              </div>
-            </CardContent>
-          </Card>
+                <div className="mt-6 grid grid-cols-2 gap-4 text-sm text-muted-foreground">
+                  <p>
+                    Ventas totales
+                    <span className="mt-1 block font-medium text-foreground">
+                      {currencyFormatter.format(metricsQuery.data.totalSales)}
+                    </span>
+                  </p>
+                  <p>
+                    Compras totales
+                    <span className="mt-1 block font-medium text-foreground">
+                      {currencyFormatter.format(metricsQuery.data.totalPurchases)}
+                    </span>
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader>
+                <CardTitle>Valor del stock</CardTitle>
+                <CardDescription>
+                  Coste FIFO de las unidades recibidas que siguen disponibles.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <p className="text-3xl font-semibold tracking-tight">
+                  {currencyFormatter.format(metricsQuery.data.stockValue)}
+                </p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader>
+                <CardTitle>Beneficio potencial del stock</CardTitle>
+                <CardDescription>
+                  Valor de venta estimado menos el coste FIFO restante.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <p className="text-3xl font-semibold tracking-tight">
+                  {currencyFormatter.format(metricsQuery.data.potentialStockProfit)}
+                </p>
+              </CardContent>
+            </Card>
+          </div>
         )}
       </section>
     </AppLayout>
