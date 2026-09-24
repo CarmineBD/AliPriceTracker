@@ -146,7 +146,9 @@ export const metricsResponseSchema = z.object({
   totalSales: z.number().finite(),
   netCashFlow: z.number().finite(),
   realizedProfit: z.number().finite(),
-  stockValue: z.number().finite().nonnegative(),
+  realizedRoi: z.number().finite().nullable(),
+  stockCostValue: z.number().finite().nonnegative(),
+  estimatedStockSaleValue: z.number().finite().nonnegative(),
   potentialStockProfit: z.number().finite(),
 });
 

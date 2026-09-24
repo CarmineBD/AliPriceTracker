@@ -19,7 +19,9 @@ describe('MetricsPage', () => {
       totalSales: 180.25,
       netCashFlow: 60.15,
       realizedProfit: 45.25,
-      stockValue: 74.5,
+      realizedRoi: 56.7,
+      stockCostValue: 74.5,
+      estimatedStockSaleValue: 100,
       potentialStockProfit: 25.5,
     });
     const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -34,12 +36,15 @@ describe('MetricsPage', () => {
 
     expect(screen.getByRole('heading', { name: 'Métricas' })).toBeInTheDocument();
     expect(await screen.findByText(/60,15\s*€/)).toBeInTheDocument();
-    expect(screen.getByText('Beneficio realizado')).toBeInTheDocument();
-    expect(screen.getByText('Valor del stock')).toBeInTheDocument();
+    expect(screen.getByText('Gross Profit')).toBeInTheDocument();
+    expect(screen.getByText('Valor de compra')).toBeInTheDocument();
+    expect(screen.getByText('Valor estimado de venta')).toBeInTheDocument();
     expect(screen.getByText('Beneficio potencial del stock')).toBeInTheDocument();
     expect(screen.getByText(/Flujo neto de caja/)).toBeInTheDocument();
     expect(screen.getByText(/45,25/)).toBeInTheDocument();
+    expect(screen.getByText('(56,7% ROI)')).toBeInTheDocument();
     expect(screen.getByText(/74,50/)).toBeInTheDocument();
+    expect(screen.getByText(/100,00/)).toBeInTheDocument();
     expect(screen.getByText(/25,50/)).toBeInTheDocument();
     expect(screen.getByText(/180,25\s*€/)).toBeInTheDocument();
     expect(screen.getByText(/120,10\s*€/)).toBeInTheDocument();

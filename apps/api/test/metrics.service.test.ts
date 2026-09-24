@@ -7,7 +7,7 @@ const secondPurchaseDate = new Date('2026-01-02T00:00:00.000Z');
 const saleDate = new Date('2026-01-03T00:00:00.000Z');
 
 describe('metrics service', () => {
-  it('uses FIFO costs for realized profit, stock value, and potential stock profit', async () => {
+  it('uses FIFO costs for realized profit and calculates the estimated stock sale value', async () => {
     await expect(
       getMetrics({
         getMetricsData: async () => ({
@@ -52,7 +52,9 @@ describe('metrics service', () => {
       totalSales: 235,
       netCashFlow: -85,
       realizedProfit: 85,
-      stockValue: 170,
+      realizedRoi: 56.7,
+      stockCostValue: 170,
+      estimatedStockSaleValue: 250,
       potentialStockProfit: 80,
     });
   });
@@ -111,7 +113,9 @@ describe('metrics service', () => {
       totalSales: 230,
       netCashFlow: -150,
       realizedProfit: 80,
-      stockValue: 230,
+      realizedRoi: 53.3,
+      stockCostValue: 230,
+      estimatedStockSaleValue: 350,
       potentialStockProfit: 120,
     });
   });
@@ -132,7 +136,9 @@ describe('metrics service', () => {
       totalSales: 178.25,
       netCashFlow: 58.15,
       realizedProfit: 0,
-      stockValue: 0,
+      realizedRoi: null,
+      stockCostValue: 0,
+      estimatedStockSaleValue: 0,
       potentialStockProfit: 0,
     });
   });

@@ -152,19 +152,25 @@ export function calculateFifoMetrics({
   }
 
   const cogsInCents = [...cogsByProduct.values()].reduce((total, cost) => total + cost, 0);
-  const stockValueInCents = [...stockByProduct.values()].reduce(
+  const stockCostValueInCents = [...stockByProduct.values()].reduce(
     (total, stock) => total + stock.costInCents,
     0,
   );
-  const potentialStockProfitInCents = [...stockByProduct.values()].reduce((total, stock) => {
-    if (stock.averageSellingPriceInCents === null) return total;
-    return total + stock.quantity * stock.averageSellingPriceInCents - stock.costInCents;
-  }, 0);
+  const estimatedStockSaleValueInCents = [...stockByProduct.values()].reduce(
+    (total, stock) =>
+      total + stock.quantity * (stock.averageSellingPriceInCents ?? 0),
+    0,
+  );
+  const roundedStockCostValueInCents = Math.round(stockCostValueInCents);
+  const roundedEstimatedStockSaleValueInCents = Math.round(estimatedStockSaleValueInCents);
+  const potentialStockProfitInCents =
+    roundedEstimatedStockSaleValueInCents - roundedStockCostValueInCents;
 
   return {
     cogsInCents: Math.round(cogsInCents),
-    stockValueInCents: Math.round(stockValueInCents),
-    potentialStockProfitInCents: Math.round(potentialStockProfitInCents),
+    stockCostValueInCents: roundedStockCostValueInCents,
+    estimatedStockSaleValueInCents: roundedEstimatedStockSaleValueInCents,
+    potentialStockProfitInCents,
   };
 }
 
@@ -187,13 +193,19 @@ export async function getMetrics(
         total + toCents(Number(sale.totalSalePrice)) - toCents(Number(sale.shippingCost)),
       0,
     );
+  const realizedProfitInCents = completedSalesInCents - fifo.cogsInCents;
 
   return {
     totalPurchases,
     totalSales,
     netCashFlow: fromCents(toCents(totalSales) - toCents(totalPurchases)),
-    realizedProfit: fromCents(completedSalesInCents - fifo.cogsInCents),
-    stockValue: fromCents(fifo.stockValueInCents),
+    realizedProfit: fromCents(realizedProfitInCents),
+    realizedRoi:
+      fifo.cogsInCents === 0
+        ? null
+        : Math.round((realizedProfitInCents / fifo.cogsInCents) * 1000) / 10,
+    stockCostValue: fromCents(fifo.stockCostValueInCents),
+    estimatedStockSaleValue: fromCents(fifo.estimatedStockSaleValueInCents),
     potentialStockProfit: fromCents(fifo.potentialStockProfitInCents),
   };
 }

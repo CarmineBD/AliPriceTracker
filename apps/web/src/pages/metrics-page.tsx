@@ -9,11 +9,16 @@ const currencyFormatter = new Intl.NumberFormat('es-ES', {
   currency: 'EUR',
 });
 
+const roiFormatter = new Intl.NumberFormat('es-ES', {
+  maximumFractionDigits: 1,
+});
+
 export function MetricsPage() {
   const metricsQuery = useQuery({
     queryKey: ['metrics'],
     queryFn: getMetrics,
   });
+  const realizedRoi = metricsQuery.data?.realizedRoi ?? null;
 
   return (
     <AppLayout>
@@ -36,14 +41,20 @@ export function MetricsPage() {
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             <Card>
               <CardHeader>
-                <CardTitle>Beneficio realizado</CardTitle>
+                <CardTitle>Gross Profit</CardTitle>
                 <CardDescription>
-                  Ingresos netos de ventas completadas menos el envío asumido y su coste FIFO.
+                  Beneficio realizado ingresos netos de ventas completadas menos el envío asumido y
+                  su coste FIFO.
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 <p className="text-3xl font-semibold tracking-tight">
                   {currencyFormatter.format(metricsQuery.data.realizedProfit)}
+                  {realizedRoi !== null && (
+                    <span className="ml-2 whitespace-nowrap text-base font-normal text-muted-foreground">
+                      ({roiFormatter.format(realizedRoi)}% ROI)
+                    </span>
+                  )}
                 </p>
               </CardContent>
             </Card>
@@ -76,19 +87,6 @@ export function MetricsPage() {
             </Card>
             <Card>
               <CardHeader>
-                <CardTitle>Valor del stock</CardTitle>
-                <CardDescription>
-                  Coste FIFO de las unidades recibidas que siguen disponibles.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <p className="text-3xl font-semibold tracking-tight">
-                  {currencyFormatter.format(metricsQuery.data.stockValue)}
-                </p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader>
                 <CardTitle>Beneficio potencial del stock</CardTitle>
                 <CardDescription>
                   Valor de venta estimado menos el coste FIFO restante.
@@ -98,6 +96,20 @@ export function MetricsPage() {
                 <p className="text-3xl font-semibold tracking-tight">
                   {currencyFormatter.format(metricsQuery.data.potentialStockProfit)}
                 </p>
+                <div className="mt-6 grid grid-cols-2 gap-4 text-sm text-muted-foreground">
+                  <p>
+                    Valor de compra
+                    <span className="mt-1 block font-medium text-foreground">
+                      {currencyFormatter.format(metricsQuery.data.stockCostValue)}
+                    </span>
+                  </p>
+                  <p>
+                    Valor estimado de venta
+                    <span className="mt-1 block font-medium text-foreground">
+                      {currencyFormatter.format(metricsQuery.data.estimatedStockSaleValue)}
+                    </span>
+                  </p>
+                </div>
               </CardContent>
             </Card>
           </div>
