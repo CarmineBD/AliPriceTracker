@@ -119,6 +119,24 @@ export const purchasesListResponseSchema = z.object({
   pagination: transactionPaginationSchema,
 });
 
+const saleProfitAllocationSchema = z.object({
+  source: z.enum(['purchase', 'combo']),
+  purchaseName: z.string(),
+  purchaseDate: transactionDateSchema,
+  purchasePrice: moneyAmountSchema,
+  componentName: z.string().nullable(),
+  quantity: z.number().int().positive(),
+  cost: moneyAmountSchema,
+});
+
+const saleProfitBreakdownSchema = z.object({
+  revenue: moneyAmountSchema,
+  shippingCost: moneyAmountSchema,
+  netRevenue: z.number().finite(),
+  cost: moneyAmountSchema,
+  allocations: z.array(saleProfitAllocationSchema),
+});
+
 export const saleHistoryEntrySchema = z.object({
   id: productIdSchema,
   productId: productIdSchema,
@@ -126,6 +144,8 @@ export const saleHistoryEntrySchema = z.object({
   shortName: z.string(),
   totalSalePrice: moneyAmountSchema,
   shippingCost: moneyAmountSchema,
+  profit: z.number().finite(),
+  profitBreakdown: saleProfitBreakdownSchema,
   status: saleStatusSchema,
   date: transactionDateSchema,
 });

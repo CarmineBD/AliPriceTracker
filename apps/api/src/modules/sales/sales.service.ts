@@ -2,26 +2,58 @@ import type { SaleCreateInput, SaleUpdateInput, TransactionsListQuery } from '@a
 
 import { getPublicUrl } from '../../services/storage.service.js';
 import { HttpError } from '../../utils/http-error.js';
+import { MetricsRepository } from '../metrics/metrics.repository.js';
+import { calculateFifoMetrics } from '../metrics/metrics.service.js';
 import { SalesRepository } from './sales.repository.js';
 
 const repository = new SalesRepository();
+const metricsRepository = new MetricsRepository();
 
 export async function listSales(
   query: TransactionsListQuery,
   salesRepository: Pick<SalesRepository, 'findPage'> = repository,
+  fifoRepository: Pick<MetricsRepository, 'getMovementData'> = metricsRepository,
 ) {
-  const { items, total } = await salesRepository.findPage(query);
+  const [{ items, total }, movementData] = await Promise.all([
+    salesRepository.findPage(query),
+    fifoRepository.getMovementData(),
+  ]);
+  const { cogsBySaleId, allocationsBySaleId } = calculateFifoMetrics(movementData);
+
   return {
-    sales: items.map((sale) => ({
-      id: sale.id,
-      productId: sale.productId,
-      imageUrl: sale.imageKey ? getPublicUrl(sale.imageKey) : null,
-      shortName: sale.shortName,
-      totalSalePrice: Number(sale.totalSalePrice),
-      shippingCost: Number(sale.shippingCost),
-      status: sale.status,
-      date: sale.date.toISOString(),
-    })),
+    sales: items.map((sale) => {
+      const revenue = Number(sale.totalSalePrice);
+      const shippingCost = Number(sale.shippingCost);
+      const netRevenueInCents = Math.round((revenue - shippingCost) * 100);
+      const costInCents = Math.round(cogsBySaleId.get(sale.id) ?? 0);
+
+      return {
+        id: sale.id,
+        productId: sale.productId,
+        imageUrl: sale.imageKey ? getPublicUrl(sale.imageKey) : null,
+        shortName: sale.shortName,
+        totalSalePrice: revenue,
+        shippingCost,
+        profit: (netRevenueInCents - costInCents) / 100,
+        profitBreakdown: {
+          revenue,
+          shippingCost,
+          netRevenue: netRevenueInCents / 100,
+          cost: costInCents / 100,
+          allocations: (allocationsBySaleId.get(sale.id) ?? []).map((allocation) => ({
+            source: allocation.componentName === null ? ('purchase' as const) : ('combo' as const),
+            purchaseName: allocation.purchaseName,
+            purchaseDate: allocation.purchaseDate.toISOString(),
+            purchasePrice: allocation.purchasePriceInCents / 100,
+            componentName: allocation.componentName,
+            quantity: allocation.quantity,
+            cost: Math.round(allocation.costInCents) / 100,
+          })),
+        },
+        status: sale.status,
+        date: sale.date.toISOString(),
+      };
+    }),
     pagination: {
       page: query.page,
       pageSize: query.pageSize,

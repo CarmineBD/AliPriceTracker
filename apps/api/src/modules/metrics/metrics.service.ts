@@ -18,6 +18,21 @@ type InventoryLot = {
   productId: string;
   remainingQuantity: number;
   unitCostInCents: number;
+  purchaseId: string;
+  purchaseName: string;
+  purchaseDate: Date;
+  purchasePriceInCents: number;
+  componentName: string | null;
+};
+
+export type FifoCostAllocation = {
+  purchaseId: string;
+  purchaseName: string;
+  purchaseDate: Date;
+  purchasePriceInCents: number;
+  componentName: string | null;
+  quantity: number;
+  costInCents: number;
 };
 
 type ProductStock = {
@@ -55,7 +70,7 @@ function groupBySale(rows: SaleMovementRow[]): SaleMovementRow[][] {
  * same selling-price share used by the average-purchase-price calculation.
  */
 function createInventoryLots(rows: PurchaseMovementRow[]): InventoryLot[] {
-  return groupByPurchase(rows).flatMap((purchaseRows) => {
+  return groupByPurchase(rows).flatMap((purchaseRows): InventoryLot[] => {
     const purchase = purchaseRows[0];
     if (!purchase) return [];
 
@@ -65,6 +80,11 @@ function createInventoryLots(rows: PurchaseMovementRow[]): InventoryLot[] {
           productId: purchase.productId,
           remainingQuantity: 1,
           unitCostInCents: toCents(Number(purchase.totalFinalPrice)),
+          purchaseId: purchase.purchaseId,
+          purchaseName: purchase.purchaseProductShortName ?? purchase.productId,
+          purchaseDate: purchase.date,
+          purchasePriceInCents: toCents(Number(purchase.totalFinalPrice)),
+          componentName: null,
         },
       ];
     }
@@ -82,6 +102,7 @@ function createInventoryLots(rows: PurchaseMovementRow[]): InventoryLot[] {
         {
           productId: row.componentProductId,
           quantity: row.componentQuantity,
+          componentName: row.componentProductShortName ?? row.componentProductId,
           saleValueInCents: toCents(Number(row.averageSellingPrice)) * row.componentQuantity,
         },
       ];
@@ -104,12 +125,18 @@ function createInventoryLots(rows: PurchaseMovementRow[]): InventoryLot[] {
         (purchaseCostInCents * component.saleValueInCents) /
         totalComponentSaleValueInCents /
         component.quantity,
+      purchaseId: purchase.purchaseId,
+      purchaseName: purchase.purchaseProductShortName ?? purchase.productId,
+      purchaseDate: purchase.date,
+      purchasePriceInCents: purchaseCostInCents,
+      componentName: component.componentName,
     }));
   });
 }
 
-function allocateFifoCosts(lots: InventoryLot[], rows: SaleMovementRow[]): Map<string, number> {
+function allocateFifoCosts(lots: InventoryLot[], rows: SaleMovementRow[]) {
   const cogsBySaleId = new Map<string, number>();
+  const allocationsBySaleId = new Map<string, FifoCostAllocation[]>();
 
   for (const saleRows of groupBySale(rows)) {
     const sale = saleRows[0];
@@ -124,7 +151,20 @@ function allocateFifoCosts(lots: InventoryLot[], rows: SaleMovementRow[]): Map<s
         if (lot.productId !== productId || quantityToAllocate === 0) continue;
 
         const quantityAllocated = Math.min(lot.remainingQuantity, quantityToAllocate);
+        if (quantityAllocated === 0) continue;
+
         saleCogsInCents += quantityAllocated * lot.unitCostInCents;
+        const allocations = allocationsBySaleId.get(sale.saleId) ?? [];
+        allocations.push({
+          purchaseId: lot.purchaseId,
+          purchaseName: lot.purchaseName,
+          purchaseDate: lot.purchaseDate,
+          purchasePriceInCents: lot.purchasePriceInCents,
+          componentName: lot.componentName,
+          quantity: quantityAllocated,
+          costInCents: quantityAllocated * lot.unitCostInCents,
+        });
+        allocationsBySaleId.set(sale.saleId, allocations);
         lot.remainingQuantity -= quantityAllocated;
         quantityToAllocate -= quantityAllocated;
       }
@@ -133,7 +173,7 @@ function allocateFifoCosts(lots: InventoryLot[], rows: SaleMovementRow[]): Map<s
     cogsBySaleId.set(sale.saleId, saleCogsInCents);
   }
 
-  return cogsBySaleId;
+  return { cogsBySaleId, allocationsBySaleId };
 }
 
 export function calculateFifoMetrics({
@@ -141,7 +181,7 @@ export function calculateFifoMetrics({
   saleMovements,
 }: Pick<MetricsData, 'purchaseMovements' | 'saleMovements'>) {
   const lots = createInventoryLots(purchaseMovements);
-  const cogsBySaleId = allocateFifoCosts(lots, saleMovements);
+  const { cogsBySaleId, allocationsBySaleId } = allocateFifoCosts(lots, saleMovements);
 
   const stockByProduct = new Map<string, ProductStock>();
   for (const lot of lots) {
@@ -182,6 +222,7 @@ export function calculateFifoMetrics({
   return {
     cogsInCents: Math.round(cogsInCents),
     cogsBySaleId,
+    allocationsBySaleId,
     stockCostValueInCents: roundedStockCostValueInCents,
     estimatedStockSaleValueInCents: roundedEstimatedStockSaleValueInCents,
     potentialStockProfitInCents,

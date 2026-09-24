@@ -1,12 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
+import type { MetricsData } from '../src/modules/metrics/metrics.repository.js';
 import { getMetrics, getProfitHistory } from '../src/modules/metrics/metrics.service.js';
 
 const firstPurchaseDate = new Date('2026-01-01T00:00:00.000Z');
 const secondPurchaseDate = new Date('2026-01-02T00:00:00.000Z');
 const saleDate = new Date('2026-01-03T00:00:00.000Z');
 
-function profitHistoryData() {
+function profitHistoryData(): MetricsData {
   return {
     totalPurchases: '420.00',
     totalSales: '700.00',
