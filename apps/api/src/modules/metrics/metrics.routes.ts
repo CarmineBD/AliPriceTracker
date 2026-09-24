@@ -1,7 +1,8 @@
 import { Router } from 'express';
 
-import { get } from './metrics.controller.js';
+import { get, getProfitHistory } from './metrics.controller.js';
 
 export const metricsRouter = Router();
 
+metricsRouter.get('/profit-history', getProfitHistory);
 metricsRouter.get('/', get);

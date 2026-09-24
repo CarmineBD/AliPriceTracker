@@ -146,6 +146,7 @@ export const metricsResponseSchema = z.object({
   totalSales: z.number().finite(),
   netCashFlow: z.number().finite(),
   realizedProfit: z.number().finite(),
+  pendingSalesCount: z.number().int().nonnegative(),
   realizedRoi: z.number().finite().nullable(),
   stockCostValue: z.number().finite().nonnegative(),
   estimatedStockSaleValue: z.number().finite().nonnegative(),
@@ -153,6 +154,57 @@ export const metricsResponseSchema = z.object({
 });
 
 export type Metrics = z.infer<typeof metricsResponseSchema>;
+
+export const profitHistoryPeriodSchema = z.enum(['month', 'year']);
+const profitHistoryMonthSchema = z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/);
+
+export const profitHistoryQuerySchema = z
+  .object({
+    period: profitHistoryPeriodSchema.default('month'),
+    month: profitHistoryMonthSchema.optional(),
+  })
+  .strict()
+  .superRefine((value, context) => {
+    if (value.period === 'year' && value.month) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['month'],
+        message: 'month solo se puede usar con el periodo mensual.',
+      });
+    }
+  });
+
+const profitHistoryMoneySchema = z.number().finite();
+
+export const profitHistoryPointSchema = z.object({
+  date: z.string().datetime({ offset: true }),
+  profit: profitHistoryMoneySchema,
+  cumulativeProfit: profitHistoryMoneySchema,
+  salesCount: z.number().int().nonnegative(),
+  revenue: profitHistoryMoneySchema,
+  cogs: profitHistoryMoneySchema,
+});
+
+export const profitHistorySummarySchema = z.object({
+  profit: profitHistoryMoneySchema,
+  roi: z.number().finite().nullable(),
+  salesCount: z.number().int().nonnegative(),
+  revenue: profitHistoryMoneySchema,
+  cogs: profitHistoryMoneySchema,
+  averageProfitPerSale: profitHistoryMoneySchema.nullable(),
+  averageProfitPerPeriodWithSales: profitHistoryMoneySchema.nullable(),
+});
+
+export const profitHistoryResponseSchema = z.object({
+  period: profitHistoryPeriodSchema,
+  points: z.array(profitHistoryPointSchema),
+  summary: profitHistorySummarySchema,
+});
+
+export type ProfitHistoryPeriod = z.infer<typeof profitHistoryPeriodSchema>;
+export type ProfitHistoryPoint = z.infer<typeof profitHistoryPointSchema>;
+export type ProfitHistorySummary = z.infer<typeof profitHistorySummarySchema>;
+export type ProfitHistory = z.infer<typeof profitHistoryResponseSchema>;
 
 export const averagePriceItemSchema = z.object({
   productId: productIdSchema,

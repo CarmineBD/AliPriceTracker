@@ -3,14 +3,16 @@ import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
 
-import { getMetrics } from '@/api/metrics.api';
+import { getMetrics, getProfitHistory } from '@/api/metrics.api';
 import { MetricsPage } from '@/pages/metrics-page';
 
 vi.mock('@/api/metrics.api', () => ({
   getMetrics: vi.fn(),
+  getProfitHistory: vi.fn(),
 }));
 
 const mockedGetMetrics = vi.mocked(getMetrics);
+const mockedGetProfitHistory = vi.mocked(getProfitHistory);
 
 describe('MetricsPage', () => {
   it('shows FIFO metrics and the separate cash flow', async () => {
@@ -19,10 +21,33 @@ describe('MetricsPage', () => {
       totalSales: 180.25,
       netCashFlow: 60.15,
       realizedProfit: 45.25,
+      pendingSalesCount: 0,
       realizedRoi: 56.7,
       stockCostValue: 74.5,
       estimatedStockSaleValue: 100,
       potentialStockProfit: 25.5,
+    });
+    mockedGetProfitHistory.mockResolvedValue({
+      period: 'month',
+      points: [
+        {
+          date: '2026-01-01T00:00:00.000Z',
+          profit: 45.25,
+          cumulativeProfit: 45.25,
+          salesCount: 1,
+          revenue: 120,
+          cogs: 74.75,
+        },
+      ],
+      summary: {
+        profit: 45.25,
+        roi: 60.5,
+        salesCount: 1,
+        revenue: 120,
+        cogs: 74.75,
+        averageProfitPerSale: 45.25,
+        averageProfitPerPeriodWithSales: 45.25,
+      },
     });
     const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
 
@@ -48,5 +73,15 @@ describe('MetricsPage', () => {
     expect(screen.getByText(/25,50/)).toBeInTheDocument();
     expect(screen.getByText(/180,25\s*€/)).toBeInTheDocument();
     expect(screen.getByText(/120,10\s*€/)).toBeInTheDocument();
+    expect(await screen.findByText('Grafico de beneficios')).toBeInTheDocument();
+    expect(screen.getByLabelText('Gráfica de evolución de beneficios')).toBeInTheDocument();
+    expect(screen.getByText('(60,5% ROI)')).toBeInTheDocument();
+    expect(screen.queryByText('Profit medio por día con ventas')).not.toBeInTheDocument();
+    expect(screen.queryByText('Profit medio por venta')).not.toBeInTheDocument();
+    expect(
+      screen.getByRole('combobox', { name: 'Mes de evolución de beneficios' }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Mes actual' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Último año' })).toBeInTheDocument();
   });
 });

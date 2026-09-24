@@ -1,4 +1,5 @@
 import { asc, eq, sql } from 'drizzle-orm';
+import type { SaleStatus } from '@alitracker/shared';
 
 import { getDatabase } from '../../db/client.js';
 import { productCombos } from '../../db/schema/product-combos.js';
@@ -22,6 +23,7 @@ export type SaleMovementRow = {
   productId: string;
   totalSalePrice: string;
   shippingCost: string;
+  status: SaleStatus;
   date: Date;
   componentProductId: string | null;
   componentQuantity: number | null;
@@ -99,13 +101,13 @@ export class MetricsRepository {
             productId: sales.productId,
             totalSalePrice: sales.totalSalePrice,
             shippingCost: sales.shippingCost,
+            status: sales.status,
             date: sales.date,
             componentProductId: productCombos.containsProductId,
             componentQuantity: productCombos.quantity,
           })
           .from(sales)
           .leftJoin(productCombos, eq(productCombos.productId, sales.productId))
-          .where(eq(sales.status, 'completed'))
           .orderBy(asc(sales.date), asc(sales.id)),
       ]);
 
