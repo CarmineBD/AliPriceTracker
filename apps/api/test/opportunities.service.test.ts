@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import request from 'supertest';
 
 import { opportunitiesListQuerySchema, type Coupon } from '@alitracker/shared';
@@ -13,6 +13,7 @@ import {
   calculateRoi,
   findBestApplicableCoupon,
   findNextCoupon,
+  getHistoricalPricePeriodStart,
   listBestCouponCombinations,
   listOpportunities,
   resolveEstimatedSellingPrice,
@@ -174,6 +175,18 @@ describe('resolveEstimatedSellingPrice', () => {
   });
 });
 
+describe('historical selling price periods', () => {
+  it('calculates rolling calendar-month boundaries without overflowing shorter months', () => {
+    expect(
+      getHistoricalPricePeriodStart('last-month', new Date('2026-03-31T12:00:00.000Z')),
+    ).toEqual(new Date('2026-02-28T12:00:00.000Z'));
+    expect(
+      getHistoricalPricePeriodStart('last-year', new Date('2026-09-17T12:00:00.000Z')),
+    ).toEqual(new Date('2025-09-17T12:00:00.000Z'));
+    expect(getHistoricalPricePeriodStart('all', new Date())).toBeUndefined();
+  });
+});
+
 describe('opportunity calculations', () => {
   it('calculates gross profit and rounds ROI to two decimals', () => {
     const profit = calculateProfit(355, 259);
@@ -188,6 +201,55 @@ describe('opportunity calculations', () => {
 });
 
 describe('listOpportunities', () => {
+  it('uses only sales from the selected historical period and excludes entries without complete prices', async () => {
+    const comboId = '00000000-0000-4000-8000-000000000071';
+    const productWithoutHistoryId = '00000000-0000-4000-8000-000000000072';
+    const missingComponentId = '00000000-0000-4000-8000-000000000073';
+    const findHistoricalSellingPrices = vi.fn().mockResolvedValue([
+      { productId, averageSellingPrice: '140.00' },
+      { productId: componentId, averageSellingPrice: '90.00' },
+    ]);
+
+    const result = await listOpportunities(
+      {
+        sort: 'roi-desc',
+        page: 1,
+        pageSize: 20,
+        sellingPriceSource: 'historical',
+        historicalPricePeriod: 'last-month',
+      },
+      new Date('2026-09-17T12:00:00.000Z'),
+      {
+        opportunities: {
+          findProductsWithCurrentOffers: async () => [
+            offer({ price: '100.00' }),
+            offer({ productId: productWithoutHistoryId, price: '100.00' }),
+            offer({ productId: comboId, price: '100.00', averageSellingPrice: null }),
+          ],
+          findComboComponents: async () => [
+            {
+              productId: comboId,
+              containsProductId: componentId,
+              quantity: 1,
+              averageSellingPrice: null,
+            },
+            {
+              productId: comboId,
+              containsProductId: missingComponentId,
+              quantity: 1,
+              averageSellingPrice: null,
+            },
+          ],
+          findHistoricalSellingPrices,
+        },
+        events: { findActiveWithCoupons: async () => [], findCouponOptions: async () => [] },
+      },
+    );
+
+    expect(findHistoricalSellingPrices).toHaveBeenCalledWith(new Date('2026-08-17T12:00:00.000Z'));
+    expect(result.opportunities.map((opportunity) => opportunity.productId)).toEqual([productId]);
+  });
+
   it('does not apply coupons when there is no active event', async () => {
     const result = await listOpportunities(
       { sort: 'roi-desc', page: 1, pageSize: 20 },
@@ -559,11 +621,18 @@ describe('opportunities request validation', () => {
       }).couponIds,
     ).toEqual([coupons[0]!.id, coupons[1]!.id]);
     expect(opportunitiesListQuerySchema.parse({ sort: 'roi-desc' }).couponIds).toBeUndefined();
+    expect(opportunitiesListQuerySchema.parse({ sort: 'roi-desc' }).historicalPricePeriod).toBe(
+      'all',
+    );
   });
 
   it('requires the ROI descending sort and validates pagination before accessing the database', async () => {
     expect((await request(app).get('/api/opportunities')).status).toBe(400);
     expect((await request(app).get('/api/opportunities?sort=profit-desc')).status).toBe(400);
+    expect(
+      (await request(app).get('/api/opportunities?sort=roi-desc&historicalPricePeriod=invalid'))
+        .status,
+    ).toBe(400);
     expect((await request(app).get('/api/opportunities?sort=roi-desc&page=0')).status).toBe(400);
     expect(
       (await request(app).get('/api/opportunities?sort=roi-desc&couponIds=invalid')).status,

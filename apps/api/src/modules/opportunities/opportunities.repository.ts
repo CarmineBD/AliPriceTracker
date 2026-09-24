@@ -1,4 +1,4 @@
-import { desc, eq, exists, isNull, sql } from 'drizzle-orm';
+import { desc, eq, exists, gte, isNull, sql } from 'drizzle-orm';
 
 import { getDatabase } from '../../db/client.js';
 import {
@@ -94,7 +94,7 @@ export class OpportunitiesRepository {
       .innerJoin(products, eq(products.id, productCombos.containsProductId));
   }
 
-  async findHistoricalSellingPrices(): Promise<HistoricalSellingPrice[]> {
+  async findHistoricalSellingPrices(from?: Date): Promise<HistoricalSellingPrice[]> {
     return (
       this.client
         .select({
@@ -104,7 +104,11 @@ export class OpportunitiesRepository {
         .from(sales)
         // Combos always derive their historical price from their components.
         .leftJoin(productCombos, eq(productCombos.productId, sales.productId))
-        .where(isNull(productCombos.productId))
+        .where(
+          from
+            ? sql`${isNull(productCombos.productId)} AND ${gte(sales.date, from)}`
+            : isNull(productCombos.productId),
+        )
         .groupBy(sales.productId)
     );
   }

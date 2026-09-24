@@ -197,10 +197,12 @@ describe('OpportunitiesPage', () => {
         pageSize: 20,
         couponIds: ['00000000-0000-4000-8000-000000000002'],
         sellingPriceSource: 'hard-coded',
+        historicalPricePeriod: 'all',
       });
       expect(getBestCouponCombinationsMock).toHaveBeenLastCalledWith({
         couponIds: ['00000000-0000-4000-8000-000000000002'],
         sellingPriceSource: 'hard-coded',
+        historicalPricePeriod: 'all',
       });
     });
     expect(getActiveEventsMock).toHaveBeenCalledOnce();

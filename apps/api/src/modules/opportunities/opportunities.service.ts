@@ -3,6 +3,7 @@ import type {
   Coupon,
   CouponCategory,
   OpportunitiesListQuery,
+  OpportunityHistoricalPricePeriod,
   OpportunitySellingPriceSource,
 } from '@alitracker/shared';
 
@@ -17,12 +18,20 @@ import {
 
 type MoneyCoupon = Pick<Coupon, 'id' | 'minPurchase' | 'discountAmount' | 'category'>;
 
-type OpportunityCalculationQuery = Omit<OpportunitiesListQuery, 'sellingPriceSource'> & {
+type OpportunityCalculationQuery = Omit<
+  OpportunitiesListQuery,
+  'sellingPriceSource' | 'historicalPricePeriod'
+> & {
   sellingPriceSource?: OpportunitySellingPriceSource;
+  historicalPricePeriod?: OpportunityHistoricalPricePeriod;
 };
 
-type BestCouponCalculationQuery = Omit<BestCouponCombinationsListQuery, 'sellingPriceSource'> & {
+type BestCouponCalculationQuery = Omit<
+  BestCouponCombinationsListQuery,
+  'sellingPriceSource' | 'historicalPricePeriod'
+> & {
   sellingPriceSource?: OpportunitySellingPriceSource;
+  historicalPricePeriod?: OpportunityHistoricalPricePeriod;
 };
 
 export type Opportunity = {
@@ -255,9 +264,34 @@ function sortByCouponDescending(
   return compareCouponIds(left.coupon, right.coupon);
 }
 
+export function getHistoricalPricePeriodStart(
+  period: OpportunityHistoricalPricePeriod,
+  currentTime: Date,
+): Date | undefined {
+  const monthsByPeriod: Partial<Record<OpportunityHistoricalPricePeriod, number>> = {
+    'last-month': 1,
+    'last-3-months': 3,
+    'last-6-months': 6,
+    'last-year': 12,
+  };
+  const months = monthsByPeriod[period];
+  if (months === undefined) return undefined;
+
+  const start = new Date(currentTime);
+  const day = start.getUTCDate();
+  start.setUTCDate(1);
+  start.setUTCMonth(start.getUTCMonth() - months);
+  const lastDayOfTargetMonth = new Date(
+    Date.UTC(start.getUTCFullYear(), start.getUTCMonth() + 1, 0),
+  ).getUTCDate();
+  start.setUTCDate(Math.min(day, lastDayOfTargetMonth));
+  return start;
+}
+
 async function getOpportunityData(
   couponIds: string[] | undefined,
   sellingPriceSource: OpportunitySellingPriceSource,
+  historicalPricePeriod: OpportunityHistoricalPricePeriod,
   currentTime: Date,
   repositories: OpportunityServiceRepositories,
 ) {
@@ -270,8 +304,9 @@ async function getOpportunityData(
         ? Promise.resolve(undefined)
         : repositories.events.findCouponOptions(),
       sellingPriceSource === 'historical'
-        ? (repositories.opportunities.findHistoricalSellingPrices?.() ??
-          Promise.resolve([] as HistoricalSellingPrice[]))
+        ? (repositories.opportunities.findHistoricalSellingPrices?.(
+            getHistoricalPricePeriodStart(historicalPricePeriod, currentTime),
+          ) ?? Promise.resolve([] as HistoricalSellingPrice[]))
         : Promise.resolve([] as HistoricalSellingPrice[]),
     ]);
   const activeEvent = activeEvents[0];
@@ -505,8 +540,15 @@ export async function listOpportunities(
   pagination: { page: number; pageSize: number; total: number; totalPages: number };
 }> {
   const sellingPriceSource = query.sellingPriceSource ?? 'hard-coded';
+  const historicalPricePeriod = query.historicalPricePeriod ?? 'all';
   const { offers, componentsByProductId, coupons, historicalSellingPrices } =
-    await getOpportunityData(query.couponIds, sellingPriceSource, currentTime, repositories);
+    await getOpportunityData(
+      query.couponIds,
+      sellingPriceSource,
+      historicalPricePeriod,
+      currentTime,
+      repositories,
+    );
 
   const opportunities = offers.flatMap((offer) => {
     if (offer.price === null) return [];
@@ -561,8 +603,15 @@ export async function listBestCouponCombinations(
   repositories: OpportunityServiceRepositories = defaultRepositories,
 ): Promise<{ combinations: BestCouponCombination[] }> {
   const sellingPriceSource = query.sellingPriceSource ?? 'hard-coded';
+  const historicalPricePeriod = query.historicalPricePeriod ?? 'all';
   const { offers, componentsByProductId, coupons, historicalSellingPrices } =
-    await getOpportunityData(query.couponIds, sellingPriceSource, currentTime, repositories);
+    await getOpportunityData(
+      query.couponIds,
+      sellingPriceSource,
+      historicalPricePeriod,
+      currentTime,
+      repositories,
+    );
 
   const purchasableProducts = offers.flatMap((offer) => {
     const product = toPurchasableProduct(
