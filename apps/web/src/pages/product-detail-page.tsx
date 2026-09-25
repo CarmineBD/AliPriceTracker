@@ -5,6 +5,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 
 import type { ProductOffer } from '@alitracker/shared';
 
+import { getAveragePrices } from '@/api/average-prices.api';
 import {
   deletePublicationProduct,
   reassignPublicationProduct,
@@ -49,6 +50,9 @@ const euroFormatter = new Intl.NumberFormat('es-ES', {
   style: 'currency',
   currency: 'EUR',
   minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+});
+const percentageFormatter = new Intl.NumberFormat('es-ES', {
   maximumFractionDigits: 2,
 });
 
@@ -100,6 +104,11 @@ export function ProductDetailPage() {
     queryFn: () => getProduct(id ?? ''),
     enabled: Boolean(id),
   });
+  const averagePricesQuery = useQuery({
+    queryKey: ['average-prices'],
+    queryFn: getAveragePrices,
+    enabled: Boolean(id),
+  });
   const productOptionsQuery = useQuery({
     queryKey: ['product-options'],
     queryFn: getProductOptions,
@@ -115,6 +124,7 @@ export function ProductDetailPage() {
       queryClient.invalidateQueries({ queryKey: ['product', id] }),
       queryClient.invalidateQueries({ queryKey: ['product-components', id] }),
       queryClient.invalidateQueries({ queryKey: ['product-best-offer-history', id] }),
+      queryClient.invalidateQueries({ queryKey: ['average-prices'] }),
     ]);
   };
   const deleteMutation = useMutation({
@@ -157,6 +167,18 @@ export function ProductDetailPage() {
     },
   });
   const sortedOffers = productQuery.data ? sortOffersByPrice(productQuery.data.offers) : [];
+  const averagePurchasePrice = averagePricesQuery.data?.purchases.find(
+    (price) => price.productId === productQuery.data?.id,
+  )?.averagePrice;
+  const averageSellingPrice = averagePricesQuery.data?.sales.find(
+    (price) => price.productId === productQuery.data?.id,
+  )?.averagePrice;
+  const averageRoi =
+    averagePurchasePrice !== undefined &&
+    averagePurchasePrice > 0 &&
+    averageSellingPrice !== undefined
+      ? ((averageSellingPrice - averagePurchasePrice) / averagePurchasePrice) * 100
+      : null;
 
   return (
     <AppLayout>
@@ -212,6 +234,34 @@ export function ProductDetailPage() {
                     : euroFormatter.format(productQuery.data.lowestAvailablePriceEuro)}
                 </p>
               </div>
+              <dl className="mt-6 grid gap-4 sm:grid-cols-3">
+                <div>
+                  <dt className="text-sm font-medium text-muted-foreground">
+                    Precio medio de compra
+                  </dt>
+                  <dd className="mt-1 text-lg font-semibold tabular-nums text-slate-900">
+                    {averagePurchasePrice === undefined
+                      ? '—'
+                      : euroFormatter.format(averagePurchasePrice)}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-sm font-medium text-muted-foreground">
+                    Precio medio de venta
+                  </dt>
+                  <dd className="mt-1 text-lg font-semibold tabular-nums text-slate-900">
+                    {averageSellingPrice === undefined
+                      ? '—'
+                      : euroFormatter.format(averageSellingPrice)}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-sm font-medium text-muted-foreground">ROI medio</dt>
+                  <dd className="mt-1 text-lg font-semibold tabular-nums text-slate-900">
+                    {averageRoi === null ? '—' : `${percentageFormatter.format(averageRoi)}%`}
+                  </dd>
+                </div>
+              </dl>
             </div>
             <Button
               type="button"

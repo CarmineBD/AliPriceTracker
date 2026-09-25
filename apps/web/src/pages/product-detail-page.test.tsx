@@ -52,6 +52,9 @@ const {
   uploadProductImageMock: vi.fn(),
 }));
 const { getBestOfferHistoryMock } = vi.hoisted(() => ({ getBestOfferHistoryMock: vi.fn() }));
+const { getAveragePricesMock } = vi.hoisted(() => ({
+  getAveragePricesMock: vi.fn().mockResolvedValue({ purchases: [], sales: [] }),
+}));
 const { deletePublicationProductMock, reassignPublicationProductMock } = vi.hoisted(() => ({
   deletePublicationProductMock: vi.fn(),
   reassignPublicationProductMock: vi.fn(),
@@ -69,6 +72,9 @@ vi.mock('@/api/products.api', () => ({
 vi.mock('@/api/product-best-offer-history.api', () => ({
   getProductBestOfferHistory: getBestOfferHistoryMock,
 }));
+vi.mock('@/api/average-prices.api', () => ({
+  getAveragePrices: getAveragePricesMock,
+}));
 vi.mock('@/api/publication-products.api', () => ({
   deletePublicationProduct: deletePublicationProductMock,
   reassignPublicationProduct: reassignPublicationProductMock,
@@ -79,6 +85,24 @@ afterEach(cleanup);
 describe('ProductDetailPage', () => {
   it('shows the product data, description, lowest price, and a larger image', async () => {
     getProductMock.mockResolvedValue(product);
+    getAveragePricesMock.mockResolvedValue({
+      purchases: [
+        {
+          productId: product.id,
+          imageUrl: product.imageUrl,
+          shortName: product.shortName,
+          averagePrice: 10,
+        },
+      ],
+      sales: [
+        {
+          productId: product.id,
+          imageUrl: product.imageUrl,
+          shortName: product.shortName,
+          averagePrice: 12.5,
+        },
+      ],
+    });
     const productOffer = product.offers[0]!;
     getBestOfferHistoryMock.mockResolvedValue({
       product: { id: product.id, name: product.name },
@@ -125,6 +149,12 @@ describe('ProductDetailPage', () => {
     expect(image).toHaveClass('size-40', 'object-cover');
     expect(screen.getByRole('heading', { name: product.name })).toBeInTheDocument();
     expect(screen.getByText('Precio más bajo disponible')).toBeInTheDocument();
+    expect(screen.getByText('Precio medio de compra')).toBeInTheDocument();
+    expect(screen.getByText(/10,00/)).toBeInTheDocument();
+    expect(screen.getByText('Precio medio de venta')).toBeInTheDocument();
+    expect(screen.getByText(/12,50/)).toBeInTheDocument();
+    expect(screen.getByText('ROI medio')).toBeInTheDocument();
+    expect(screen.getByText('25%')).toBeInTheDocument();
     expect(
       await screen.findByLabelText('Gráfica de histórico de mejor oferta'),
     ).toBeInTheDocument();
@@ -139,7 +169,9 @@ describe('ProductDetailPage', () => {
     expect(screen.getByText(product.description)).toBeInTheDocument();
     expect(screen.getByText('Fecha de actualización')).toBeInTheDocument();
     expect(screen.getByText('Fecha de creación')).toBeInTheDocument();
-    expect(screen.queryByRole('heading', { name: 'Productos que contiene (0)' })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('heading', { name: 'Productos que contiene (0)' }),
+    ).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: /^editar$/i })).toBeInTheDocument();
   });
 
