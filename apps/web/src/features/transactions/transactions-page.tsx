@@ -3,9 +3,11 @@ import { useState } from 'react';
 import type {
   PurchaseCreateInput,
   PurchaseHistoryEntry,
+  PurchaseStatus,
   PurchaseUpdateInput,
   SaleCreateInput,
   SaleHistoryEntry,
+  SaleStatus,
   SaleUpdateInput,
 } from '@alitracker/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -23,6 +25,7 @@ import {
 } from '@/api/transactions.api';
 import { getProductOptions } from '@/api/products.api';
 import { Button } from '@/components/ui/button';
+import { toast } from '@/components/ui/toast';
 import {
   Pagination,
   PaginationContent,
@@ -36,6 +39,7 @@ import { DeleteTransactionDialog } from './delete-transaction-dialog';
 import { TransactionFormDialog } from './transaction-form-dialog';
 import { TransactionHistoryTable } from './transaction-history-table';
 import { AppLayout } from '@/layouts/app-layout';
+import type { TransactionStatus } from './transaction-status';
 
 const pageSize = 20;
 
@@ -43,6 +47,7 @@ type TransactionKind = 'purchase' | 'sale';
 type Transaction = PurchaseHistoryEntry | SaleHistoryEntry;
 type PaginationData = { page: number; pageSize: number; total: number; totalPages: number };
 type TransactionList = { transactions: Transaction[]; pagination: PaginationData };
+type StatusUpdate = { id: string; status: TransactionStatus };
 
 function getPageItems(currentPage: number, totalPages: number): Array<number | 'ellipsis'> {
   if (totalPages <= 7) return Array.from({ length: totalPages }, (_, index) => index + 1);
@@ -188,6 +193,23 @@ export function TransactionsPage({ kind }: { kind: TransactionKind }) {
       }
     },
   });
+  const statusMutation = useMutation<void, Error, StatusUpdate>({
+    mutationFn: async ({ id, status }) => {
+      if (kind === 'purchase') {
+        await updatePurchase(id, { status: status as PurchaseStatus });
+        return;
+      }
+      await updateSale(id, { status: status as SaleStatus });
+    },
+    onSuccess: refreshTransactions,
+    onError: () => {
+      toast({
+        title: 'No se pudo actualizar el estado',
+        description: 'Inténtalo de nuevo.',
+        type: 'error',
+      });
+    },
+  });
 
   const label = kind === 'purchase' ? 'Compras' : 'Ventas';
   const transactions = transactionsQuery.data?.transactions ?? [];
@@ -225,6 +247,9 @@ export function TransactionsPage({ kind }: { kind: TransactionKind }) {
             <TransactionHistoryTable
               kind={kind}
               transactions={transactions}
+              updatingStatusTransactionId={
+                statusMutation.isPending ? statusMutation.variables.id : undefined
+              }
               onEdit={(transaction) => {
                 saveMutation.reset();
                 setFormTransaction(transaction);
@@ -232,6 +257,11 @@ export function TransactionsPage({ kind }: { kind: TransactionKind }) {
               onDelete={(transaction) => {
                 deleteMutation.reset();
                 setTransactionToDelete(transaction);
+              }}
+              onStatusChange={(transaction, status) => {
+                if (!statusMutation.isPending && transaction.status !== status) {
+                  statusMutation.mutate({ id: transaction.id, status });
+                }
               }}
               onCreate={() => {
                 saveMutation.reset();

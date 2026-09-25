@@ -4,6 +4,8 @@ import { ExternalLink, ImageOff, Info, Pencil, ShoppingCart, Trash2 } from 'luci
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/empty-state';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import {
   Table,
@@ -13,29 +15,26 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import {
+  getTransactionStatusOptions,
+  type TransactionKind,
+  type TransactionStatus,
+} from './transaction-status';
 
-type TransactionKind = 'purchase' | 'sale';
 type Transaction = PurchaseHistoryEntry | SaleHistoryEntry;
 
 type TransactionHistoryTableProps = {
   kind: TransactionKind;
   transactions: Transaction[];
+  updatingStatusTransactionId?: string;
   onEdit: (transaction: Transaction) => void;
   onDelete: (transaction: Transaction) => void;
+  onStatusChange: (transaction: Transaction, status: TransactionStatus) => void;
   onCreate?: () => void;
 };
 
 const dateFormatter = new Intl.DateTimeFormat('es-ES', { dateStyle: 'medium' });
 const currencyFormatter = new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' });
-
-const statusLabels: Record<string, string> = {
-  ordered: 'Pedido',
-  received: 'Recibido',
-  returned: 'Devuelto',
-  to_be_sent: 'Por enviar',
-  sent: 'Enviado',
-  completed: 'Completado',
-};
 
 function statusVariant(status: string): 'default' | 'secondary' | 'outline' | 'destructive' {
   if (status === 'returned') return 'destructive';
@@ -127,11 +126,14 @@ function ProfitBreakdownTooltip({ breakdown }: { breakdown: SaleHistoryEntry['pr
 export function TransactionHistoryTable({
   kind,
   transactions,
+  updatingStatusTransactionId,
   onEdit,
   onDelete,
+  onStatusChange,
   onCreate,
 }: TransactionHistoryTableProps) {
   const entityName = kind === 'purchase' ? 'compras' : 'ventas';
+  const statusOptions = getTransactionStatusOptions(kind);
 
   if (transactions.length === 0) {
     return (
@@ -229,9 +231,49 @@ export function TransactionHistoryTable({
                   </>
                 )}
                 <TableCell>
-                  <Badge variant={statusVariant(transaction.status)}>
-                    {statusLabels[transaction.status]}
-                  </Badge>
+                  {updatingStatusTransactionId === transaction.id ? (
+                    <Skeleton
+                      className="h-5 w-20"
+                      role="status"
+                      aria-label="Actualizando estado"
+                    />
+                  ) : (
+                    <Popover>
+                      <PopoverTrigger
+                        render={
+                          <button
+                            type="button"
+                            className="cursor-pointer rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                            aria-label={`Cambiar estado de ${
+                              kind === 'purchase' ? 'compra' : 'venta'
+                            } de ${transaction.shortName}`}
+                          />
+                        }
+                      >
+                        <Badge variant={statusVariant(transaction.status)}>
+                          {
+                            statusOptions.find((option) => option.value === transaction.status)
+                              ?.label
+                          }
+                        </Badge>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto">
+                        <div className="flex flex-wrap gap-2" aria-label="Seleccionar estado">
+                          {statusOptions.map((option) => (
+                            <button
+                              key={option.value}
+                              type="button"
+                              className="cursor-pointer rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                              aria-label={option.label}
+                              onClick={() => onStatusChange(transaction, option.value)}
+                            >
+                              <Badge variant={statusVariant(option.value)}>{option.label}</Badge>
+                            </button>
+                          ))}
+                        </div>
+                      </PopoverContent>
+                    </Popover>
+                  )}
                 </TableCell>
                 <TableCell className="text-right">
                   <div className="flex justify-end gap-1">

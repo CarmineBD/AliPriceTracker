@@ -41,10 +41,9 @@ import {
 } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { ProductCombobox } from '@/features/products/product-combobox';
+import { getTransactionStatusOptions, type TransactionKind } from './transaction-status';
 
-type TransactionKind = 'purchase' | 'sale';
 type Transaction = PurchaseHistoryEntry | SaleHistoryEntry;
-type StatusOption = { value: PurchaseStatus | SaleStatus; label: string };
 
 type TransactionFormDialogProps = {
   kind: TransactionKind;
@@ -66,18 +65,6 @@ type FormValues = {
   shippingCost: string;
   status: string;
 };
-
-const purchaseStatuses: StatusOption[] = [
-  { value: 'ordered', label: 'Pedido' },
-  { value: 'received', label: 'Recibido' },
-  { value: 'returned', label: 'Devuelto' },
-];
-
-const saleStatuses: StatusOption[] = [
-  { value: 'to_be_sent', label: 'Por enviar' },
-  { value: 'sent', label: 'Enviado' },
-  { value: 'completed', label: 'Completado' },
-];
 
 function toDateInputValue(date: Date): string {
   const localDate = new Date(date);
@@ -148,7 +135,7 @@ export function TransactionFormDialog({
   });
   const offerOptions = sortOffersByPrice(selectedProductQuery.data?.offers ?? []);
   const selectedOffer = offerOptions.find((offer) => offer.id === values.offerId) ?? null;
-  const statusOptions = kind === 'purchase' ? purchaseStatuses : saleStatuses;
+  const statusOptions = getTransactionStatusOptions(kind);
   const selectedStatus = statusOptions.find((option) => option.value === values.status) ?? null;
 
   useEffect(() => {
@@ -351,7 +338,7 @@ export function TransactionFormDialog({
                     <ComboboxInput aria-label="Seleccionar estado" readOnly />
                     <ComboboxContent>
                       <ComboboxList>
-                        {(option: StatusOption) => (
+                        {(option) => (
                           <ComboboxItem key={option.value} value={option}>
                             {option.label}
                           </ComboboxItem>
