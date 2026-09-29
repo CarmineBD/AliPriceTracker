@@ -14,7 +14,7 @@ describe('AppLayout', () => {
 
     expect(screen.getByRole('button', { name: 'Gestión' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Registros' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Eventos y cupones' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Eventos y cupones' })).toHaveAttribute('href', '/events');
     expect(screen.getByRole('button', { name: 'Oportunidades' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '+ Añadir de AliExpress' })).toHaveAttribute(
       'href',

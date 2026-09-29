@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import type { Coupon } from '@alitracker/shared';
 
 import {
+  createCoupon,
   createEvent,
   getActiveEvents,
   listCoupons,
@@ -117,6 +118,23 @@ describe('getActiveEvents', () => {
 });
 
 describe('events management', () => {
+  it('refuses to create a coupon when its discount, minimum purchase, and category already exist', async () => {
+    await expect(
+      createCoupon(
+        { minPurchase: 79, discountAmount: 10, category: 'event' },
+        {
+          couponExistsWithValues: async () => true,
+          createCoupon: async () => {
+            throw new Error('This repository method should not be called.');
+          },
+        },
+      ),
+    ).rejects.toMatchObject({
+      statusCode: 409,
+      message: 'Ya existe un cupón con el mismo descuento, mínimo de compra y categoría.',
+    });
+  });
+
   it('maps coupon numeric database values in a paginated result', async () => {
     const result = await listCoupons(
       { page: 2, pageSize: 20 },

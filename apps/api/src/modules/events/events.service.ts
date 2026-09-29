@@ -137,8 +137,14 @@ export async function listCouponOptions(
 
 export async function createCoupon(
   input: CouponCreateInput,
-  eventsRepository: Pick<EventsRepository, 'createCoupon'> = repository,
+  eventsRepository: Pick<EventsRepository, 'couponExistsWithValues' | 'createCoupon'> = repository,
 ) {
+  if (await eventsRepository.couponExistsWithValues(input)) {
+    throw new HttpError(
+      'Ya existe un cupón con el mismo descuento, mínimo de compra y categoría.',
+      409,
+    );
+  }
   const coupon = await eventsRepository.createCoupon(input);
   if (!coupon) throw new Error('Coupon creation did not return a coupon.');
   return toCouponResponse(coupon);

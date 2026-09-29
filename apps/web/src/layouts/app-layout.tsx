@@ -45,11 +45,7 @@ export function AppLayout({ children }: PropsWithChildren) {
                 </NavigationMenuContent>
               </NavigationMenuItem>
               <NavigationMenuItem>
-                <NavigationMenuTrigger>Eventos y cupones</NavigationMenuTrigger>
-                <NavigationMenuContent className="grid w-44 gap-1">
-                  <MenuLink to="/events">Eventos</MenuLink>
-                  <MenuLink to="/events">Cupones</MenuLink>
-                </NavigationMenuContent>
+                <NavigationMenuLink render={<Link to="/events" />}>Eventos y cupones</NavigationMenuLink>
               </NavigationMenuItem>
               <NavigationMenuItem>
                 <NavigationMenuTrigger>Oportunidades</NavigationMenuTrigger>

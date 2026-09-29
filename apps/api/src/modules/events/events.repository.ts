@@ -1,4 +1,4 @@
-import { and, asc, count, eq, gte, inArray, lte } from 'drizzle-orm';
+import { and, asc, count, eq, gte, inArray, isNull, lte } from 'drizzle-orm';
 
 import type {
   CouponCategory,
@@ -116,6 +116,22 @@ export class EventsRepository {
       .from(coupons)
       .where(inArray(coupons.id, ids));
     return result?.total ?? 0;
+  }
+
+  async couponExistsWithValues(input: CouponCreateInput): Promise<boolean> {
+    const category = input.category ?? null;
+    const [coupon] = await this.client
+      .select({ id: coupons.id })
+      .from(coupons)
+      .where(
+        and(
+          eq(coupons.minPurchase, input.minPurchase.toFixed(2)),
+          eq(coupons.discountAmount, input.discountAmount.toFixed(2)),
+          category === null ? isNull(coupons.category) : eq(coupons.category, category),
+        ),
+      )
+      .limit(1);
+    return coupon !== undefined;
   }
 
   async createCoupon(input: CouponCreateInput) {

@@ -70,4 +70,20 @@ describe('CouponFormDialog', () => {
 
     expect(screen.getByRole('combobox', { name: /categor/i })).toHaveValue('Evento');
   });
+
+  it('shows the duplicate coupon error returned by the API', () => {
+    render(
+      <CouponFormDialog
+        open
+        isSaving={false}
+        error="Ya existe un cupón con el mismo descuento, mínimo de compra y categoría."
+        onOpenChange={vi.fn()}
+        onSubmit={vi.fn()}
+      />,
+    );
+
+    expect(
+      screen.getByText('Ya existe un cupón con el mismo descuento, mínimo de compra y categoría.'),
+    ).toBeInTheDocument();
+  });
 });
