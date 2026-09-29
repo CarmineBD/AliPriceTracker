@@ -8,6 +8,7 @@ import type {
 } from '@alitracker/shared';
 
 import { getPublicUrl } from '../../services/storage.service.js';
+import { calculateRoi } from '../../utils/financial-calculations.js';
 import { EventsRepository } from '../events/events.repository.js';
 import {
   OpportunitiesRepository,
@@ -203,13 +204,7 @@ export function calculateProfit(
   return fromCents(toCents(estimatedSellingPrice) - toCents(effectivePurchasePrice));
 }
 
-export function calculateRoi(
-  estimatedProfit: number,
-  effectivePurchasePrice: number,
-): number | null {
-  if (!Number.isFinite(effectivePurchasePrice) || effectivePurchasePrice <= 0) return null;
-  return Math.round((estimatedProfit / effectivePurchasePrice) * 10_000) / 100;
-}
+export { calculateRoi };
 
 function groupComponentsByProductId(components: ProductComboComponent[]) {
   const componentsByProductId = new Map<string, ProductComboComponent[]>();

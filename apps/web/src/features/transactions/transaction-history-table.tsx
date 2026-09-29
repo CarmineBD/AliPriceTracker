@@ -26,7 +26,7 @@ type Transaction = PurchaseHistoryEntry | SaleHistoryEntry;
 type TransactionHistoryTableProps = {
   kind: TransactionKind;
   transactions: Transaction[];
-  updatingStatusTransactionId?: string;
+  updatingStatusTransactionIds: ReadonlySet<string>;
   onEdit: (transaction: Transaction) => void;
   onDelete: (transaction: Transaction) => void;
   onStatusChange: (transaction: Transaction, status: TransactionStatus) => void;
@@ -35,6 +35,15 @@ type TransactionHistoryTableProps = {
 
 const dateFormatter = new Intl.DateTimeFormat('es-ES', { dateStyle: 'medium' });
 const currencyFormatter = new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' });
+const percentageFormatter = new Intl.NumberFormat('es-ES', { maximumFractionDigits: 0 });
+const smallPercentageFormatter = new Intl.NumberFormat('es-ES', {
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+});
+
+function formatRoi(roi: number): string {
+  return Math.abs(roi) < 1 ? smallPercentageFormatter.format(roi) : percentageFormatter.format(roi);
+}
 
 function statusVariant(status: string): 'default' | 'secondary' | 'outline' | 'destructive' {
   if (status === 'returned') return 'destructive';
@@ -126,7 +135,7 @@ function ProfitBreakdownTooltip({ breakdown }: { breakdown: SaleHistoryEntry['pr
 export function TransactionHistoryTable({
   kind,
   transactions,
-  updatingStatusTransactionId,
+  updatingStatusTransactionIds,
   onEdit,
   onDelete,
   onStatusChange,
@@ -225,18 +234,17 @@ export function TransactionHistoryTable({
                     <TableCell className="text-right font-medium">
                       <div className="flex items-center justify-end gap-1">
                         <span>{currencyFormatter.format(transaction.profit)}</span>
+                        <span className="text-sm font-normal text-muted-foreground">
+                          ({transaction.roi === null ? '—' : `${formatRoi(transaction.roi)}%`} ROI)
+                        </span>
                         <ProfitBreakdownTooltip breakdown={transaction.profitBreakdown} />
                       </div>
                     </TableCell>
                   </>
                 )}
                 <TableCell>
-                  {updatingStatusTransactionId === transaction.id ? (
-                    <Skeleton
-                      className="h-5 w-20"
-                      role="status"
-                      aria-label="Actualizando estado"
-                    />
+                  {updatingStatusTransactionIds.has(transaction.id) ? (
+                    <Skeleton className="h-5 w-20" role="status" aria-label="Actualizando estado" />
                   ) : (
                     <Popover>
                       <PopoverTrigger

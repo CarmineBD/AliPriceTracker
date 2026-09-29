@@ -64,6 +64,7 @@ describe('sales service', () => {
         {
           id: saleId,
           profit: 15,
+          roi: 50,
           profitBreakdown: {
             revenue: 50,
             shippingCost: 5,

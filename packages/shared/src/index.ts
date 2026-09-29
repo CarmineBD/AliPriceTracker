@@ -145,6 +145,7 @@ export const saleHistoryEntrySchema = z.object({
   totalSalePrice: moneyAmountSchema,
   shippingCost: moneyAmountSchema,
   profit: z.number().finite(),
+  roi: z.number().finite().nullable(),
   profitBreakdown: saleProfitBreakdownSchema,
   status: saleStatusSchema,
   date: transactionDateSchema,

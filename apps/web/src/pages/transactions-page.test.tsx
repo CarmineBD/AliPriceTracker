@@ -85,6 +85,7 @@ describe('transaction pages', () => {
           totalSalePrice: 25,
           shippingCost: 3,
           profit: 12,
+          roi: 0.5,
           profitBreakdown: {
             revenue: 25,
             shippingCost: 3,
@@ -106,6 +107,7 @@ describe('transaction pages', () => {
     expect(screen.getByText('Envío asumido')).toBeInTheDocument();
     expect(screen.getByRole('cell', { name: /22,00/ })).toBeInTheDocument();
     expect(screen.getByRole('cell', { name: /12,00/ })).toBeInTheDocument();
+    expect(screen.getByText('(0,50% ROI)')).toBeInTheDocument();
     expect(screen.queryByText('Ver publicación')).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Añadir registro' }));
 

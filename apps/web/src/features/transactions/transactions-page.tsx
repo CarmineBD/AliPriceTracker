@@ -138,6 +138,9 @@ export function TransactionsPage({ kind }: { kind: TransactionKind }) {
   const [page, setPage] = useState(1);
   const [formTransaction, setFormTransaction] = useState<Transaction | null | undefined>(undefined);
   const [transactionToDelete, setTransactionToDelete] = useState<Transaction>();
+  const [updatingStatusTransactionIds, setUpdatingStatusTransactionIds] = useState<Set<string>>(
+    () => new Set(),
+  );
   const transactionsQuery = useQuery({
     queryKey: [kind === 'purchase' ? 'purchases' : 'sales', { page, pageSize }],
     queryFn: async (): Promise<TransactionList> => {
@@ -201,12 +204,22 @@ export function TransactionsPage({ kind }: { kind: TransactionKind }) {
       }
       await updateSale(id, { status: status as SaleStatus });
     },
+    onMutate: ({ id }) => {
+      setUpdatingStatusTransactionIds((current) => new Set(current).add(id));
+    },
     onSuccess: refreshTransactions,
     onError: () => {
       toast({
         title: 'No se pudo actualizar el estado',
         description: 'Inténtalo de nuevo.',
         type: 'error',
+      });
+    },
+    onSettled: (_data, _error, { id }) => {
+      setUpdatingStatusTransactionIds((current) => {
+        const next = new Set(current);
+        next.delete(id);
+        return next;
       });
     },
   });
@@ -247,9 +260,7 @@ export function TransactionsPage({ kind }: { kind: TransactionKind }) {
             <TransactionHistoryTable
               kind={kind}
               transactions={transactions}
-              updatingStatusTransactionId={
-                statusMutation.isPending ? statusMutation.variables.id : undefined
-              }
+              updatingStatusTransactionIds={updatingStatusTransactionIds}
               onEdit={(transaction) => {
                 saveMutation.reset();
                 setFormTransaction(transaction);
@@ -259,7 +270,10 @@ export function TransactionsPage({ kind }: { kind: TransactionKind }) {
                 setTransactionToDelete(transaction);
               }}
               onStatusChange={(transaction, status) => {
-                if (!statusMutation.isPending && transaction.status !== status) {
+                if (
+                  !updatingStatusTransactionIds.has(transaction.id) &&
+                  transaction.status !== status
+                ) {
                   statusMutation.mutate({ id: transaction.id, status });
                 }
               }}

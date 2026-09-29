@@ -1,6 +1,7 @@
 import type { SaleCreateInput, SaleUpdateInput, TransactionsListQuery } from '@alitracker/shared';
 
 import { getPublicUrl } from '../../services/storage.service.js';
+import { calculateRoi } from '../../utils/financial-calculations.js';
 import { HttpError } from '../../utils/http-error.js';
 import { MetricsRepository } from '../metrics/metrics.repository.js';
 import { calculateFifoMetrics } from '../metrics/metrics.service.js';
@@ -26,6 +27,7 @@ export async function listSales(
       const shippingCost = Number(sale.shippingCost);
       const netRevenueInCents = Math.round((revenue - shippingCost) * 100);
       const costInCents = Math.round(cogsBySaleId.get(sale.id) ?? 0);
+      const profit = (netRevenueInCents - costInCents) / 100;
 
       return {
         id: sale.id,
@@ -34,7 +36,8 @@ export async function listSales(
         shortName: sale.shortName,
         totalSalePrice: revenue,
         shippingCost,
-        profit: (netRevenueInCents - costInCents) / 100,
+        profit,
+        roi: calculateRoi(profit, costInCents / 100),
         profitBreakdown: {
           revenue,
           shippingCost,
