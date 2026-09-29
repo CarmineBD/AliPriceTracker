@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
+import type { AliExpressProductResult } from '../src/modules/aliexpress-client/aliexpress-client';
 import { lookupAliExpressProduct } from '../src/modules/aliexpress-product-lookup/aliexpress-product-lookup.service';
 
 describe('lookupAliExpressProduct', () => {
@@ -8,6 +9,32 @@ describe('lookupAliExpressProduct', () => {
       .fn()
       .mockResolvedValue(new Map<string, string>([['sku-1', '9f98dbb8-99f6-4058-96f0-9577322cffdb']])),
   };
+
+  function failedProductRequest(
+    overrides: Pick<AliExpressProductResult, 'status'> & {
+      errorCode?: AliExpressProductResult['body']['errorCode'];
+      upstreamStatus?: AliExpressProductResult['body']['upstreamStatus'];
+    },
+  ): AliExpressProductResult {
+    return {
+      status: overrides.status,
+      body: {
+        success: false,
+        mtopRet: null,
+        productId: '1005010519851506',
+        productName: null,
+        skuCount: 0,
+        skuPrices: [],
+        store: null,
+        publication: null,
+        products: [],
+        errorType: 'upstream',
+        errorCode: overrides.errorCode ?? null,
+        upstreamStatus: overrides.upstreamStatus ?? null,
+        session: null,
+      },
+    };
+  }
 
   it('adapts the existing AliExpress lookup result for the frontend', async () => {
     const requestProduct = vi.fn().mockResolvedValue({
@@ -99,17 +126,59 @@ describe('lookupAliExpressProduct', () => {
     });
   });
 
-  it('does not expose diagnostics from a failed upstream request', async () => {
-    const requestProduct = vi.fn().mockResolvedValue({
-      status: 502,
-      body: { success: false },
-    });
+  it('explains when it cannot connect to AliExpress', async () => {
+    const requestProduct = vi.fn().mockResolvedValue(failedProductRequest({ status: 502 }));
 
     await expect(
       lookupAliExpressProduct('1005010519851506', requestProduct, repository),
     ).resolves.toEqual({
       status: 502,
-      body: { error: 'No se pudo consultar la publicación de AliExpress.' },
+      body: {
+        code: 'ALIEXPRESS_CONNECTION_FAILED',
+        message:
+          'No se pudo conectar con AliExpress. Comprueba la conexión del servidor e inténtalo de nuevo.',
+      },
+    });
+  });
+
+  it('explains when the AliExpress session must be renewed', async () => {
+    const requestProduct = vi
+      .fn()
+      .mockResolvedValue(
+        failedProductRequest({ status: 502, errorCode: 'ALIEXPRESS_SESSION_REAUTH_REQUIRED' }),
+      );
+
+    await expect(
+      lookupAliExpressProduct('1005010519851506', requestProduct, repository),
+    ).resolves.toEqual({
+      status: 503,
+      body: {
+        code: 'ALIEXPRESS_SESSION_REAUTH_REQUIRED',
+        message:
+          'La sesión de AliExpress ha caducado o ha sido rechazada. Actualiza la cookie de AliExpress e inicializa de nuevo la sesión.',
+      },
+    });
+  });
+
+  it('distinguishes an unavailable AliExpress service from a rejected request', async () => {
+    const unavailableRequest = vi
+      .fn()
+      .mockResolvedValue(failedProductRequest({ status: 502, upstreamStatus: 503 }));
+    const rejectedRequest = vi
+      .fn()
+      .mockResolvedValue(failedProductRequest({ status: 502, upstreamStatus: 400 }));
+
+    await expect(
+      lookupAliExpressProduct('1005010519851506', unavailableRequest, repository),
+    ).resolves.toMatchObject({
+      status: 503,
+      body: { code: 'ALIEXPRESS_UPSTREAM_UNAVAILABLE' },
+    });
+    await expect(
+      lookupAliExpressProduct('1005010519851506', rejectedRequest, repository),
+    ).resolves.toMatchObject({
+      status: 502,
+      body: { code: 'ALIEXPRESS_UPSTREAM_REJECTED' },
     });
   });
 });

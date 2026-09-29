@@ -173,6 +173,29 @@ describe('AliExpressProductSearchPage', () => {
     expect(mockedGetAliExpressProduct).toHaveBeenCalledWith('1005010608116819');
   });
 
+  it('shows the Spanish explanation for an expired AliExpress session', async () => {
+    mockedGetAliExpressProduct.mockRejectedValue(
+      new ApiError(
+        'La sesión de AliExpress ha caducado o ha sido rechazada. Actualiza la cookie de AliExpress e inicializa de nuevo la sesión.',
+        503,
+        'ALIEXPRESS_SESSION_REAUTH_REQUIRED',
+      ),
+    );
+    mockedGetProductOptions.mockResolvedValue([]);
+
+    renderPage();
+    fireEvent.change(screen.getByLabelText('ID o URL de publicación AliExpress'), {
+      target: { value: '1005012470064491' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Buscar' }));
+
+    expect(
+      await screen.findByText(
+        'La sesión de AliExpress ha caducado o ha sido rechazada. Actualiza la cookie de AliExpress e inicializa de nuevo la sesión.',
+      ),
+    ).toBeInTheDocument();
+  });
+
   it('keeps the import button disabled when no variant has an associated product', async () => {
     mockedGetAliExpressProduct.mockResolvedValue(preview);
     mockedGetProductOptions.mockResolvedValue([productOne, productTwo]);
