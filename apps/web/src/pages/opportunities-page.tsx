@@ -1,6 +1,6 @@
 import { useState } from 'react';
 
-import { useQuery } from '@tanstack/react-query';
+import { useQueries, useQuery } from '@tanstack/react-query';
 import type {
   OpportunityHistoricalPricePeriod,
   OpportunitySellingPriceSource,
@@ -8,6 +8,7 @@ import type {
 
 import { getActiveEvents, getCouponOptions } from '@/api/events.api';
 import { getBestCouponCombinations, getOpportunities } from '@/api/opportunities.api';
+import { getProduct } from '@/api/products.api';
 import {
   Pagination,
   PaginationContent,
@@ -30,6 +31,7 @@ import { Field, FieldContent, FieldLabel } from '@/components/ui/field';
 import { OpportunitiesTable } from '@/features/opportunities/opportunities-table';
 import { CombinedOpportunitiesTable } from '@/features/opportunities/combined-opportunities-table';
 import { BestCouponCombinationsTable } from '@/features/opportunities/best-coupon-combinations-table';
+import { AccountPlanner } from '@/features/opportunities/account-planner';
 import { OpportunityCouponFilters } from '@/features/opportunities/opportunity-coupon-filters';
 import { AppLayout } from '@/layouts/app-layout';
 
@@ -138,6 +140,52 @@ export function OpportunitiesPage() {
             },
       ),
   });
+  const plannerOpportunitiesQuery = useQuery({
+    queryKey: [
+      'account-planner-opportunities',
+      {
+        couponIds,
+        sellingPriceSource,
+        historicalPricePeriod,
+      },
+    ],
+    enabled: couponDefaultsReady,
+    queryFn: async () => {
+      const query =
+        couponIds.length > 0
+          ? { couponIds, sellingPriceSource, historicalPricePeriod }
+          : { sellingPriceSource, historicalPricePeriod };
+      const firstPage = await getOpportunities({
+        ...query,
+        sort: 'roi-desc',
+        page: 1,
+        pageSize: 100,
+      });
+      const remainingPages = await Promise.all(
+        Array.from({ length: Math.max(0, firstPage.pagination.totalPages - 1) }, (_, index) =>
+          getOpportunities({
+            ...query,
+            sort: 'roi-desc',
+            page: index + 2,
+            pageSize: 100,
+          }),
+        ),
+      );
+      return [firstPage, ...remainingPages].flatMap((response) => response.opportunities);
+    },
+  });
+  const plannerProductIds = (plannerOpportunitiesQuery.data ?? []).map(
+    (opportunity) => opportunity.productId,
+  );
+  const plannerProductQueries = useQueries({
+    queries: plannerProductIds.map((productId) => ({
+      queryKey: ['product', productId],
+      queryFn: () => getProduct(productId),
+    })),
+  });
+  const plannerProductDetailsById = new Map(
+    plannerProductQueries.flatMap((query) => (query.data ? [[query.data.id, query.data] as const] : [])),
+  );
   const pagination = opportunitiesQuery.data?.pagination;
   const bestCouponCombinationsQuery = useQuery({
     queryKey: [
@@ -423,6 +471,12 @@ export function OpportunitiesPage() {
           </div>
         )}
       </section>
+
+      <AccountPlanner
+        opportunities={plannerOpportunitiesQuery.data ?? []}
+        coupons={selectedCoupons}
+        productDetailsById={plannerProductDetailsById}
+      />
     </AppLayout>
   );
 }

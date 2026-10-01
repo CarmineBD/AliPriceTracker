@@ -191,10 +191,18 @@ describe('OpportunitiesPage', () => {
       'Beneficio',
     ]);
     await waitFor(() => {
-      expect(getOpportunitiesMock).toHaveBeenLastCalledWith({
+      expect(getOpportunitiesMock).toHaveBeenCalledWith({
         sort: 'roi-desc',
         page: 1,
         pageSize: 20,
+        couponIds: ['00000000-0000-4000-8000-000000000002'],
+        sellingPriceSource: 'hard-coded',
+        historicalPricePeriod: 'all',
+      });
+      expect(getOpportunitiesMock).toHaveBeenCalledWith({
+        sort: 'roi-desc',
+        page: 1,
+        pageSize: 100,
         couponIds: ['00000000-0000-4000-8000-000000000002'],
         sellingPriceSource: 'hard-coded',
         historicalPricePeriod: 'all',
@@ -207,7 +215,7 @@ describe('OpportunitiesPage', () => {
     });
     expect(getActiveEventsMock).toHaveBeenCalledOnce();
     expect(getCouponOptionsMock).toHaveBeenCalledOnce();
-    expect(getOpportunitiesMock).toHaveBeenCalledOnce();
+    expect(getOpportunitiesMock).toHaveBeenCalledTimes(2);
     expect(getBestCouponCombinationsMock).toHaveBeenCalledOnce();
   });
 });
