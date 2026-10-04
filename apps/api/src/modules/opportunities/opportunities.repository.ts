@@ -1,9 +1,9 @@
-import { desc, eq, exists, gte, isNull, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, gt, gte, isNotNull, isNull, sql } from 'drizzle-orm';
 
 import { getDatabase } from '../../db/client.js';
 import {
-  productBestOfferHistory,
   publicationProducts,
+  publications,
 } from '../../db/schema/aliexpress-publications.js';
 import { productCombos } from '../../db/schema/product-combos.js';
 import { products } from '../../db/schema/products.js';
@@ -46,39 +46,37 @@ export class OpportunitiesRepository {
   }
 
   /**
-   * PostgreSQL DISTINCT ON selects one snapshot per product without issuing a query per product.
-   * The id ordering makes simultaneous captures deterministic.
+   * PostgreSQL DISTINCT ON selects the cheapest currently purchasable publication per product.
+   * Opportunities must use current publication data rather than the best-offer history snapshot,
+   * which can be stale while a tracker refresh is incomplete.
    */
   async findProductsWithCurrentOffers(): Promise<CurrentProductOffer[]> {
     return this.client
-      .selectDistinctOn([productBestOfferHistory.productId], {
+      .selectDistinctOn([publicationProducts.productId], {
         productId: products.id,
         name: products.name,
         shortName: products.shortName,
         iconUrl: products.iconUrl,
         imageKey: products.imageKey,
         averageSellingPrice: products.averageSellingPrice,
-        price: productBestOfferHistory.price,
-        currency: productBestOfferHistory.currency,
-        quantityAvailable: productBestOfferHistory.quantityAvailable,
-        publicationUrl: productBestOfferHistory.publicationUrl,
-        isAvailable: productBestOfferHistory.isAvailable,
-        capturedAt: productBestOfferHistory.capturedAt,
+        price: publicationProducts.price,
+        currency: publicationProducts.currency,
+        quantityAvailable: publicationProducts.quantityAvailable,
+        publicationUrl: publications.url,
+        isAvailable: sql<boolean>`true`,
+        capturedAt: publicationProducts.updatedAt,
       })
-      .from(productBestOfferHistory)
-      .innerJoin(products, eq(products.id, productBestOfferHistory.productId))
+      .from(publicationProducts)
+      .innerJoin(products, eq(products.id, publicationProducts.productId))
+      .innerJoin(publications, eq(publications.id, publicationProducts.publicationId))
       .where(
-        exists(
-          this.client
-            .select({ id: publicationProducts.id })
-            .from(publicationProducts)
-            .where(eq(publicationProducts.productId, products.id)),
-        ),
+        and(isNotNull(publicationProducts.price), gt(publicationProducts.quantityAvailable, 0)),
       )
       .orderBy(
-        productBestOfferHistory.productId,
-        desc(productBestOfferHistory.capturedAt),
-        desc(productBestOfferHistory.id),
+        publicationProducts.productId,
+        asc(publicationProducts.price),
+        desc(publicationProducts.quantityAvailable),
+        asc(publicationProducts.id),
       );
   }
 
