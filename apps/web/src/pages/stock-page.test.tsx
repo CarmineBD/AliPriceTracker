@@ -13,7 +13,7 @@ vi.mock('@/api/stock.api', () => ({
 const mockedGetStock = vi.mocked(getStock);
 
 describe('StockPage', () => {
-  it('shows stock data and pending-operation labels in a table', async () => {
+  it('separates available, incoming, and pending-shipment stock', async () => {
     mockedGetStock.mockResolvedValue({
       stock: [
         {
@@ -56,19 +56,19 @@ describe('StockPage', () => {
     );
 
     expect(screen.getByRole('heading', { name: 'Stock' })).toBeInTheDocument();
-    expect(await screen.findByRole('cell', { name: '2' })).toBeInTheDocument();
-    expect(screen.getByText('Pedido, pendiente de recibir (3)')).toBeInTheDocument();
-    expect(screen.getByText('Pendiente de enviar (1)')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Cámara de acción' })).toHaveAttribute(
+    expect(await screen.findByRole('table', { name: 'Stock disponible' })).toBeInTheDocument();
+    expect(screen.getByRole('table', { name: 'En camino' })).toBeInTheDocument();
+    expect(screen.getByRole('table', { name: 'Por enviar' })).toBeInTheDocument();
+    expect(screen.getByRole('table', { name: 'Stock disponible' })).toHaveTextContent('2');
+    expect(screen.getByRole('table', { name: 'En camino' })).toHaveTextContent('3');
+    expect(screen.getByRole('table', { name: 'Por enviar' })).toHaveTextContent('1');
+    expect(screen.getAllByRole('link', { name: 'Cámara de acción' })[0]).toHaveAttribute(
       'href',
       '/products/8d8c883c-7e36-4af0-a8b3-152b20c41f3c',
     );
-    expect(screen.getByRole('img', { name: 'Imagen de Cámara de acción' })).toHaveAttribute(
+    expect(screen.getAllByRole('img', { name: 'Imagen de Cámara de acción' })[0]).toHaveAttribute(
       'src',
       'https://media.example.test/products/camera.webp',
     );
-    const outOfStockRow = screen.getByRole('row', { name: /Producto agotado/ });
-    expect(outOfStockRow).toHaveTextContent('0');
-    expect(outOfStockRow).toHaveClass('text-muted-foreground', 'opacity-60');
   });
 });

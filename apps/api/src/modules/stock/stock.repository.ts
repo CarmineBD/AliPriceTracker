@@ -64,9 +64,9 @@ export class StockRepository {
         SELECT
           "stockProductId",
           COALESCE(
-            sum("movementQuantity") FILTER (WHERE status = 'completed'),
+            sum("movementQuantity"),
             0
-          )::int AS "completedQuantity",
+          )::int AS "soldQuantity",
           COALESCE(
             sum("movementQuantity") FILTER (WHERE status = 'to_be_sent'),
             0
@@ -80,7 +80,7 @@ export class StockRepository {
         product.name,
         product.short_name AS "shortName",
         COALESCE(purchase_stock."receivedQuantity", 0) -
-          COALESCE(sale_stock."completedQuantity", 0) AS quantity,
+          COALESCE(sale_stock."soldQuantity", 0) AS quantity,
         COALESCE(purchase_stock."orderedQuantity", 0) AS "orderedQuantity",
         COALESCE(sale_stock."toBeSentQuantity", 0) AS "toBeSentQuantity"
       FROM products AS product
@@ -93,7 +93,7 @@ export class StockRepository {
       )
       AND (
         COALESCE(purchase_stock."receivedQuantity", 0) -
-          COALESCE(sale_stock."completedQuantity", 0) <> 0
+          COALESCE(sale_stock."soldQuantity", 0) <> 0
         OR COALESCE(purchase_stock."orderedQuantity", 0) > 0
         OR COALESCE(sale_stock."toBeSentQuantity", 0) > 0
       )

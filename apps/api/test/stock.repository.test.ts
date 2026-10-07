@@ -5,7 +5,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { StockRepository } from '../src/modules/stock/stock.repository.js';
 
 describe('StockRepository', () => {
-  it('expands direct combo components and aggregates only inventory-relevant statuses', async () => {
+  it('expands combo components, counting received purchases and every sale movement', async () => {
     const execute = vi.fn().mockResolvedValue([]);
     const repository = new StockRepository({ execute } as never);
 
@@ -19,13 +19,14 @@ describe('StockRepository', () => {
     expect(compiledSql).toContain('COALESCE(purchase_component.quantity, 1)');
     expect(compiledSql).toContain("WHERE status = 'received'");
     expect(compiledSql).toContain("WHERE status = 'ordered'");
-    expect(compiledSql).toContain("WHERE status = 'completed'");
+    expect(compiledSql).toContain(')::int AS "soldQuantity"');
     expect(compiledSql).toContain("WHERE status = 'to_be_sent'");
     expect(compiledSql).toContain('purchase_stock."receivedQuantity"');
-    expect(compiledSql).toContain('sale_stock."completedQuantity"');
+    expect(compiledSql).toContain('sale_stock."soldQuantity"');
     expect(compiledSql).toContain('WHERE NOT EXISTS');
     expect(compiledSql).toContain('COALESCE(purchase_stock."orderedQuantity", 0) > 0');
     expect(compiledSql).toContain('COALESCE(sale_stock."toBeSentQuantity", 0) > 0');
+    expect(compiledSql).not.toContain("WHERE status = 'completed'");
     expect(compiledSql).not.toContain("status IN ('ordered', 'received')");
   });
 });
