@@ -55,7 +55,11 @@ export function CouponTable({ coupons, onEdit, onDelete, onCreate }: CouponTable
           <TableRow key={coupon.id}>
             <TableCell>{minimumPurchaseFormatter.format(coupon.minPurchase)}</TableCell>
             <TableCell>
-              <CouponDiscountBadge amount={coupon.discountAmount} category={coupon.category} />
+              <CouponDiscountBadge
+                amount={coupon.discountAmount}
+                minPurchase={coupon.minPurchase}
+                category={coupon.category}
+              />
             </TableCell>
             <TableCell className="text-right">
               <div className="flex justify-end gap-1">

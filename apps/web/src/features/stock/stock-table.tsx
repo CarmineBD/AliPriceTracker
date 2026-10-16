@@ -1,7 +1,8 @@
+import { useState } from 'react';
 import type { StockItem } from '@alitracker/shared';
-import { ImageOff } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
+import { ProductImageLink } from '@/components/product-image-link';
 import {
   Table,
   TableBody,
@@ -19,11 +20,15 @@ type StockRow = Pick<StockItem, 'productId' | 'imageUrl' | 'name' | 'shortName'>
   quantity: number;
 };
 
+type AvailableStockRowState = 'green' | 'red';
+
 type StockQuantityTableProps = {
   heading: string;
   headingId: string;
   emptyMessage: string;
   rows: StockRow[];
+  rowStates?: ReadonlyMap<string, AvailableStockRowState>;
+  onRowStateChange?: (productId: string) => void;
 };
 
 function StockQuantityTable({
@@ -31,6 +36,8 @@ function StockQuantityTable({
   headingId,
   emptyMessage,
   rows,
+  rowStates,
+  onRowStateChange,
 }: StockQuantityTableProps) {
   return (
     <section aria-labelledby={headingId}>
@@ -54,38 +61,56 @@ function StockQuantityTable({
               </TableCell>
             </TableRow>
           ) : (
-            rows.map((product) => (
-              <TableRow key={product.productId}>
-                <TableCell>
-                  {product.imageUrl ? (
-                    <img
-                      src={product.imageUrl}
-                      alt={`Imagen de ${product.name}`}
-                      className="size-12 shrink-0 rounded-md border object-cover"
+            rows.map((product) => {
+              const rowState = rowStates?.get(product.productId);
+              const isSelectable = onRowStateChange !== undefined;
+
+              return (
+                <TableRow
+                  key={product.productId}
+                  data-state={rowState}
+                  aria-selected={isSelectable ? rowState !== undefined : undefined}
+                  tabIndex={isSelectable ? 0 : undefined}
+                  className={
+                    isSelectable
+                      ? 'cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring data-[state=green]:bg-green-100 data-[state=green]:hover:bg-green-100 data-[state=red]:bg-red-100 data-[state=red]:hover:bg-red-100'
+                      : undefined
+                  }
+                  onClick={onRowStateChange ? () => onRowStateChange(product.productId) : undefined}
+                  onKeyDown={
+                    onRowStateChange
+                      ? (event) => {
+                          if (event.key === 'Enter' || event.key === ' ') {
+                            event.preventDefault();
+                            onRowStateChange(product.productId);
+                          }
+                        }
+                      : undefined
+                  }
+                >
+                  <TableCell>
+                    <ProductImageLink
+                      productId={product.productId}
+                      productName={product.name}
+                      imageUrl={product.imageUrl}
+                      size="lg"
                     />
-                  ) : (
-                    <div
-                      className="flex size-12 shrink-0 items-center justify-center rounded-md border bg-muted text-muted-foreground"
-                      aria-label={`Sin imagen para ${product.name}`}
+                  </TableCell>
+                  <TableCell className="min-w-56 font-medium">
+                    <Link
+                      to={`/products/${product.productId}`}
+                      className="text-primary underline-offset-4 hover:underline"
                     >
-                      <ImageOff className="size-4" />
-                    </div>
-                  )}
-                </TableCell>
-                <TableCell className="min-w-56 font-medium">
-                  <Link
-                    to={`/products/${product.productId}`}
-                    className="text-primary underline-offset-4 hover:underline"
-                  >
-                    {product.name}
-                  </Link>
-                </TableCell>
-                <TableCell>{product.shortName}</TableCell>
-                <TableCell className="text-right font-medium tabular-nums">
-                  {product.quantity}
-                </TableCell>
-              </TableRow>
-            ))
+                      {product.name}
+                    </Link>
+                  </TableCell>
+                  <TableCell>{product.shortName}</TableCell>
+                  <TableCell className="text-right font-medium tabular-nums">
+                    {product.quantity}
+                  </TableCell>
+                </TableRow>
+              );
+            })
           )}
         </TableBody>
       </Table>
@@ -94,6 +119,9 @@ function StockQuantityTable({
 }
 
 export function StockTable({ stock }: StockTableProps) {
+  const [availableStockRowStates, setAvailableStockRowStates] = useState<
+    Map<string, AvailableStockRowState>
+  >(() => new Map());
   const availableStock = stock.filter((product) => product.quantity !== 0);
   const orderedStock = stock.flatMap((product) => {
     const pendingReceipt = product.statusLabels.find(({ status }) => status === 'ordered');
@@ -103,6 +131,19 @@ export function StockTable({ stock }: StockTableProps) {
     const pendingShipment = product.statusLabels.find(({ status }) => status === 'to_be_sent');
     return pendingShipment ? [{ ...product, quantity: pendingShipment.quantity }] : [];
   });
+  const cycleAvailableProductRowState = (productId: string) => {
+    setAvailableStockRowStates((current) => {
+      const next = new Map(current);
+      const currentState = current.get(productId);
+
+      if (currentState === 'red') {
+        next.delete(productId);
+      } else {
+        next.set(productId, currentState === 'green' ? 'red' : 'green');
+      }
+      return next;
+    });
+  };
 
   return (
     <div className="space-y-10">
@@ -111,6 +152,8 @@ export function StockTable({ stock }: StockTableProps) {
         headingId="available-stock-heading"
         emptyMessage="No hay unidades disponibles."
         rows={availableStock}
+        rowStates={availableStockRowStates}
+        onRowStateChange={cycleAvailableProductRowState}
       />
       <StockQuantityTable
         heading="En camino"

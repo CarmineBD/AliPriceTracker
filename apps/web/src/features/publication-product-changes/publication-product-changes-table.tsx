@@ -1,6 +1,7 @@
 import type { PublicationProductChange } from '@alitracker/shared';
-import { ArrowDown, ArrowUp, ExternalLink, History, ImageOff } from 'lucide-react';
+import { ArrowDown, ArrowUp, ExternalLink, History } from 'lucide-react';
 
+import { ProductImageLink } from '@/components/product-image-link';
 import {
   Table,
   TableBody,
@@ -149,20 +150,12 @@ export function PublicationProductChangesTable({
           return (
             <TableRow key={`${change.historyId}-${change.changeType}`}>
               <TableCell>
-                {change.product.imageUrl ? (
-                  <img
-                    src={change.product.imageUrl}
-                    alt={`Imagen de ${change.product.shortName}`}
-                    className="size-12 shrink-0 rounded-md border object-cover"
-                  />
-                ) : (
-                  <div
-                    className="flex size-12 shrink-0 items-center justify-center rounded-md border bg-muted text-muted-foreground"
-                    aria-label={`Sin imagen para ${change.product.shortName}`}
-                  >
-                    <ImageOff className="size-4" />
-                  </div>
-                )}
+                <ProductImageLink
+                  productId={change.product.id}
+                  productName={change.product.shortName}
+                  imageUrl={change.product.imageUrl}
+                  size="lg"
+                />
               </TableCell>
               <TableCell className="min-w-48 font-medium">{change.product.shortName}</TableCell>
               <TableCell>{change.storeName ?? '—'}</TableCell>

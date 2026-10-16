@@ -79,11 +79,17 @@ export class MetricsRepository {
           componentProductId: productCombos.containsProductId,
           componentProductShortName: componentProducts.shortName,
           componentQuantity: productCombos.quantity,
-          averageSellingPrice: sql<string | null>`CASE
-            WHEN ${productCombos.productId} IS NULL
-              THEN ${sql.raw('"metrics_purchase_sale_prices"."average_price"')}
-            ELSE ${sql.raw('"metrics_component_sale_prices"."average_price"')}
-          END`,
+          averageSellingPrice: sql<string | null>`COALESCE(
+            CASE
+              WHEN ${productCombos.productId} IS NULL
+                THEN ${sql.raw('"metrics_purchase_sale_prices"."average_price"')}
+              ELSE ${sql.raw('"metrics_component_sale_prices"."average_price"')}
+            END,
+            CASE
+              WHEN ${productCombos.productId} IS NULL THEN ${products.averageSellingPrice}
+              ELSE ${componentProducts.averageSellingPrice}
+            END
+          )`,
         })
         .from(purchases)
         .innerJoin(products, eq(products.id, purchases.productId))

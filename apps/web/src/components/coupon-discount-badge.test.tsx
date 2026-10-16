@@ -5,7 +5,7 @@ import { CouponDiscountBadge } from './coupon-discount-badge';
 
 describe('CouponDiscountBadge', () => {
   it('keeps the destructive background and adds a faint yellow overlay for special coupons', () => {
-    render(<CouponDiscountBadge amount={10} category="special" />);
+    render(<CouponDiscountBadge amount={10} minPurchase={79} category="special" />);
 
     expect(screen.getByLabelText(/cupón especial/i)).toHaveClass(
       'bg-destructive/10',
@@ -15,7 +15,7 @@ describe('CouponDiscountBadge', () => {
   });
 
   it('keeps the existing appearance for regular coupons', () => {
-    render(<CouponDiscountBadge amount={10} category="event" />);
+    render(<CouponDiscountBadge amount={10} minPurchase={79} category="event" />);
 
     expect(screen.getByLabelText('Descuento de -10€')).not.toHaveClass('bg-linear-to-r');
   });

@@ -42,7 +42,11 @@ export function CouponCombobox({ coupons, disabled, onCouponIdChange }: CouponCo
         <ComboboxList>
           {(coupon: Coupon) => (
             <ComboboxItem key={coupon.id} value={coupon}>
-              <CouponDiscountBadge amount={coupon.discountAmount} category={coupon.category} />
+              <CouponDiscountBadge
+                amount={coupon.discountAmount}
+                minPurchase={coupon.minPurchase}
+                category={coupon.category}
+              />
               <span>Desde {formatCouponAmount(coupon.minPurchase)}</span>
             </ComboboxItem>
           )}

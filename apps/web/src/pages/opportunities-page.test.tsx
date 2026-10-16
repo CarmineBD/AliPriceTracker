@@ -7,11 +7,13 @@ import { OpportunitiesPage } from './opportunities-page';
 
 const {
   getActiveEventsMock,
+  getAveragePricesMock,
   getCouponOptionsMock,
   getOpportunitiesMock,
   getBestCouponCombinationsMock,
 } = vi.hoisted(() => ({
   getActiveEventsMock: vi.fn(),
+  getAveragePricesMock: vi.fn(),
   getCouponOptionsMock: vi.fn(),
   getOpportunitiesMock: vi.fn(),
   getBestCouponCombinationsMock: vi.fn(),
@@ -24,6 +26,9 @@ vi.mock('@/api/opportunities.api', () => ({
 vi.mock('@/api/events.api', () => ({
   getActiveEvents: getActiveEventsMock,
   getCouponOptions: getCouponOptionsMock,
+}));
+vi.mock('@/api/average-prices.api', () => ({
+  getAveragePrices: getAveragePricesMock,
 }));
 
 describe('OpportunitiesPage', () => {
@@ -58,6 +63,17 @@ describe('OpportunitiesPage', () => {
         category: 'event',
       },
     ]);
+    getAveragePricesMock.mockResolvedValue({
+      sales: [],
+      purchases: [
+        {
+          productId: '00000000-0000-4000-8000-000000000001',
+          imageUrl: 'https://media.example.test/products/example.png',
+          shortName: 'DJI Neo 2',
+          averagePrice: 250,
+        },
+      ],
+    });
     getOpportunitiesMock.mockResolvedValue({
       opportunities: [
         {
@@ -157,6 +173,9 @@ describe('OpportunitiesPage', () => {
       'Precio medio hard codeado',
     );
     expect(screen.getByText('259,00 €')).toBeInTheDocument();
+    expect(screen.getByText('250,00 €')).toBeInTheDocument();
+    expect(screen.getByText('259,00 €')).toHaveClass('text-destructive');
+    expect(screen.getByText('80,00 €')).toBeInTheDocument();
     expect(screen.getAllByText('-30€')).toHaveLength(3);
     expect(screen.getAllByText('37,07 %')).toHaveLength(1);
     expect(
@@ -174,13 +193,23 @@ describe('OpportunitiesPage', () => {
     expect(
       screen
         .getAllByRole('columnheader')
-        .slice(0, 7)
+        .slice(0, 9)
         .map((header) => header.textContent),
-    ).toEqual(['Imagen', 'Nombre', 'Precio', 'Precio final', 'Cupón aplicado', 'Beneficio', 'ROI']);
+    ).toEqual([
+      'Imagen',
+      'Nombre',
+      'Precio',
+      'Precio medio de compra',
+      'Precio final',
+      'Cupón aplicado',
+      'Falta para próximo cupón',
+      'Beneficio',
+      'ROI',
+    ]);
     expect(
       screen
         .getAllByRole('columnheader')
-        .slice(7)
+        .slice(9)
         .map((header) => header.textContent),
     ).toEqual([
       'Incluir en el cálculo',
@@ -215,6 +244,7 @@ describe('OpportunitiesPage', () => {
     });
     expect(getActiveEventsMock).toHaveBeenCalledOnce();
     expect(getCouponOptionsMock).toHaveBeenCalledOnce();
+    expect(getAveragePricesMock).toHaveBeenCalledOnce();
     expect(getOpportunitiesMock).toHaveBeenCalledTimes(2);
     expect(getBestCouponCombinationsMock).toHaveBeenCalledOnce();
   });

@@ -52,7 +52,11 @@ export function OpportunityCouponFilters({
         <ComboboxChips>
           {selectedCoupons.map((coupon) => (
             <ComboboxChip key={coupon.id}>
-              <CouponDiscountBadge amount={coupon.discountAmount} category={coupon.category} />
+              <CouponDiscountBadge
+                amount={coupon.discountAmount}
+                minPurchase={coupon.minPurchase}
+                category={coupon.category}
+              />
             </ComboboxChip>
           ))}
           <ComboboxChipsInput
@@ -65,7 +69,11 @@ export function OpportunityCouponFilters({
           <ComboboxList>
             {(coupon: Coupon) => (
               <ComboboxItem key={coupon.id} value={coupon}>
-                <CouponDiscountBadge amount={coupon.discountAmount} category={coupon.category} />
+                <CouponDiscountBadge
+                  amount={coupon.discountAmount}
+                  minPurchase={coupon.minPurchase}
+                  category={coupon.category}
+                />
                 <span>Desde {formatCouponAmount(coupon.minPurchase)}</span>
               </ComboboxItem>
             )}

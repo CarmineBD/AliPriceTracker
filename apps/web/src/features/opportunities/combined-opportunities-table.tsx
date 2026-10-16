@@ -1,7 +1,8 @@
 import type { BestCouponCombination, Opportunity } from '@alitracker/shared';
-import { ExternalLink, ImageOff, SearchX } from 'lucide-react';
+import { ExternalLink, SearchX } from 'lucide-react';
 
 import { CouponDiscountBadge } from '@/components/coupon-discount-badge';
+import { ProductImageLink } from '@/components/product-image-link';
 import { Badge } from '@/components/ui/badge';
 import { EmptyState } from '@/components/empty-state';
 import {
@@ -27,19 +28,12 @@ function formatEuro(amount: number): string {
 }
 
 function ProductImage({ opportunity }: { opportunity: Opportunity }) {
-  return opportunity.imageUrl ? (
-    <img
-      src={opportunity.imageUrl}
-      alt={`Imagen de ${opportunity.shortName}`}
-      className="size-10 shrink-0 rounded-md border object-cover"
+  return (
+    <ProductImageLink
+      productId={opportunity.productId}
+      productName={opportunity.shortName}
+      imageUrl={opportunity.imageUrl}
     />
-  ) : (
-    <div
-      className="flex size-10 shrink-0 items-center justify-center rounded-md border bg-muted text-muted-foreground"
-      aria-label={`Sin imagen para ${opportunity.shortName}`}
-    >
-      <ImageOff className="size-4" />
-    </div>
   );
 }
 
@@ -86,6 +80,7 @@ export function CombinedOpportunitiesTable({ opportunities }: CombinedOpportunit
             <TableCell>
               <CouponDiscountBadge
                 amount={opportunity.coupon.discountAmount}
+                minPurchase={opportunity.coupon.minPurchase}
                 category={opportunity.coupon.category}
               />
             </TableCell>

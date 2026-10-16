@@ -1,8 +1,9 @@
 import type { AliExpressProductVariant, ProductOption } from '@alitracker/shared';
-import { ImageOff, PackageOpen } from 'lucide-react';
+import { PackageOpen } from 'lucide-react';
 
 import { Badge } from '@/components/ui/badge';
 import { EmptyState } from '@/components/empty-state';
+import { ProductImageLink } from '@/components/product-image-link';
 import { ProductCombobox } from '@/features/products/product-combobox';
 import {
   Table,
@@ -63,20 +64,12 @@ export function AliExpressProductsTable({
             return (
               <TableRow key={product.aliexpressSkuId}>
                 <TableCell>
-                  {product.imageUrl ? (
-                    <img
-                      src={product.imageUrl}
-                      alt={`Imagen de ${product.variantName ?? product.aliexpressSkuId}`}
-                      className="size-16 shrink-0 rounded-md border object-cover"
-                    />
-                  ) : (
-                    <div
-                      className="flex size-16 shrink-0 items-center justify-center rounded-md border bg-muted text-muted-foreground"
-                      aria-label={`Sin imagen para ${product.variantName ?? product.aliexpressSkuId}`}
-                    >
-                      <ImageOff />
-                    </div>
-                  )}
+                  <ProductImageLink
+                    productId={associatedProductId}
+                    productName={product.variantName ?? product.aliexpressSkuId}
+                    imageUrl={product.imageUrl}
+                    size="xl"
+                  />
                 </TableCell>
                 <TableCell className="max-w-72 whitespace-normal">
                   <p className="font-medium">{product.variantName ?? product.aliexpressSkuId}</p>

@@ -7,6 +7,7 @@ import type {
 } from '@alitracker/shared';
 
 import { getActiveEvents, getCouponOptions } from '@/api/events.api';
+import { getAveragePrices } from '@/api/average-prices.api';
 import { getBestCouponCombinations, getOpportunities } from '@/api/opportunities.api';
 import { getProduct } from '@/api/products.api';
 import {
@@ -100,6 +101,10 @@ export function OpportunitiesPage() {
     queryKey: ['coupon-options'],
     queryFn: getCouponOptions,
   });
+  const averagePricesQuery = useQuery({
+    queryKey: ['average-prices'],
+    queryFn: getAveragePrices,
+  });
   const coupons = couponOptionsQuery.data ?? [];
   const activeCouponIds = new Set(activeEventsQuery.data?.[0]?.coupons.map((coupon) => coupon.id));
   const couponIds =
@@ -184,7 +189,9 @@ export function OpportunitiesPage() {
     })),
   });
   const plannerProductDetailsById = new Map(
-    plannerProductQueries.flatMap((query) => (query.data ? [[query.data.id, query.data] as const] : [])),
+    plannerProductQueries.flatMap((query) =>
+      query.data ? [[query.data.id, query.data] as const] : [],
+    ),
   );
   const pagination = opportunitiesQuery.data?.pagination;
   const bestCouponCombinationsQuery = useQuery({
@@ -329,7 +336,10 @@ export function OpportunitiesPage() {
         )}
         {opportunitiesQuery.isSuccess && (
           <>
-            <OpportunitiesTable opportunities={opportunitiesQuery.data.opportunities} />
+            <OpportunitiesTable
+              opportunities={opportunitiesQuery.data.opportunities}
+              averagePurchasePrices={averagePricesQuery.data?.purchases ?? []}
+            />
             {pagination && pagination.totalPages > 1 && (
               <div className="mt-6 space-y-3">
                 <p className="text-center text-sm text-muted-foreground">

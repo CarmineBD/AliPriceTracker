@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
 import type { MetricsData } from '../src/modules/metrics/metrics.repository.js';
-import { getMetrics, getProfitHistory } from '../src/modules/metrics/metrics.service.js';
+import {
+  calculateFifoMetrics,
+  getMetrics,
+  getProfitHistory,
+} from '../src/modules/metrics/metrics.service.js';
 
 const firstPurchaseDate = new Date('2026-01-01T00:00:00.000Z');
 const secondPurchaseDate = new Date('2026-01-02T00:00:00.000Z');
@@ -77,6 +81,69 @@ function profitHistoryData(): MetricsData {
 }
 
 describe('metrics service', () => {
+  it('combines standalone and combo purchases in the FIFO costs of their shared component', () => {
+    const fifo = calculateFifoMetrics({
+      purchaseMovements: [
+        {
+          purchaseId: 'basic-purchase',
+          productId: 'basic',
+          totalFinalPrice: '300.00',
+          date: firstPurchaseDate,
+          componentProductId: null,
+          componentQuantity: null,
+          averageSellingPrice: '340.00',
+        },
+        {
+          purchaseId: 'combo-purchase',
+          productId: 'combo',
+          totalFinalPrice: '430.00',
+          date: secondPurchaseDate,
+          componentProductId: 'basic',
+          componentQuantity: 1,
+          averageSellingPrice: '340.00',
+        },
+        {
+          purchaseId: 'combo-purchase',
+          productId: 'combo',
+          totalFinalPrice: '430.00',
+          date: secondPurchaseDate,
+          componentProductId: 'batteries',
+          componentQuantity: 1,
+          averageSellingPrice: '90.00',
+        },
+      ],
+      saleMovements: [
+        {
+          saleId: 'first-basic-sale',
+          productId: 'basic',
+          totalSalePrice: '400.00',
+          shippingCost: '0.00',
+          status: 'completed',
+          date: saleDate,
+          componentProductId: null,
+          componentQuantity: null,
+        },
+        {
+          saleId: 'second-basic-sale',
+          productId: 'basic',
+          totalSalePrice: '400.00',
+          shippingCost: '0.00',
+          status: 'completed',
+          date: new Date('2026-01-04T00:00:00.000Z'),
+          componentProductId: null,
+          componentQuantity: null,
+        },
+      ],
+    });
+
+    expect(fifo.cogsBySaleId.get('first-basic-sale')).toBe(30_000);
+    expect(fifo.cogsBySaleId.get('second-basic-sale')).toBe(34_000);
+    expect(fifo.cogsInCents).toBe(64_000);
+    expect(fifo.allocationsBySaleId.get('second-basic-sale')).toMatchObject([
+      { purchaseId: 'combo-purchase', componentName: 'basic', quantity: 1, costInCents: 34_000 },
+    ]);
+  });
+
   it('uses FIFO costs for realized profit and calculates the estimated stock sale value', async () => {
     await expect(
       getMetrics({

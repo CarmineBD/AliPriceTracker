@@ -1,6 +1,7 @@
 import type { ProductCombo, ProductOption } from '@alitracker/shared';
-import { ImageOff, Trash2 } from 'lucide-react';
+import { Trash2 } from 'lucide-react';
 
+import { ProductImageLink } from '@/components/product-image-link';
 import { Button } from '@/components/ui/button';
 import { FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
@@ -100,20 +101,11 @@ export function ProductComponentsEditor({
             {components.map((component) => (
               <TableRow key={component.containsProductId}>
                 <TableCell>
-                  {component.product.imageUrl ? (
-                    <img
-                      src={component.product.imageUrl}
-                      alt={`Imagen de ${component.product.shortName}`}
-                      className="size-10 rounded-md border object-cover"
-                    />
-                  ) : (
-                    <div
-                      className="flex size-10 items-center justify-center rounded-md border bg-muted text-muted-foreground"
-                      aria-label={`Sin imagen para ${component.product.shortName}`}
-                    >
-                      <ImageOff className="size-4" />
-                    </div>
-                  )}
+                  <ProductImageLink
+                    productId={component.containsProductId}
+                    productName={component.product.shortName}
+                    imageUrl={component.product.imageUrl}
+                  />
                 </TableCell>
                 <TableCell>{component.product.shortName}</TableCell>
                 <TableCell className="text-right">

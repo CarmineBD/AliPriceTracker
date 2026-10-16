@@ -1,10 +1,11 @@
-import type { Opportunity } from '@alitracker/shared';
-import { ExternalLink, ImageOff, Info, SearchX } from 'lucide-react';
+import type { AveragePriceItem, Opportunity } from '@alitracker/shared';
+import { ExternalLink, Info, SearchX } from 'lucide-react';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/empty-state';
 import { CouponDiscountBadge } from '@/components/coupon-discount-badge';
+import { ProductImageLink } from '@/components/product-image-link';
 import {
   Table,
   TableBody,
@@ -17,6 +18,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 
 type OpportunitiesTableProps = {
   opportunities: Opportunity[];
+  averagePurchasePrices: AveragePriceItem[];
 };
 
 const amountFormatter = new Intl.NumberFormat('es-ES', {
@@ -29,19 +31,12 @@ function formatEuro(amount: number): string {
 }
 
 function ProductImage({ opportunity }: { opportunity: Opportunity }) {
-  return opportunity.imageUrl ? (
-    <img
-      src={opportunity.imageUrl}
-      alt={`Imagen de ${opportunity.shortName}`}
-      className="size-10 shrink-0 rounded-md border object-cover"
+  return (
+    <ProductImageLink
+      productId={opportunity.productId}
+      productName={opportunity.shortName}
+      imageUrl={opportunity.imageUrl}
     />
-  ) : (
-    <div
-      className="flex size-10 shrink-0 items-center justify-center rounded-md border bg-muted text-muted-foreground"
-      aria-label={`Sin imagen para ${opportunity.shortName}`}
-    >
-      <ImageOff className="size-4" />
-    </div>
   );
 }
 
@@ -60,7 +55,14 @@ function ProductName({ opportunity }: { opportunity: Opportunity }) {
   );
 }
 
-export function OpportunitiesTable({ opportunities }: OpportunitiesTableProps) {
+export function OpportunitiesTable({
+  opportunities,
+  averagePurchasePrices,
+}: OpportunitiesTableProps) {
+  const averagePurchasePricesByProductId = new Map(
+    averagePurchasePrices.map((price) => [price.productId, price.averagePrice]),
+  );
+
   if (opportunities.length === 0) {
     return (
       <EmptyState
@@ -79,8 +81,10 @@ export function OpportunitiesTable({ opportunities }: OpportunitiesTableProps) {
             <TableHead>Imagen</TableHead>
             <TableHead>Nombre</TableHead>
             <TableHead className="text-right">Precio</TableHead>
+            <TableHead className="text-right">Precio medio de compra</TableHead>
             <TableHead className="text-right">Precio final</TableHead>
             <TableHead>Cupón aplicado</TableHead>
+            <TableHead className="text-right">Falta para próximo cupón</TableHead>
             <TableHead className="text-right">Beneficio</TableHead>
             <TableHead className="text-right">ROI</TableHead>
           </TableRow>
@@ -90,6 +94,17 @@ export function OpportunitiesTable({ opportunities }: OpportunitiesTableProps) {
             const products = [opportunity];
             const label = opportunity.shortName;
             const key = opportunity.productId;
+            const averagePurchasePrice = averagePurchasePricesByProductId.get(
+              opportunity.productId,
+            );
+            const finalPriceClassName =
+              averagePurchasePrice === undefined
+                ? undefined
+                : opportunity.effectivePurchasePrice > averagePurchasePrice
+                  ? 'text-destructive'
+                  : opportunity.effectivePurchasePrice < averagePurchasePrice
+                    ? 'text-emerald-700'
+                    : undefined;
 
             return (
               <TableRow key={key}>
@@ -113,17 +128,28 @@ export function OpportunitiesTable({ opportunities }: OpportunitiesTableProps) {
                   {formatEuro(opportunity.basePurchasePrice)}
                 </TableCell>
                 <TableCell className="text-right">
+                  {averagePurchasePrice === undefined ? '—' : formatEuro(averagePurchasePrice)}
+                </TableCell>
+                <TableCell
+                  className={`text-right${finalPriceClassName ? ` ${finalPriceClassName}` : ''}`}
+                >
                   {formatEuro(opportunity.effectivePurchasePrice)}
                 </TableCell>
                 <TableCell>
                   {opportunity.coupon ? (
                     <CouponDiscountBadge
                       amount={opportunity.coupon.discountAmount}
+                      minPurchase={opportunity.coupon.minPurchase}
                       category={opportunity.coupon.category}
                     />
                   ) : (
                     '—'
                   )}
+                </TableCell>
+                <TableCell className="text-right">
+                  {opportunity.amountToNextCoupon === null
+                    ? '—'
+                    : formatEuro(opportunity.amountToNextCoupon)}
                 </TableCell>
                 <TableCell>
                   <div className="flex items-center justify-end gap-1">

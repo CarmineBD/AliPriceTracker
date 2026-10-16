@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
 
 import type { Coupon, Opportunity, Product, ProductOption } from '@alitracker/shared';
-import { ImageOff, Plus, Trash2, X } from 'lucide-react';
+import { Plus, Trash2, X } from 'lucide-react';
 import { z } from 'zod';
 
 import { CouponDiscountBadge } from '@/components/coupon-discount-badge';
+import { ProductImageLink } from '@/components/product-image-link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -363,17 +364,12 @@ export function AccountPlanner({
                         <TableRow key={item.id}>
                           <TableCell>
                             <div className="flex min-w-40 items-center gap-2">
-                              {item.opportunity.imageUrl ? (
-                                <img
-                                  src={item.opportunity.imageUrl}
-                                  alt=""
-                                  className="size-8 shrink-0 rounded-md border object-cover"
-                                />
-                              ) : (
-                                <span className="flex size-8 shrink-0 items-center justify-center rounded-md border text-muted-foreground">
-                                  <ImageOff className="size-4" />
-                                </span>
-                              )}
+                              <ProductImageLink
+                                productId={item.opportunity.productId}
+                                productName={item.opportunity.shortName}
+                                imageUrl={item.opportunity.imageUrl}
+                                size="sm"
+                              />
                               <span className="truncate">{item.opportunity.shortName}</span>
                             </div>
                           </TableCell>
@@ -392,6 +388,7 @@ export function AccountPlanner({
                                 {item.coupon ? (
                                   <CouponDiscountBadge
                                     amount={item.coupon.discountAmount}
+                                    minPurchase={item.coupon.minPurchase}
                                     category={item.coupon.category}
                                   />
                                 ) : (
@@ -435,6 +432,7 @@ export function AccountPlanner({
                                       >
                                         <CouponDiscountBadge
                                           amount={coupon.discountAmount}
+                                          minPurchase={coupon.minPurchase}
                                           category={coupon.category}
                                         />
                                       </button>

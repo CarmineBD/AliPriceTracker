@@ -679,6 +679,11 @@ const couponCategoryInputSchema = z.preprocess(
   couponCategorySchema.nullable().optional(),
 );
 
+const couponCategoryCreateInputSchema = z.preprocess(
+  (value) => (value === '' ? undefined : value),
+  couponCategorySchema,
+);
+
 export const couponSchema = z.object({
   id: z.string().uuid(),
   minPurchase: z.number().finite().nonnegative(),
@@ -779,11 +784,13 @@ export const couponCreateSchema = z
   .object({
     minPurchase: couponAmountSchema,
     discountAmount: couponAmountSchema,
-    category: couponCategoryInputSchema,
+    category: couponCategoryCreateInputSchema,
   })
   .strict();
 
 export const couponUpdateSchema = couponCreateSchema
+  .omit({ category: true })
+  .extend({ category: couponCategoryInputSchema })
   .partial()
   .refine((values) => Object.keys(values).length > 0, 'Debe enviarse al menos un campo.');
 

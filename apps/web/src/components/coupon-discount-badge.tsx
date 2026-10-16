@@ -1,6 +1,12 @@
 import { Ticket } from 'lucide-react';
 
 import { Badge } from '@/components/ui/badge';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 
 const discountFormatter = new Intl.NumberFormat('es-ES', {
   maximumFractionDigits: 0,
@@ -22,25 +28,36 @@ export function formatCouponAmount(amount: number): string {
 
 export function CouponDiscountBadge({
   amount,
+  minPurchase,
   category,
 }: {
   amount: number;
+  minPurchase: number;
   category?: 'event' | 'special' | null;
 }) {
   const discount = formatCouponDiscount(amount);
 
   return (
-    <Badge
-      variant="destructive"
-      className={
-        category === 'special'
-          ? "relative bg-destructive/10 before:pointer-events-none before:absolute before:inset-0 before:bg-linear-to-r before:from-transparent before:to-yellow-200/25 before:content-[''] dark:bg-destructive/20 dark:before:to-yellow-300/15"
-          : undefined
-      }
-      aria-label={`Descuento de ${discount}${category === 'special' ? ', cupón especial' : ''}`}
-    >
-      <Ticket aria-hidden="true" />
-      {discount}
-    </Badge>
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger
+          render={
+            <Badge
+              variant="destructive"
+              className={
+                category === 'special'
+                  ? "relative bg-destructive/10 before:pointer-events-none before:absolute before:inset-0 before:bg-linear-to-r before:from-transparent before:to-yellow-200/25 before:content-[''] dark:bg-destructive/20 dark:before:to-yellow-300/15"
+                  : undefined
+              }
+              aria-label={`Descuento de ${discount}${category === 'special' ? ', cupón especial' : ''}`}
+            >
+              <Ticket aria-hidden="true" />
+              {discount}
+            </Badge>
+          }
+        />
+        <TooltipContent>Por compras de {formatCouponAmount(minPurchase)}</TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
   );
 }

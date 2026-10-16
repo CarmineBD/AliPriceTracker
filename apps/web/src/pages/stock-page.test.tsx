@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -70,5 +70,21 @@ describe('StockPage', () => {
       'src',
       'https://media.example.test/products/camera.webp',
     );
+
+    const availableStockRows = within(
+      screen.getByRole('table', { name: 'Stock disponible' }),
+    ).getAllByRole('row');
+    const availableProductRow = availableStockRows[1]!;
+
+    expect(availableProductRow).toHaveAttribute('aria-selected', 'false');
+    fireEvent.click(availableProductRow);
+    expect(availableProductRow).toHaveAttribute('data-state', 'green');
+    expect(availableProductRow).toHaveAttribute('aria-selected', 'true');
+    fireEvent.click(availableProductRow);
+    expect(availableProductRow).toHaveAttribute('data-state', 'red');
+    expect(availableProductRow).toHaveAttribute('aria-selected', 'true');
+    fireEvent.click(availableProductRow);
+    expect(availableProductRow).not.toHaveAttribute('data-state');
+    expect(availableProductRow).toHaveAttribute('aria-selected', 'false');
   });
 });

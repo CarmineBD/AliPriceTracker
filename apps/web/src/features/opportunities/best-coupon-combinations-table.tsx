@@ -1,7 +1,8 @@
 import type { BestCouponCombination, Opportunity } from '@alitracker/shared';
-import { ImageOff, SearchX } from 'lucide-react';
+import { SearchX } from 'lucide-react';
 
 import { CouponDiscountBadge } from '@/components/coupon-discount-badge';
+import { ProductImageLink } from '@/components/product-image-link';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { EmptyState } from '@/components/empty-state';
@@ -43,19 +44,12 @@ function ProductOption({ opportunity }: { opportunity: Opportunity | undefined }
 }
 
 function ProductImage({ opportunity }: { opportunity: Opportunity }) {
-  return opportunity.imageUrl ? (
-    <img
-      src={opportunity.imageUrl}
-      alt={`Imagen de ${opportunity.shortName}`}
-      className="size-10 shrink-0 rounded-md border object-cover"
+  return (
+    <ProductImageLink
+      productId={opportunity.productId}
+      productName={opportunity.shortName}
+      imageUrl={opportunity.imageUrl}
     />
-  ) : (
-    <div
-      className="flex size-10 shrink-0 items-center justify-center rounded-md border bg-muted text-muted-foreground"
-      aria-label={`Sin imagen para ${opportunity.shortName}`}
-    >
-      <ImageOff className="size-4" />
-    </div>
   );
 }
 
@@ -106,6 +100,7 @@ export function BestCouponCombinationsTable({
             <TableCell>
               <CouponDiscountBadge
                 amount={combination.coupon.discountAmount}
+                minPurchase={combination.coupon.minPurchase}
                 category={combination.coupon.category}
               />
             </TableCell>

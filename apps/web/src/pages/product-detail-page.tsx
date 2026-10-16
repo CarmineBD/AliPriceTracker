@@ -282,11 +282,17 @@ export function ProductDetailPage() {
                 {productComponentsQuery.data.map((component) => (
                   <Card key={component.containsProductId} size="sm" className="w-24 gap-2">
                     {component.product.imageUrl ? (
-                      <img
-                        src={component.product.imageUrl}
-                        alt={`Imagen de ${component.product.shortName}`}
-                        className="aspect-square w-full object-cover"
-                      />
+                      <Link
+                        to={`/products/${component.containsProductId}`}
+                        aria-label={`Ver detalle de ${component.product.shortName}`}
+                        className="block rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      >
+                        <img
+                          src={component.product.imageUrl}
+                          alt={`Imagen de ${component.product.shortName}`}
+                          className="aspect-square w-full object-cover"
+                        />
+                      </Link>
                     ) : (
                       <div
                         className="flex aspect-square w-full items-center justify-center bg-muted text-muted-foreground"

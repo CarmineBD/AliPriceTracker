@@ -75,11 +75,13 @@ export function CouponFormDialog({
 }: CouponFormDialogProps) {
   const [values, setValues] = useState<CouponFormValues>(() => toValues(coupon));
   const [amountError, setAmountError] = useState<string>();
+  const [categoryError, setCategoryError] = useState<string>();
 
   useEffect(() => {
     if (open) {
       setValues(toValues(coupon));
       setAmountError(undefined);
+      setCategoryError(undefined);
     }
   }, [coupon, open]);
 
@@ -91,8 +93,13 @@ export function CouponFormDialog({
       setAmountError('Introduce importes válidos, positivos y con un máximo de dos decimales.');
       return;
     }
+    if (!values.category) {
+      setCategoryError('Selecciona una categoría.');
+      return;
+    }
     setAmountError(undefined);
-    onSubmit({ minPurchase, discountAmount, category: values.category || null });
+    setCategoryError(undefined);
+    onSubmit({ minPurchase, discountAmount, category: values.category });
   };
 
   const title = coupon ? 'Editar cupón' : 'Agregar cupón';
@@ -147,7 +154,7 @@ export function CouponFormDialog({
                   />
                 </FieldContent>
               </Field>
-              <Field>
+              <Field data-invalid={Boolean(categoryError)}>
                 <FieldLabel htmlFor="coupon-category">Categor&#237;a</FieldLabel>
                 <FieldContent>
                   <Combobox
@@ -156,9 +163,10 @@ export function CouponFormDialog({
                       couponCategoryOptions.find((option) => option.value === values.category) ??
                       null
                     }
-                    onValueChange={(option) =>
-                      setValues((current) => ({ ...current, category: option?.value ?? '' }))
-                    }
+                    onValueChange={(option) => {
+                      setValues((current) => ({ ...current, category: option?.value ?? '' }));
+                      if (option && categoryError) setCategoryError(undefined);
+                    }}
                     itemToStringLabel={(option) => option.label}
                     itemToStringValue={(option) => option.value}
                   >
@@ -178,6 +186,7 @@ export function CouponFormDialog({
                       </ComboboxList>
                     </ComboboxContent>
                   </Combobox>
+                  <FieldError>{categoryError}</FieldError>
                 </FieldContent>
               </Field>
             </FieldGroup>

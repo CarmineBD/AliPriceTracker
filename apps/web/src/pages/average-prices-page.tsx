@@ -30,20 +30,10 @@ export function AveragePricesPage() {
           </p>
         )}
         {averagePricesQuery.isSuccess && (
-          <div className="space-y-10">
-            <section aria-labelledby="average-sale-prices-title">
-              <h2 id="average-sale-prices-title" className="mb-4 text-xl font-semibold">
-                Precios medios de venta
-              </h2>
-              <AveragePricesTable prices={averagePricesQuery.data.sales} kind="sale" />
-            </section>
-            <section aria-labelledby="average-purchase-prices-title">
-              <h2 id="average-purchase-prices-title" className="mb-4 text-xl font-semibold">
-                Precios medios de compra
-              </h2>
-              <AveragePricesTable prices={averagePricesQuery.data.purchases} kind="purchase" />
-            </section>
-          </div>
+          <AveragePricesTable
+            sales={averagePricesQuery.data.sales}
+            purchases={averagePricesQuery.data.purchases}
+          />
         )}
       </section>
     </AppLayout>

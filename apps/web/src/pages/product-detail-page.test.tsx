@@ -197,7 +197,7 @@ describe('ProductDetailPage', () => {
           name: 'Producto contenido',
           shortName: 'Contenido',
           imageKey: null,
-          imageUrl: null,
+          imageUrl: 'https://media.example.test/products/contained-product.png',
           averageSellingPrice: null,
           effectiveSellingPrice: null,
         },
@@ -223,7 +223,10 @@ describe('ProductDetailPage', () => {
 
     expect(await screen.findByText('Contenido')).toBeInTheDocument();
     expect(screen.getByText('x3')).toBeInTheDocument();
-    expect(screen.getByLabelText('Sin imagen para Contenido')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Ver detalle de Contenido' })).toHaveAttribute(
+      'href',
+      '/products/9d8c883c-7e36-4af0-a8b3-152b20c41f3c',
+    );
 
     const offerRows = screen
       .getAllByRole('row')

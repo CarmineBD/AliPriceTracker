@@ -345,6 +345,7 @@ export function EventsPage() {
                 label: (
                   <CouponDiscountBadge
                     amount={couponToDelete.discountAmount}
+                    minPurchase={couponToDelete.minPurchase}
                     category={couponToDelete.category}
                   />
                 ),

@@ -29,15 +29,17 @@ describe('CouponFormDialog', () => {
     expect(screen.getByRole('combobox', { name: /categor/i })).toHaveValue('Especial');
     fireEvent.click(screen.getByRole('button', { name: 'Guardar' }));
 
-    expect(onSubmit).toHaveBeenCalledWith({ minPurchase: 79, discountAmount: 10, category: 'special' });
+    expect(onSubmit).toHaveBeenCalledWith({
+      minPurchase: 79,
+      discountAmount: 10,
+      category: 'special',
+    });
   });
 
-  it('sends null when no category is selected', () => {
+  it('requires a category before creating a coupon', () => {
     const onSubmit = vi.fn();
 
-    render(
-      <CouponFormDialog open isSaving={false} onOpenChange={vi.fn()} onSubmit={onSubmit} />,
-    );
+    render(<CouponFormDialog open isSaving={false} onOpenChange={vi.fn()} onSubmit={onSubmit} />);
 
     fireEvent.change(screen.getByRole('spinbutton', { name: /compra/i }), {
       target: { value: '79' },
@@ -47,7 +49,8 @@ describe('CouponFormDialog', () => {
     });
     fireEvent.click(screen.getByRole('button', { name: 'Guardar' }));
 
-    expect(onSubmit).toHaveBeenCalledWith({ minPurchase: 79, discountAmount: 10, category: null });
+    expect(onSubmit).not.toHaveBeenCalled();
+    expect(screen.getByText('Selecciona una categoría.')).toBeInTheDocument();
   });
 
   it('loads an existing category when editing a coupon', () => {

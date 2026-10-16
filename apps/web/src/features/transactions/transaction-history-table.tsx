@@ -1,9 +1,10 @@
 import type { PurchaseHistoryEntry, SaleHistoryEntry } from '@alitracker/shared';
-import { ExternalLink, ImageOff, Info, Pencil, ShoppingCart, Trash2 } from 'lucide-react';
+import { ExternalLink, Info, Pencil, ShoppingCart, Trash2 } from 'lucide-react';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/empty-state';
+import { ProductImageLink } from '@/components/product-image-link';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -188,20 +189,11 @@ export function TransactionHistoryTable({
               <TableRow key={transaction.id}>
                 <TableCell>{dateFormatter.format(new Date(transaction.date))}</TableCell>
                 <TableCell>
-                  {transaction.imageUrl ? (
-                    <img
-                      src={transaction.imageUrl}
-                      alt={`Imagen de ${transaction.shortName}`}
-                      className="size-10 rounded-md border object-cover"
-                    />
-                  ) : (
-                    <span
-                      className="flex size-10 items-center justify-center rounded-md border bg-muted text-muted-foreground"
-                      aria-label={`Sin imagen para ${transaction.shortName}`}
-                    >
-                      <ImageOff className="size-4" />
-                    </span>
-                  )}
+                  <ProductImageLink
+                    productId={transaction.productId}
+                    productName={transaction.shortName}
+                    imageUrl={transaction.imageUrl}
+                  />
                 </TableCell>
                 <TableCell className="font-medium">{transaction.shortName}</TableCell>
                 {kind === 'purchase' && (
