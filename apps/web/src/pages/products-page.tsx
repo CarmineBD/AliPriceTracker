@@ -1,8 +1,8 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import type { Product } from '@alitracker/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Plus } from 'lucide-react';
+import { Package, Plus, Search } from 'lucide-react';
 
 import {
   createProduct,
@@ -15,6 +15,8 @@ import {
   uploadProductImage,
 } from '@/api/products.api';
 import { Button } from '@/components/ui/button';
+import { EmptyState } from '@/components/empty-state';
+import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/input-group';
 import {
   Pagination,
   PaginationContent,
@@ -33,6 +35,7 @@ import { ProductsCards } from '@/features/products/products-cards';
 import { AppLayout } from '@/layouts/app-layout';
 
 const pageSize = 20;
+const searchDebounceMs = 300;
 
 function getPageItems(currentPage: number, totalPages: number): Array<number | 'ellipsis'> {
   if (totalPages <= 7) {
@@ -61,11 +64,23 @@ function getPageItems(currentPage: number, totalPages: number): Array<number | '
 export function ProductsPage() {
   const queryClient = useQueryClient();
   const [page, setPage] = useState(1);
+  const [searchInput, setSearchInput] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
   const [formProduct, setFormProduct] = useState<Product | null | undefined>(undefined);
   const [productToDelete, setProductToDelete] = useState<Product>();
+
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => {
+      setSearchTerm(searchInput.trim());
+      setPage(1);
+    }, searchDebounceMs);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [searchInput]);
+
   const productsQuery = useQuery({
-    queryKey: ['products', { page, pageSize }],
-    queryFn: () => getProducts({ page, pageSize }),
+    queryKey: ['products', { page, pageSize, search: searchTerm }],
+    queryFn: () => getProducts({ page, pageSize, search: searchTerm || undefined }),
   });
   const productOptionsQuery = useQuery({
     queryKey: ['product-options'],
@@ -128,6 +143,9 @@ export function ProductsPage() {
     ? 'No se pudo eliminar el producto. Inténtalo de nuevo.'
     : undefined;
   const pagination = productsQuery.data?.pagination;
+  const resultsLabel = pagination
+    ? `${pagination.total} ${pagination.total === 1 ? 'resultado' : 'resultados'}`
+    : '— resultados';
 
   return (
     <AppLayout>
@@ -146,6 +164,30 @@ export function ProductsPage() {
             Agregar nuevo producto
           </Button>
         </div>
+        <div className="mb-6 max-w-md" role="search">
+          <div className="space-y-2">
+            <label className="block text-sm font-medium" htmlFor="products-search">
+              Buscar productos
+            </label>
+            <InputGroup>
+              <InputGroupAddon>
+                <Search aria-hidden="true" />
+              </InputGroupAddon>
+              <InputGroupInput
+                id="products-search"
+                type="search"
+                value={searchInput}
+                onChange={(event) => {
+                  setSearchInput(event.target.value);
+                }}
+                placeholder="Buscar por nombre"
+              />
+              <InputGroupAddon align="inline-end" aria-live="polite">
+                {resultsLabel}
+              </InputGroupAddon>
+            </InputGroup>
+          </div>
+        </div>
         <div className="flex flex-col gap-3">
           {productsQuery.isPending && <p role="status">Cargando productos…</p>}
           {productsQuery.isError && (
@@ -156,17 +198,25 @@ export function ProductsPage() {
           )}
           {productsQuery.isSuccess && (
             <>
-              <ProductsCards
-                products={productsQuery.data.products}
-                onEdit={(product) => {
-                  saveMutation.reset();
-                  setFormProduct(product);
-                }}
-                onCreate={() => {
-                  saveMutation.reset();
-                  setFormProduct(null);
-                }}
-              />
+              {searchTerm && productsQuery.data.products.length === 0 ? (
+                <EmptyState
+                  icon={Package}
+                  title="No se encontraron productos"
+                  description="Prueba con otras palabras de búsqueda."
+                />
+              ) : (
+                <ProductsCards
+                  products={productsQuery.data.products}
+                  onEdit={(product) => {
+                    saveMutation.reset();
+                    setFormProduct(product);
+                  }}
+                  onCreate={() => {
+                    saveMutation.reset();
+                    setFormProduct(null);
+                  }}
+                />
+              )}
 
               {pagination && pagination.totalPages > 1 && (
                 <div className="mt-6 space-y-3">

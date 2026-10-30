@@ -25,6 +25,13 @@ describe('product input validation', () => {
     expect(response.body.error).toBe('Validation Error');
   });
 
+  it('rejects an overly long product search before accessing the database', async () => {
+    const response = await request(app).get(`/api/products?search=${'a'.repeat(161)}`);
+
+    expect(response.status).toBe(400);
+    expect(response.body.error).toBe('Validation Error');
+  });
+
   it('rejects uploads with an unsupported image content type before accessing the database', async () => {
     const response = await request(app)
       .put('/api/products/8d8c883c-7e36-4af0-a8b3-152b20c41f3c/image')

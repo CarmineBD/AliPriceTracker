@@ -1,4 +1,4 @@
-import { asc, count, eq, getTableColumns, gt, sql } from 'drizzle-orm';
+import { and, asc, count, desc, eq, getTableColumns, gt, ilike, or, sql } from 'drizzle-orm';
 
 import type { ProductCreateInput, ProductsListQuery, ProductUpdateInput } from '@alitracker/shared';
 
@@ -14,6 +14,21 @@ const comboPrice = sql.identifier('combo_price');
 const comboComponentCount = sql.raw('"combo_price"."component_count"');
 const comboPricedComponentCount = sql.raw('"combo_price"."priced_component_count"');
 const comboTotal = sql.raw('"combo_price"."total"');
+
+function escapeLikePattern(value: string) {
+  return value.replace(/[\\%_]/g, '\\$&');
+}
+
+function buildSearchFilter(search: string | undefined) {
+  if (!search) return undefined;
+
+  return and(
+    ...search.split(/\s+/).map((term) => {
+      const pattern = `%${escapeLikePattern(term)}%`;
+      return or(ilike(products.name, pattern), ilike(products.shortName, pattern));
+    }),
+  );
+}
 
 const effectiveSellingPrice = sql<string | null>`(
   SELECT CASE
@@ -54,9 +69,10 @@ export class ProductsRepository {
       .orderBy(asc(products.name), asc(products.createdAt));
   }
 
-  async findPage({ page, pageSize }: ProductsListQuery) {
+  async findPage({ page, pageSize, search }: ProductsListQuery) {
     const offset = (page - 1) * pageSize;
     const database = getDatabase();
+    const searchFilter = buildSearchFilter(search);
     const offersCount = sql<number>`count(${publicationProducts.id})::int`.as('offers_count');
     const [items, countResult] = await Promise.all([
       database
@@ -68,11 +84,12 @@ export class ProductsRepository {
         })
         .from(products)
         .leftJoin(publicationProducts, eq(publicationProducts.productId, products.id))
+        .where(searchFilter)
         .groupBy(products.id, products.averageSellingPrice)
-        .orderBy(asc(products.name), asc(products.createdAt))
+        .orderBy(desc(offersCount), asc(products.name), asc(products.createdAt))
         .limit(pageSize)
         .offset(offset),
-      database.select({ total: count() }).from(products),
+      database.select({ total: count() }).from(products).where(searchFilter),
     ]);
 
     return { items, total: countResult[0]?.total ?? 0 };

@@ -28,8 +28,14 @@ const jsonRequest = (method: 'POST' | 'PATCH', body: ProductCreateInput | Produc
   body: JSON.stringify(body),
 });
 
-export async function getProducts({ page, pageSize }: ProductsListQuery): Promise<ProductsList> {
+export async function getProducts({
+  page,
+  pageSize,
+  search: searchTerm,
+}: ProductsListQuery): Promise<ProductsList> {
   const search = new URLSearchParams({ page: String(page), pageSize: String(pageSize) });
+  if (searchTerm) search.set('search', searchTerm);
+
   return productsListResponseSchema.parse(
     await request<unknown>(`/api/products?${search.toString()}`),
   );
