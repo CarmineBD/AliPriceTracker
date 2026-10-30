@@ -176,6 +176,7 @@ export function ProductsPage() {
               <InputGroupInput
                 id="products-search"
                 type="search"
+                autoComplete="off"
                 value={searchInput}
                 onChange={(event) => {
                   setSearchInput(event.target.value);

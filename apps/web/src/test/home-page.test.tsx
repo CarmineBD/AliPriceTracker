@@ -44,6 +44,10 @@ describe('ProductsPage', () => {
     expect(await screen.findByText('Aún no hay productos')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Agregar nuevo producto' })).toBeInTheDocument();
     expect(screen.getByText('0 resultados')).toBeInTheDocument();
+    expect(screen.getByRole('searchbox', { name: 'Buscar productos' })).toHaveAttribute(
+      'autocomplete',
+      'off',
+    );
   });
 
   it('requests the first page with the search text after a short debounce', async () => {
